@@ -20,9 +20,8 @@ data("SnP_500")
 }
 \examples{
 data("SnP_500") # use as.data.frame(SnP_500) for converting it to a data.frame
-require(xts)
 head(SnP_500)
 plot(SnP_500[,"close"], main="S&P 500 daily closing prices")
-head(index(SnP_500)) # access 'row names'
+head(rownames(as.data.frame(SnP_500))) # row names; or use zoo's index()
 }
 \keyword{datasets}
