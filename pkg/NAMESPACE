@@ -5,5 +5,9 @@ importFrom("xts")
 
 ### Exports ####################################################################
 
-export("dGPD", "pGPD", "qGPD", "rGPD",
-       "dPar", "pPar", "qPar", "rPar")
+export(## distributions
+       "dGPD", "pGPD", "qGPD", "rGPD",
+       "dPar", "pPar", "qPar", "rPar",
+       ## device
+       "dev.off.pdf")
+
