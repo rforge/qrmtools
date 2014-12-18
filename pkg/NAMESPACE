@@ -9,5 +9,7 @@ export(## distributions
        "dGPD", "pGPD", "qGPD", "rGPD",
        "dPar", "pPar", "qPar", "rPar",
        ## device
-       "dev.off.pdf")
+       "dev.off.pdf",
+       ## worst VaR
+       "worst_VaR_hom", "dual_bound", "VaR_hom_crude")
 
