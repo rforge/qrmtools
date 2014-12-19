@@ -11,5 +11,5 @@ export(## distributions
        ## device
        "dev.off.pdf",
        ## worst VaR
-       "worst_VaR_hom", "dual_bound", "VaR_hom_crude")
+       "worst_VaR_hom", "dual_bound", "crude_VaR_bounds")
 

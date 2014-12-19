@@ -2,11 +2,19 @@
 
 ### Crude VaR bounds (for both best and worst VaR) #############################
 
-## Crude VaR bounds in the homogeneous case with marginal quantile function qF
-## The lower bound is obtained by the Poincare--Sylvester sieve formula
-## The upper bound is obtained by the lower Frechet--Hoeffding bound
-VaR_hom_crude <- function(alpha, d, qF, ...)
-    d * c(qF(alpha, ...), qF(1-(1-alpha)/d, ...))
+## Crude bounds for any VaR_alpha
+crude_VaR_bounds <- function(alpha, d, qF, ...)
+{
+    if(is.function(qF))
+        d * c(qF(alpha/d, ...), qF((d-1+alpha)/d, ...))
+    else { # ... are passed to *all* qF()
+        if(!is.list(qF))
+            stop("qF has to be a (quantile) function or list of such")
+        qF.low <- sapply(qF, function(qF.) qF.(alpha/d, ...))
+        qF.up  <- sapply(qF, function(qF.) qF.((d-1+alpha)/d, ...))
+        d * c(min(qF.low), max(qF.up))
+    }
+}
 
 
 ### Dual bound #################################################################

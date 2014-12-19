@@ -80,8 +80,8 @@ t <- sapply(seq_along(s), function(i) {
 })
 f <- sapply(seq_along(s), function(i)
             sapply(t[,i], function(t.)
-                   dual_bound_2(s[i], t=t., d=d, pF=pF) -
-                   dual_bound_2_deriv_term(s[i], t=t., d=d, pF=pF)))
+                   qrmtools:::dual_bound_2(s[i], t=t., d=d, pF=pF) -
+                   qrmtools:::dual_bound_2_deriv_term(s[i], t=t., d=d, pF=pF)))
 palette <- colorRampPalette(c("red", "orange", "blue"), space="Lab")
 cols <- palette(6)
 if(doPDF)
@@ -111,9 +111,12 @@ if(doPDF) dev.off.pdf(file=file)
 ### 1.4) Compare various methods of VaR_bound_hom() ############################
 
 ## TODO AM: quite different values; also check with Wang's method but Pareto case
-wc.VaR.Wang <- VaR_bound_hom(alpha, d=d, method="Wang", qF=function(p) qPar(p, theta=th))
-init <- VaR_bound_hom_crude(alpha, d=d, qF=qPar, theta=th)
-wc.VaR.dual <- VaR_bound_hom(alpha, d=d, method="dual", interval=init, pF=pF)
+##      => maybe plot as functions in alpha
+wc.VaR.Wang <- worst_VaR_hom(alpha, d=d, method="Wang", qF=function(p) qPar(p, theta=th))
+init <- crude_VaR_bounds_hom(alpha, d=d, qF=qPar, theta=th)
+wc.VaR.dual <- worst_VaR_hom(alpha, d=d, method="dual", interval=init, pF=pF)
 ##wc.VaR.Par <- VaR_bound_hom(alpha, d=d, method="Pareto", theta=th) # TODO AM => implement
 ##stopifnot(all.equal(wc.VaR.Wang, wc.VaR.dual, wc.VaR.Par))
+
+## TODO: implement crude_VaR_bounds_hom() for general margins (if only one provided => hom)
 
