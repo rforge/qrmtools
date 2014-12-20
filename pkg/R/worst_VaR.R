@@ -76,26 +76,34 @@ dual_bound <- function(s, d, pF, ...)
 ## to Embrechts, Puccetti, Rueschendorf, Wang, Beleraj (2014, Prop. 3.1)
 Wang_Ibar <- function(c, alpha, d, method=c("generic", "Wang.Par"), ...)
 {
-    if(c == (1-alpha)/d) return(0)
     a <- alpha + (d-1)*c
     b <- 1-c
     ddd <- list(...)
     method <- match.arg(method)
     switch(method,
            "generic" = {
-               stopifnot(length(c) == 1)
+               stopifnot(length(c) == 1) # not vectorized (due to integrate())
                qF <- ddd$qF # use provided 'qF()'
-               ddd$qF <- NULL
-               h <- function(...)
-                   integrate(qF, lower=a, upper=b, ...)$value / (b-a)
-               do.call(h, ddd) # call integrate() on the remaining arguments in '...'
+               ## properly deal with the limit c == (1-alpha)/d (empty integration interval)
+               if(a == b) { # or c == (1-alpha)/d
+                   qF((d-1+alpha)/d)
+               } else { # now the non-empty case
+                   ddd$qF <- NULL
+                   h <- function(...)
+                       integrate(qF, lower=a, upper=b, ...)$value / (b-a)
+                   do.call(h, ddd) # call integrate() on the remaining arguments in '...'
+               }
            },
            "Wang.Par" = {
                th <- ddd$theta # use provided 'theta'
-               if(th == 1) log((1-a)/(1-b))/(b-a) - 1
-               else {
-                   (th/(1-th))*((1-b)^(1-1/th)-(1-a)^(1-1/th))/(b-a) - 1
-               }
+               ## properly deal with the limit c == (1-alpha)/d (empty integration interval)
+               ## (vectorized)
+               res <- rep(NA, length(c))
+               i <- a == b # or c == (1-alpha)/d
+               if(any(i))   res[i] <- rep(qPar((d-1+alpha)/d, theta=th), sum(i))
+               if(any(!i)) res[!i] <- if(th == 1) log((1-a[!i])/(1-b[!i]))/(b[!i]-a[!i]) - 1
+                   else (th/(1-th))*((1-b[!i])^(1-1/th)-(1-a[!i])^(1-1/th))/(b[!i]-a[!i]) - 1
+               res
            },
            stop("Wrong method"))
 }
@@ -116,54 +124,80 @@ Wang_h_aux <- function(c, alpha, d, method=c("generic", "Wang.Par"), ...)
 ## Objective function for computing the worst VaR according to
 ## Embrechts, Puccetti, Rueschendorf, Wang, Beleraj (2014, Prop. 3.1)
 Wang_h <- function(c, alpha, d, method=c("generic", "Wang.Par"), ...)
+{
+    stopifnot(0 <= c, c <= (1-alpha)/d) # sanity check (otherwise b > a)
     Wang_Ibar(c, alpha=alpha, d=d, method=method, ...) -
     Wang_h_aux(c, alpha=alpha, d=d, method=method, ...)
+}
 
 
 ### Main function for computing the worst VaR in the homogeneous case ##########
 
 ## Compute the worst VaR_\alpha in the homogeneous case with
-## 1) Embrechts, Puccetti, Rueschendorf, Wang, Beleraj (2014, Prop. 3.1) [best]
-## 2) Embrechts, Puccetti, Rueschendorf (2013, Proposition 4) [via dual bound]
-##
-## Non-optimal things for 2):
-## we need a "sufficiently large s" (otherwise the inner root finding algorithm
-## fails as there is no root below (1-alpha)/d) => good initial interval needed
+## 1) "Wang": Embrechts, Puccetti, Rueschendorf, Wang, Beleraj (2014, Prop. 3.1)
+## 2) "dual": Embrechts, Puccetti, Rueschendorf (2013, Proposition 4)
 ##
 ## Assumptions:
-## - for 1): F needs to be continuous with ultimately decreasing density
-## - for 2): F needs to be continuous with unbounded support and and ultimately
-##   decreasing density, F(0) = 0 (otherwise, 0 as a lower bound for uniroot()
-##   in dual_bound() is not valid)
-worst_VaR_hom <- function(alpha, d, interval=NULL,
-                          method=c("Wang", "Wang.Par", "dual"), ...)
+## - "Wang": F needs to live on [0, Inf), admitting a positive density which is
+##           ultimately decreasing density
+## - "dual": F needs to be continuous with unbounded support and and ultimately
+##           decreasing density, F(0) = 0 (otherwise, 0 as a lower bound for
+##           uniroot() in dual_bound() is not valid)
+worst_VaR_hom <- function(alpha, d, method=c("Wang", "Wang.Par", "dual"),
+                          interval=NULL, ...)
 {
     stopifnot(0 < alpha, alpha < 1, d >= 3)
     method <- match.arg(method)
     switch(method,
            "Wang" = {
+               ## check qF()
                qF <- NULL # make CRAN check happy
-               if(!hasArg(qF)) # just check that 'qF' has been provided
+               if(!hasArg(qF))
                    stop("Method 'Wang' requires the quantile function qF of F")
+               ## check 'interval'
                if(is.null(interval)) interval <- c(0, (1-alpha)/d)
-               ## guarantee that uniroot() doesn't fail due to root at (1-alpha)/d
+               else if(!(0 <= interval[1] && interval[2] <= (1-alpha)/d &&
+                         interval[1]<interval[2]))
+                   stop("interval[1] needs to be >= 0, interval[2] needs to be <= (1-alpha)/d")
+               ## c_u: guarantee that uniroot() doesn't fail due to root at (1-alpha)/d
                h.up <- .Machine$double.xmin
+               ## c_l: compute and check whether we have opposite sign
+               ##      idea: give good error message
+               h.low <- Wang_h(interval[1], alpha=alpha, d=d, ...)
+               if(is.na(h.low))
+                   stop("Objective function at interval[1] is not a number. Provide a larger interval[1].")
+               if(h.up * h.low >= 0)
+                   stop("Objective function at end points of 'interval' not of opposite sign. Provide a smaller interval[1].")
+               ## root-finding on 'interval'
                c. <- uniroot(function(c) Wang_h(c, alpha=alpha, d=d, ...),
-                             interval=interval, f.upper=h.up)$root
+                             interval=interval, f.lower=h.low, f.upper=h.up)$root
                d * Wang_h_aux(c., alpha=alpha, d=d, qF=list(...)$qF)
            },
-           "Wang.Par" = {
+           "Wang.Par" = { # only kept for ruling out problems due to numerical integration
+               ## check 'theta'
                theta <- NULL # make CRAN check happy
                if(!hasArg(theta))
                    stop("Method 'Wang.Par' requires the parameter theta")
                th <- list(...)$theta
-               stopifnot(th > 0) # check theta here
+               stopifnot(length(th) == 1, th > 0) # check theta here
+               ## check 'interval'
                if(is.null(interval)) interval <- c(0, (1-alpha)/d)
-               ## guarantee that uniroot() doesn't fail due to root at (1-alpha)/d
+               else if(!(0 <= interval[1] && interval[2] <= (1-alpha)/d &&
+                         interval[1]<interval[2]))
+                   stop("interval[1] needs to be >= 0, interval[2] needs to be <= (1-alpha)/d")
+               ## c_u: guarantee that uniroot() doesn't fail due to root at (1-alpha)/d
                h.up <- .Machine$double.xmin
+               ## c_l: compute and check whether we have opposite sign
+               ##      idea: give good error message
+               h.low <- Wang_h(interval[1], alpha=alpha, d=d, method="Wang.Par", ...)
+               if(is.na(h.low))
+                   stop("Objective function at interval[1] is not a number. Provide a larger interval[1].")
+               if(h.up * h.low >= 0)
+                   stop("Objective function at end points of 'interval' not of opposite sign. Provide a smaller interval[1].")
+               ## root-finding on 'interval'
                c. <- uniroot(function(c)
                              Wang_h(c, alpha=alpha, d=d, method="Wang.Par", ...),
-                             interval=interval, f.upper=h.up)$root
+                             interval=interval, f.lower=h.low, f.upper=h.up)$root
                d * Wang_h_aux(c., alpha=alpha, d=d, method="Wang.Par", theta=th)
            },
            "dual" = {

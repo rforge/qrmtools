@@ -7,13 +7,20 @@
   Compute the worst Value-at-Risk for given marginal distributions.
 }
 \usage{
-worst_VaR_hom(alpha, d, interval=NULL, method=c("Wang", "Wang.Par", "dual"), ...)
+worst_VaR_hom(alpha, d, method=c("Wang", "Wang.Par", "dual"), interval=NULL, ...)
 dual_bound(s, d, pF, ...)
 crude_VaR_bounds(alpha, d, qF, ...)
 }
 \arguments{
   \item{alpha}{Value-at-Risk confidence level (e.g., 0.99).}
   \item{d}{Dimension (number of risk factors).}
+  \item{method}{Method (a \code{\link{character}}). \code{method="Wang"}
+    and \code{method="Wang.Par"} apply the approach of Embrechts,
+    Puccetti, \enc{Rüschendorf}{Rueschendorf}, Wang and Beleraj (2014,
+    Proposition 3.1); the latter assumes Pareto margins and thus does
+    not require numerical integration. \code{method="dual"} applies the
+    dual bound approach as in Embrechts, Puccetti,
+    \enc{Rüschendorf}{Rueschendorf} (2013, Proposition 4).}
   \item{interval}{Initial interval (a \code{\link{numeric}(2)}). For
     \code{method="Wang"} and \code{method="Wang.Par"}, if not provided,
     the initivial interval is
@@ -21,7 +28,6 @@ crude_VaR_bounds(alpha, d, qF, ...)
     note that the lower endpoint of the initial interval has to be
     sufficiently large in order for the the inner root-finding algorithm
     to find a root; see Details.}
-  \item{method}{Method (a \code{\link{character}}).}
   \item{pF, qF}{The loss distribution and quantile functions,
     respectively; the latter can be a \code{\link{list}} of quantile
     functions.}

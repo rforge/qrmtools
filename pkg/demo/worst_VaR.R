@@ -14,26 +14,25 @@ qF <- function(p) qPar(p, theta=th)
 pF <- function(q) pPar(q, theta=th)
 
 
-### 1.1) Checks for method="Wang" ##############################################
+### 1.1) Checks for method="Wang"/"Wang.Par" ###################################
 
-## check Wang_I()
+### Check *with* numerical integration
+
+## check Wang_Ibar()
 c <- seq(0, (1-alpha)/d, length.out=129) # initial interval for root finding
-yc <- sapply(c, function(c.) qrmtools:::Wang_I(c., alpha=alpha, d=d, qF=qF))
+yc <- sapply(c, function(c.) qrmtools:::Wang_Ibar(c., alpha=alpha, d=d, qF=qF))
 par(mar=c(5.1, 6.1, 4.1, 2.1)) # more space for the y-axis label
 plot(c, yc, type="l", xlab="c  (initial interval)",
-     ylab=expression(I(c)-(b[c]-a[c])~
-     bgroup("(",frac(d-1,d)~{F^{-1}}(a[c])+frac(1,d)~{F^{-1}}(b[c]),")")~~
-     "for"~F~"being Par(2)"))
+     ylab=expression(bar(I)(c)~~"for"~F%~%~"Par(2)"))
 
 ## check Wang_h_aux()
 yc. <- qrmtools:::Wang_h_aux(c=c, alpha=alpha, d=d, qF=qF)
 plot(c, yc., type="l", xlab="c  (initial interval)",
-     ylab=expression((b[c]-a[c])~
-     bgroup("(",frac(d-1,d)~{F^{-1}}(a[c])+frac(1,d)~{F^{-1}}(b[c]),")")~~
-     "for"~F~"being Par(2)"))
+     ylab=expression(frac(d-1,d)~{F^{-1}}(a[c])+frac(1,d)~{F^{-1}}(b[c])~~
+     "for"~F%~%~"Par(2)"))
 
 ## check objective function Wang_h()
-yc.. <- qrmtools:::Wang_h(c, alpha=alpha, d=d, qF=qF) # TODO: from here; why not 0 anymore?
+yc.. <- sapply(c, function(c.) qrmtools:::Wang_h(c., alpha=alpha, d=d, qF=qF))
 if(doPDF) pdf(file=(file <- "fig_worst_VaR_0.99_hom_Wang_Par=2_d=8.pdf"),
               width=6.5, height=6.5)
 par(pty="s")
@@ -42,30 +41,44 @@ abline(h=0, lty=2)
 if(doPDF) dev.off.pdf(file=file)
 
 ## check endpoints of objective function for root-finding
-qrmtools:::Wang_h(c(0, (1-alpha)/d), alpha=alpha, d=d, qF=qF) # -Inf, 0
-## -Inf is not a problem for root finding, but the 0 at the right endpoint is.
-## We take care of this by adjusting f.upper in the root finding
+sapply(c(0, (1-alpha)/d), function(c.)
+       qrmtools:::Wang_h(c., alpha=alpha, d=d, qF=qF)) # -Inf, 0
+## -Inf is not a problem for root finding (for theta > 1; for theta <= 1 it is NaN),
+## but the 0 at the right endpoint is. We take care of this by adjusting
+## f.upper in the root finding; see worst_VaR_hom()
 
-## plot worst VaR_alpha for various Par(theta)
-theta <- c(0.5, 1, 2, 4) # theta values
-alpha <- seq(0.1, 0.9, length.out=128) # alpha values (in (0,1))
-worst.VaR.Wang  <- sapply(theta, function(th)
-                          sapply(alpha, function(a)
-                                 worst_VaR_hom(a, d=8,
-                                               qF=function(p) qPar(p, theta=th)))) # (alpha, theta) matrix
-TODO: fix
-if(doPDF) pdf(file=(file <- "fig_worst_VaR_hom_Wang_Par_d=8.pdf"),
+
+### Check *without* numerical integration
+
+## compute worst VaR_alpha for various Par(theta)
+## note: for theta in (0, 1], c_l has to be > 0
+theta. <- c(0.5, 1, 2, 4) # theta values
+alpha. <- seq(0.001, 0.999, length.out=128) # alpha values (in (0,1))
+worst.VaR.Wang  <- sapply(theta., function(th)
+                          sapply(alpha., function(a) {
+                              I <- c(if(th > 1) 0 else 1e-6, (1-a)/d)
+                              worst_VaR_hom(a, d=8, interval=I,
+                                            method="Wang.Par", theta=th)
+                                            ## numerical integration fails here:
+                                            ## method="Wang", qF=function(p) qPar(p, theta=th))
+                          })) # (alpha, theta) matrix
+
+## plot
+if(doPDF) pdf(file=(file <- "fig_worst_VaR_hom_Wang_h_Par_d=8.pdf"),
               width=6.5, height=6.5)
 par(pty="s")
-plot(alpha, worst.VaR.Wang[,1], type="l", ylim=range(worst.VaR.Wang[,1]),
-     ylab=expression("Worst"~~VaR[alpha]))
-lines(alpha, worst.VaR.Wang[,2], col="blue")
-lines(alpha, worst.VaR.Wang[,3], col="orange")
-lines(alpha, worst.VaR.Wang[,4], col="red")
-legend("topright", inset=0.02, lty=rep(1,4), y.intersp=1.2,
+ylim. <- range(worst.VaR.Wang)
+plot(alpha., worst.VaR.Wang[,1], type="l", log="y", ylim=ylim.,
+     xlab=expression(alpha),
+     ylab=expression(bar(VaR)[alpha]*group("(",L^{"+"},")")~~"for"~
+     F%~%~"Par("*theta*")"))
+lines(alpha., worst.VaR.Wang[,2], col="blue")
+lines(alpha., worst.VaR.Wang[,3], col="orange")
+lines(alpha., worst.VaR.Wang[,4], col="red")
+legend("topleft", inset=0.02, lty=rep(1,4), y.intersp=1.2,
        col=c("black", "blue", "orange", "red"),
        bty="n", legend=as.expression(lapply(1:4,
-           function(i) substitute(theta==i, list(i=theta[i])))))
+           function(i) substitute(theta==i, list(i=theta.[i])))))
 if(doPDF) dev.off.pdf(file=file)
 
 
@@ -129,8 +142,9 @@ if(doPDF) dev.off.pdf(file=file)
 ### 1.3) Compare various methods of VaR_bound_hom() ############################
 
 ## TODO AM: quite different values; also check with Wang's method but Pareto case
+## RA => 141 => Wang's method seems to have a bug
 init <- crude_VaR_bounds(alpha, d=d, qF=qPar, theta=th)
 (worst.VaR.Wang <- worst_VaR_hom(alpha, d=d, qF=function(p) qPar(p, theta=th)))
+(worst.VaR.Par  <- worst_VaR_hom(alpha, d=d, method="Wang.Par", theta=th))
 (worst.VaR.dual <- worst_VaR_hom(alpha, d=d, method="dual", interval=init, pF=pF))
-(worst.VaR.Par  <- worst_VaR_hom(alpha, d=d, method="Pareto", theta=th))
 
