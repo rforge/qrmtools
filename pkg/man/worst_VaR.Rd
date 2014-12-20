@@ -7,7 +7,7 @@
   Compute the worst Value-at-Risk for given marginal distributions.
 }
 \usage{
-worst_VaR_hom(alpha, d, interval=NULL, method=c("Wang", "dual", "Pareto"), ...)
+worst_VaR_hom(alpha, d, interval=NULL, method=c("Wang", "Wang.Par", "dual"), ...)
 dual_bound(s, d, pF, ...)
 crude_VaR_bounds(alpha, d, qF, ...)
 }
@@ -15,7 +15,7 @@ crude_VaR_bounds(alpha, d, qF, ...)
   \item{alpha}{Value-at-Risk confidence level (e.g., 0.99).}
   \item{d}{Dimension (number of risk factors).}
   \item{interval}{Initial interval (a \code{\link{numeric}(2)}). For
-    \code{method="Wang"} and \code{method="Pareto"}, if not provided,
+    \code{method="Wang"} and \code{method="Wang.Par"}, if not provided,
     the initivial interval is
     \eqn{[0,(1-\alpha)/d]}{[0,(1-alpha)/d]}. For \code{method="dual"},
     note that the lower endpoint of the initial interval has to be
@@ -28,12 +28,14 @@ crude_VaR_bounds(alpha, d, qF, ...)
   \item{s}{Dual bound evaluation point.}
   \item{\dots}{For
     \describe{
-      \item{\code{worst_VaR_hom()}:}{For \code{method="Wang"} or
-	\code{method="Pareto"} additional arguments passed to
-	\code{\link{uniroot}()}; for \code{method="dual"} additional
-	arguments passed to the underlying
-	\code{\link{integrate}()} for evaluating the dual bound
-	\eqn{D(s)}.}
+      \item{\code{worst_VaR_hom()}:}{For \code{method="Wang"} the
+	quantile function \code{qF()} and additional
+	arguments passed to the underlying \code{\link{integrate}()};
+	for \code{method="dual"} the distribution function \code{pF()}
+	and additionalarguments passed to the underlying
+	\code{\link{integrate}()} for computing the dual bound \eqn{D(s)};
+	for \code{method="Wang.Par"} the Pareto parameter
+	\eqn{\theta>0}{theta>0}.}
       \item{\code{dual_bound()}:}{Additional arugments passed to the
 	underlying \code{\link{integrate}()}.}
       \item{\code{crude_VaR_bounds()}:}{Additional arguments passed to
@@ -54,7 +56,7 @@ crude_VaR_bounds(alpha, d, qF, ...)
   specified by \code{qF}.
 }
 \details{
-  For \code{method="Wang"} and \code{method="Pareto"}, the method
+  For \code{method="Wang"} and \code{method="Wang.Par"}, the method
   presented in Embrechts, P., Puccetti, G., \enc{Rüschendorf}{Rueschendorf}, L.,
   Wang, R., Beleraj, A. (2014, Proposition 3.1) is implemented. This
   requires one root-finding procedure.
@@ -89,10 +91,10 @@ pF <- function(q) pPar(q, theta=th) # marginal distribution function
 qF <- function(p) qPar(p, theta=th) # marginal quantile function
 
 ## compare the various methods
-worst.VaR.Wang <- worst_VaR_hom(alpha, d=d, method="Wang", qF=qF)
-init <- crude_VaR_bounds(alpha, d=d, qF=qPar, theta=th)
-worst.VaR.dual <- worst_VaR_hom(alpha, d=d, method="dual", interval=init, pF=pF)
-##worst.VaR.Par <- worst_VaR_hom(alpha, d=d, method="Pareto", theta=th) # TODO Amir
-##stopifnot(all.equal(worst.VaR.Wang, worst.VaR.dual, worst.VaR.Par)) # TODO: not working yet
+I <- crude_VaR_bounds(alpha, d=d, qF=qPar, theta=th)
+(worst.VaR.Wang <- worst_VaR_hom(alpha, d=d, method="Wang",     qF=qF))
+(worst.VaR.Par  <- worst_VaR_hom(alpha, d=d, method="Wang.Par", theta=th))
+(worst.VaR.dual <- worst_VaR_hom(alpha, d=d, method="dual", interval=I, pF=pF))
+stopifnot(all.equal(worst.VaR.Wang, worst.VaR.Par))
 }
 \keyword{distribution}

@@ -51,14 +51,15 @@ dual_bound <- function(s, d, pF, ...)
 {
     stopifnot(length(s) == 1, s >= 0)
     if(s > 0) {
-        f <- function(t) dual_bound_2(s, t=t, d=d, pF=pF, ...) -
+        ## h(s, t)
+        h <- function(t) dual_bound_2(s, t=t, d=d, pF=pF, ...) -
             dual_bound_2_deriv_term(s, t=t, d=d, pF=pF)
         ## note: f(t) -> 0 for t -> s/d- this is bad for uniroot() which will
         ##       simply stop with the root t=s/d => we thus set f.upper > 0
         ##       alternatively, one could use (the more invasive)
         ##       interval = c(0, s/d - .Machine$double.eps^0.25)
-        f1 <- sign(-f(0)) * .Machine$double.xmin # guarantee that uniroot() doesn't fail due to root s/d
-        t. <- uniroot(f, interval=c(0, s/d), f.upper=f1)$root # optimal t in Equation (12) [= arginf]
+        h.up <- sign(-h(0)) * .Machine$double.xmin # guarantee that uniroot() doesn't fail due to root s/d
+        t. <- uniroot(h, interval=c(0, s/d), f.upper=h.up)$root # optimal t in Equation (12) [= arginf]
         dual_bound_2_deriv_term(s, t=t., d=d, pF=pF) # dual bound D(s) in Equation (12) [= inf]
     } else {
         ## if s = 0, then t in [0, s/d] requires t to be 0 *and* f(0) = 0, so
@@ -71,30 +72,52 @@ dual_bound <- function(s, d, pF, ...)
 
 ### Wang's methods #############################################################
 
-## Integral qF() for computing the worst VaR according to
-## Embrechts, Puccetti, Rueschendorf, Wang, Beleraj (2014, Prop. 3.1)
-Wang_int <- function(c, alpha, d, ...)
+## Conditional expectation (\bar{I}(c)) for computing the worst VaR according
+## to Embrechts, Puccetti, Rueschendorf, Wang, Beleraj (2014, Prop. 3.1)
+Wang_Ibar <- function(c, alpha, d, method=c("generic", "Wang.Par"), ...)
 {
-    ## extract qF from '...'
+    if(c == (1-alpha)/d) return(0)
+    a <- alpha + (d-1)*c
+    b <- 1-c
     ddd <- list(...)
-    qF <- ddd$qF
-    ddd$qF <- NULL
-    f <- function(...) # sapply() here to vectorize
-        sapply(c, function(c.) integrate(qF, lower=alpha+(d-1)*c.,
-                                         upper=1-c., ...)$value)
-    do.call(f, ddd) # call integrate() on the remaining arguments in ...
+    method <- match.arg(method)
+    switch(method,
+           "generic" = {
+               stopifnot(length(c) == 1)
+               qF <- ddd$qF # use provided 'qF()'
+               ddd$qF <- NULL
+               h <- function(...)
+                   integrate(qF, lower=a, upper=b, ...)$value / (b-a)
+               do.call(h, ddd) # call integrate() on the remaining arguments in '...'
+           },
+           "Wang.Par" = {
+               th <- ddd$theta # use provided 'theta'
+               if(th == 1) log((1-a)/(1-b))/(b-a) - 1
+               else {
+                   (th/(1-th))*((1-b)^(1-1/th)-(1-a)^(1-1/th))/(b-a) - 1
+               }
+           },
+           stop("Wrong method"))
 }
 
-## Right-hand side term for computing the worst VaR according to
-## Embrechts, Puccetti, Rueschendorf, Wang, Beleraj (2014, Prop. 3.1)
-Wang_obj_aux <- function(c, alpha, d, qF)
-    ((1-alpha-d*c)/d) * ((d-1)*qF(alpha+(d-1)*c) + qF(1-c))
+## Right-hand side term in the objective function for computing the worst VaR
+## according to Embrechts, Puccetti, Rueschendorf, Wang, Beleraj (2014, Prop. 3.1)
+## for the correct 'c', this is the conditional expectation
+Wang_h_aux <- function(c, alpha, d, method=c("generic", "Wang.Par"), ...)
+{
+    ddd <- list(...)
+    method <- match.arg(method)
+    qF <- if(method=="Wang.Par") function(y) qPar(y, theta=ddd$theta) else ddd$qF
+    a <- alpha + (d-1)*c
+    b <- 1-c
+    qF(a)*(d-1)/d + qF(b)/d
+}
 
 ## Objective function for computing the worst VaR according to
 ## Embrechts, Puccetti, Rueschendorf, Wang, Beleraj (2014, Prop. 3.1)
-Wang_obj <- function(c, alpha, d, ...)
-    Wang_int(c, alpha=alpha, d=d, ...) -
-    Wang_obj_aux(c, alpha=alpha, d=d, qF=list(...)$qF)
+Wang_h <- function(c, alpha, d, method=c("generic", "Wang.Par"), ...)
+    Wang_Ibar(c, alpha=alpha, d=d, method=method, ...) -
+    Wang_h_aux(c, alpha=alpha, d=d, method=method, ...)
 
 
 ### Main function for computing the worst VaR in the homogeneous case ##########
@@ -102,7 +125,6 @@ Wang_obj <- function(c, alpha, d, ...)
 ## Compute the worst VaR_\alpha in the homogeneous case with
 ## 1) Embrechts, Puccetti, Rueschendorf, Wang, Beleraj (2014, Prop. 3.1) [best]
 ## 2) Embrechts, Puccetti, Rueschendorf (2013, Proposition 4) [via dual bound]
-## The Pareto case uses Wang's method but specifically for the Pareto distribution
 ##
 ## Non-optimal things for 2):
 ## we need a "sufficiently large s" (otherwise the inner root finding algorithm
@@ -114,20 +136,35 @@ Wang_obj <- function(c, alpha, d, ...)
 ##   decreasing density, F(0) = 0 (otherwise, 0 as a lower bound for uniroot()
 ##   in dual_bound() is not valid)
 worst_VaR_hom <- function(alpha, d, interval=NULL,
-                          method=c("Wang", "dual", "Pareto"), ...)
+                          method=c("Wang", "Wang.Par", "dual"), ...)
 {
     stopifnot(0 < alpha, alpha < 1, d >= 3)
     method <- match.arg(method)
     switch(method,
            "Wang" = {
+               qF <- NULL # make CRAN check happy
                if(!hasArg(qF)) # just check that 'qF' has been provided
                    stop("Method 'Wang' requires the quantile function qF of F")
                if(is.null(interval)) interval <- c(0, (1-alpha)/d)
-               f1 <- .Machine$double.xmin # guarantees that uniroot() doesn't fail due to root at (1-alpha)/d
-               c. <- uniroot(function(c) Wang_obj(c, alpha=alpha, d=d, ...),
-                             interval=interval, f.upper=f1)$root
-               (d/(1-alpha-d*c.)) * Wang_obj_aux(c., alpha=alpha, d=d,
-                                                 qF=list(...)$qF)
+               ## guarantee that uniroot() doesn't fail due to root at (1-alpha)/d
+               h.up <- .Machine$double.xmin
+               c. <- uniroot(function(c) Wang_h(c, alpha=alpha, d=d, ...),
+                             interval=interval, f.upper=h.up)$root
+               d * Wang_h_aux(c., alpha=alpha, d=d, qF=list(...)$qF)
+           },
+           "Wang.Par" = {
+               theta <- NULL # make CRAN check happy
+               if(!hasArg(theta))
+                   stop("Method 'Wang.Par' requires the parameter theta")
+               th <- list(...)$theta
+               stopifnot(th > 0) # check theta here
+               if(is.null(interval)) interval <- c(0, (1-alpha)/d)
+               ## guarantee that uniroot() doesn't fail due to root at (1-alpha)/d
+               h.up <- .Machine$double.xmin
+               c. <- uniroot(function(c)
+                             Wang_h(c, alpha=alpha, d=d, method="Wang.Par", ...),
+                             interval=interval, f.upper=h.up)$root
+               d * Wang_h_aux(c., alpha=alpha, d=d, method="Wang.Par", theta=th)
            },
            "dual" = {
                pF <- NULL # make CRAN check happy
@@ -138,13 +175,6 @@ worst_VaR_hom <- function(alpha, d, interval=NULL,
                uniroot(function(s) dual_bound(s, d=d, ...)-(1-alpha),
                        interval=interval)$root # s interval
                ## note: we can't pass arguments to the inner root-finding (yet)
-           },
-           "Pareto" = {
-               theta <- NULL # make CRAN check happy
-               if(!hasArg(theta))
-                   stop("Method 'Pareto' requires the parameter theta")
-               qF <- function(p) qPar(p, theta=list(...)$theta)
-               stop("TODO AM")
            },
            stop("Wrong method"))
 }
