@@ -20,7 +20,8 @@ crude_VaR_bounds(alpha, d, qF, ...)
     Proposition 3.1); the latter assumes Pareto margins and thus does
     not require numerical integration. \code{method="dual"} applies the
     dual bound approach as in Embrechts, Puccetti,
-    \enc{Rüschendorf}{Rueschendorf} (2013, Proposition 4).}
+    \enc{Rüschendorf}{Rueschendorf} (2013, Proposition 4). Note that
+    \code{method} is ignored for \code{d=2}; see Details.}
   \item{interval}{Initial interval (a \code{\link{numeric}(2)}). For
     \code{method="Wang"} and \code{method="Wang.Par"}, if not provided,
     the initivial interval is
@@ -34,10 +35,10 @@ crude_VaR_bounds(alpha, d, qF, ...)
   \item{s}{Dual bound evaluation point.}
   \item{\dots}{For
     \describe{
-      \item{\code{worst_VaR_hom()}:}{For \code{method="Wang"} the
-	quantile function \code{qF()} and additional
-	arguments passed to the underlying \code{\link{integrate}()}
-	have to be provided; for \code{method="dual"} the distribution
+      \item{\code{worst_VaR_hom()}:}{For \code{d=2} or
+	\code{method="Wang"} the quantile function \code{qF()} (for the latter,
+	additional arguments passed to the underlying \code{\link{integrate}()}
+	have to be provided); for \code{method="dual"} the distribution
 	function \code{pF()} and additionalarguments passed to the underlying
 	\code{\link{integrate}()} for computing the dual bound
 	\eqn{D(s)} have to be provided; and for \code{method="Wang.Par"}
@@ -62,9 +63,12 @@ crude_VaR_bounds(alpha, d, qF, ...)
   specified by \code{qF}.
 }
 \details{
+  For \code{d=2}, the method of Embrechts, Puccetti,
+  \enc{Rüschendorf}{Rueschendorf} (2013, Proposition 2) is implemented.
+
   For \code{method="Wang"} and \code{method="Wang.Par"}, the method
-  presented in Embrechts, P., Puccetti, G., \enc{Rüschendorf}{Rueschendorf}, L.,
-  Wang, R., Beleraj, A. (2014, Proposition 3.1) is implemented. This
+  presented in Embrechts, Puccetti, \enc{Rüschendorf}{Rueschendorf},
+  Wang, Beleraj (2014, Proposition 3.1) is implemented. This
   requires one \code{\link{uniroot}()} and, for the generic
   \code{method="Wang"}, \code{\link{integrate}()}. The critical part
   for these methods is the lower endpoint of the initial interval.
@@ -73,9 +77,9 @@ crude_VaR_bounds(alpha, d, qF, ...)
   the lower endpoint has to be positive (and below the unknown root
   and smaller than the upper endpoint \eqn{(1-\alpha)/d}{(1-alpha)/d}).
 
-  For \code{method="dual"}, the method presented in
-  Embrechts, P., Puccetti, G., \enc{Rüschendorf}{Rueschendorf},
-  L. (2013, Proposition 4) is implemented. This
+  For \code{method="dual"}, the method presented of
+  Embrechts, Puccetti, \enc{Rüschendorf}{Rueschendorf},
+  (2013, Proposition 4) is implemented. This
   requires two (nested) \code{\link{uniroot}()}, and an
   \code{\link{integrate}()}. For the inner root-finding
   procedure to find a root, the lower endpoint of the provided initial

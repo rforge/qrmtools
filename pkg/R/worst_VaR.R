@@ -133,20 +133,34 @@ Wang_h <- function(c, alpha, d, method=c("generic", "Wang.Par"), ...)
 
 ### Main function for computing the worst VaR in the homogeneous case ##########
 
-## Compute the worst VaR_\alpha in the homogeneous case with
-## 1) "Wang": Embrechts, Puccetti, Rueschendorf, Wang, Beleraj (2014, Prop. 3.1)
-## 2) "dual": Embrechts, Puccetti, Rueschendorf (2013, Proposition 4)
+## Compute the worst VaR_\alpha in the homogeneous case with:
+## 1) d=2: Embrechts, Puccetti, Rueschendorf (2013, Proposition 2)
+## 2) d>=3:
+##    "Wang": Embrechts, Puccetti, Rueschendorf, Wang, Beleraj (2014, Prop. 3.1)
+##    "dual": Embrechts, Puccetti, Rueschendorf (2013, Proposition 4)
 ##
 ## Assumptions:
+## - d=2: ultimately decreasing density (for x >= x0), alpha >= F(x0)
 ## - "Wang": F needs to live on [0, Inf), admitting a positive density which is
-##           ultimately decreasing density
+##           ultimately decreasing (for x >= x0), alpha >= F(x0)
 ## - "dual": F needs to be continuous with unbounded support and and ultimately
 ##           decreasing density, F(0) = 0 (otherwise, 0 as a lower bound for
 ##           uniroot() in dual_bound() is not valid)
 worst_VaR_hom <- function(alpha, d, method=c("Wang", "Wang.Par", "dual"),
                           interval=NULL, ...)
 {
-    stopifnot(0 < alpha, alpha < 1, d >= 3)
+    stopifnot(0 < alpha, alpha < 1)
+
+    ## d == 2
+    if(d == 2) { # see Prop. 2
+        qF <- NULL # make CRAN check happy
+        if(!hasArg(qF))
+            stop("The bivariate case requires the quantile function qF of F")
+        return(2*list(...)$qF((1+alpha)/2))
+    }
+
+    ## d >= 3
+    stopifnot(d >= 3)
     method <- match.arg(method)
     switch(method,
            "Wang" = {
