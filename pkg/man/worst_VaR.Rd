@@ -105,13 +105,17 @@ crude_VaR_bounds(alpha, d, qF, ...)
 \examples{
 ## setup
 alpha <- 0.99 # VaR confidence level
-d <- 8 # dimension
 th <- 2 # Pareto parameter
 pF <- function(q) pPar(q, theta=th) # marginal distribution function
 qF <- function(p) qPar(p, theta=th) # marginal quantile function
 
-## compare the various methods
-I <- crude_VaR_bounds(alpha, d=d, qF=qPar, theta=th)
+## d=2: compute worst VaR ('method' is ignored)
+worst_VaR_hom(alpha, d=2, qF=qF) # ~= 26.28
+
+## d=8: compare the various methods
+d <- 8 # dimension
+I <- crude_VaR_bounds(alpha, d=d, qF=qF)
+## or: I <- crude_VaR_bounds(alpha, d=d, qF=qPar, theta=th)
 (worst.VaR.Wang <- worst_VaR_hom(alpha, d=d, method="Wang", qF=qF))
 (worst.VaR.Par  <- worst_VaR_hom(alpha, d=d, method="Wang.Par", theta=th))
 (worst.VaR.dual <- worst_VaR_hom(alpha, d=d, method="dual", interval=I, pF=pF))
