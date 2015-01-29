@@ -56,9 +56,10 @@ rPar(n, theta)
   \deqn{F(x)=1-(1+x)^{-\theta},\ x\ge 0,}{F(x)=1-(1+x)^{-theta}, x>=0,}
   where \eqn{\theta>0}{theta>0}.
 
-  Note that \code{dPar()}, \code{pPar()}, \code{qPar()} and
-  \code{rPar()} essentially provide wrappers to \code{dGPD()},
-  \code{pGPD()}, \code{qGPD()} and \code{rGPD()}, respectively.
+  In contrast to \code{dGPD()}, \code{pGPD()}, \code{qGPD()} and
+  \code{rGPD()}, the functions \code{dPar()}, \code{pPar()},
+  \code{qPar()} and \code{rPar()} are vectorized in both their main
+  argument and \eqn{\theta}{theta}.
 }
 \author{Marius Hofert}
 \references{

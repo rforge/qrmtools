@@ -1,6 +1,6 @@
 ### Tools for computing the worst VaR_alpha for given margins ##################
 
-### Crude VaR bounds (for both best and worst VaR) #############################
+### 1) Crude VaR bounds (for both best and worst VaR) ##########################
 
 ## Crude bounds for any VaR_alpha
 crude_VaR_bounds <- function(alpha, d, qF, ...)
@@ -16,6 +16,8 @@ crude_VaR_bounds <- function(alpha, d, qF, ...)
     }
 }
 
+
+### 2) Explicit worst VaR in the homogeneous case ##############################
 
 ### Dual bound #################################################################
 
@@ -131,7 +133,7 @@ Wang_h <- function(c, alpha, d, method=c("generic", "Wang.Par"), ...)
 }
 
 
-### Main function for computing the worst VaR in the homogeneous case ##########
+### Main wrapper function for computing the worst VaR in the homogeneous case ##
 
 ## Compute the worst VaR_\alpha in the homogeneous case with:
 ## 1) d=2: Embrechts, Puccetti, Rueschendorf (2013, Proposition 2)
@@ -147,12 +149,15 @@ Wang_h <- function(c, alpha, d, method=c("generic", "Wang.Par"), ...)
 ##           decreasing density, F(0) = 0 (otherwise, 0 as a lower bound for
 ##           uniroot() in dual_bound() is not valid)
 worst_VaR_hom <- function(alpha, d, method=c("Wang", "Wang.Par", "dual"),
-                          interval=NULL, ...)
+                          interval=NULL, tol=NULL, ...)
 {
-    stopifnot(0 < alpha, alpha < 1)
+    stopifnot(0<alpha, alpha<1, d>=2)
+    method <- match.arg(method)
+    if(is.null(tol)) # use higher tolerance (MATLAB default) for Wang's approach (matters!)
+        tol <- if(method!="dual") 2.2204e-16 else .Machine$double.eps^0.25
 
     ## d == 2
-    if(d == 2) { # see Prop. 2
+    if(d == 2) { # see Embrechts, Puccetti, Rueschendorf (2013, Proposition 2)
         qF <- NULL # make CRAN check happy
         if(!hasArg(qF))
             stop("The bivariate case requires the quantile function qF of F")
@@ -160,8 +165,6 @@ worst_VaR_hom <- function(alpha, d, method=c("Wang", "Wang.Par", "dual"),
     }
 
     ## d >= 3
-    stopifnot(d >= 3)
-    method <- match.arg(method)
     switch(method,
            "Wang" = {
                ## check qF()
@@ -184,7 +187,7 @@ worst_VaR_hom <- function(alpha, d, method=c("Wang", "Wang.Par", "dual"),
                    stop("Objective function at end points of 'interval' not of opposite sign. Provide a smaller interval[1].")
                ## root-finding on 'interval'
                c. <- uniroot(function(c) Wang_h(c, alpha=alpha, d=d, ...),
-                             interval=interval, f.lower=h.low, f.upper=h.up)$root
+                             interval=interval, f.lower=h.low, f.upper=h.up, tol=tol)$root
                d * Wang_h_aux(c., alpha=alpha, d=d, qF=list(...)$qF)
            },
            "Wang.Par" = { # only kept for ruling out problems due to numerical integration
@@ -211,7 +214,7 @@ worst_VaR_hom <- function(alpha, d, method=c("Wang", "Wang.Par", "dual"),
                ## root-finding on 'interval'
                c. <- uniroot(function(c)
                              Wang_h(c, alpha=alpha, d=d, method="Wang.Par", ...),
-                             interval=interval, f.lower=h.low, f.upper=h.up)$root
+                             interval=interval, f.lower=h.low, f.upper=h.up, tol=tol)$root
                d * Wang_h_aux(c., alpha=alpha, d=d, method="Wang.Par", theta=th)
            },
            "dual" = {
@@ -221,9 +224,118 @@ worst_VaR_hom <- function(alpha, d, method=c("Wang", "Wang.Par", "dual"),
                if(!hasArg(interval))
                    stop("Method 'dual' requires an initial interval")
                uniroot(function(s) dual_bound(s, d=d, ...)-(1-alpha),
-                       interval=interval)$root # s interval
+                       interval=interval, tol=tol)$root # s interval
                ## note: we can't pass arguments to the inner root-finding (yet)
            },
            stop("Wrong method"))
 }
+
+
+### 3) Worst VaR in the inhomogeneous case #####################################
+
+### Rearrangement algorithm ####################################################
+
+##' @title Iteratively oppositely order a column of a matrix with respect to
+##'        the sum of all other colums
+##' @param x matrix
+##' @return a matrix as x after one iteration over all columns
+##' @author Marius Hofert
+##' @note 'Iteratively' here means that the jth column already involves the
+##'       changed values from the (j-1)th column
+oppositely_order <- function(x)
+{
+    ## stopifnot(is.matrix(x), (d <- ncol(x)) >= 2); no checking here due to speed
+    for(j in seq_len(d)) x[,j] <- sort(x[,j], decreasing=TRUE)[rank(rowSums(x[,-j]))]
+    x
+}
+
+## TODO: - comment here + export + document all + use below as demo
+quantile_matrix <- function(alpha, qmargins, N, method=c("worst", "best")) {
+    stopifnot(0 <= alpha, alpha <= 1, is.list(qmargins),
+              (d <- length(qmargins)) >= 2, N >= 2)
+    method <- match.arg(method)
+    ## compute quantiles
+    p <- if(method=="worst") alpha + (1-alpha)*0:N/N else alpha*0:N/N
+    res <- sapply(qmargins, function(qF) qF(p))
+    ## adjust those that are +/- Inf
+    ## use alpha+(1-alpha)*(N-1+N)/(2*N) = alpha+(1-alpha)*(1-1/(2*N)) instead of 1 quantile
+    if(method == "worst")
+        res[N+1,] <- sapply(1:d, function(j) if(is.infinite(res[N+1,j]))
+                            qmargins[[j]](alpha+(1-alpha)*(1-1/(2*N))) else res[N+1,j])
+    else # method="best"; use alpha*(0+1)/2 = alpha/2 instead of 0 quantile
+        res[1,] <- sapply(1:d, function(j) if(is.infinite(res[1,j]))
+                            qmargins[[j]](alpha/2) else res[1,j])
+    res
+}
+quantile_matrix(0.9, qmargins=list(qF1=qnorm, qF2=function(p) qPar(p, theta=2)),
+                N=10)
+
+
+##' @title Computing lower/upper Bounds for the Worst VaR
+##' @param x (N, d)-matrix of quantiles containing
+##'        F_j^{-1}(alpha + (1-alpha)*i/N), i=0,..,N (if method="worst");
+##'        F_j^{-1}(alpha*i/N), i=0,..,N (if method="best")
+##' @param alpha confidence level
+##' @param eps epsilon error to determine convergence
+##' @param method character indicating which VaR is approximated (worst/best)
+##' @param verbose logical indicating whether additional output is written
+##' @return lower and upper bounds for the worst (or best) VaR
+##' @author Marius Hofert
+##' @note - Notation is from p. 2757 in Embrechts, Puccetti, Rueschendorf (2013);
+##'         variables are named according to the 'worst' VaR case.
+##'       - We use "<= eps" to determine convergence instead of "< eps" as
+##'         this then also nicely works with "= 0" (if eps=0) which stops in
+##'         case the matrices are identical (no change at all).
+RA <- function(x, alpha, eps=0, method=c("worst", "best"), verbose=FALSE)
+{
+    ## Checks and Step 1 (get N, eps)
+    stopifnot(is.matrix(x), (nr <- nrow(x)) >= 3, (d <- ncol(x)) >= 2,
+              0 < alpha, alpha < 1, eps >= 0)
+    if(!all(is.finite(x))) stop("x must contain only finite numerical values")
+    method <- match.arg(method)
+    N <- nr-1 # number of discretization points N; N >= 2
+
+    ## Steps 2, 3 (build/get \underline{X}^\alpha, \overline{X}^\alpha and permute their columns)
+    X.low <- apply(x[1:(N-1),], 2, sample) # = \underline{X}^\alpha; for lower bound
+    X.up  <- apply(x[2:N,],     2, sample) # = \overline{X}^\alpha; for upper bound
+
+    ## Steps 4, 5 (determine \underline{X}^*)
+    ## repeat oppositely ordering \underline{X}^\alpha until there is only an
+    ## eps change in the min (method=="worst") or max (method=="best") row sum
+    fun <- if(method=="worst") min else max
+    while (TRUE) {
+        Y <- oppositely_order(X.low)
+        mrs <- c(fun(rowSums(Y)), fun(rowSums(X.low))) # minimal/maximal row sum
+        if(verbose)
+            if(method=="worst")
+                cat("Min of row sums of Y: ", mrs[1],"\n")
+            else
+                cat("Max of row sums of Y: ", mrs[1],"\n")
+        if(abs(mrs[1]-mrs[2]) <= eps) break # we use equality here as it entails eps=0
+        else X.low <- Y
+    }
+    X.low.star <- Y # take the last rearranged matrix Y as \underline{X}^*
+    s.low <- mrs[1] # with corresponding minimal/maximal row sum
+
+    ## Step 6 (determine \overline{X}^*)
+    ## repeat oppositely ordering \overline{X}^\alpha until there is only an
+    ## eps change in the min (method=="worst") or max (method=="best") row sum
+    while (TRUE) {
+        Y <- oppositely_order(X.up)
+        mrs <- c(fun(rowSums(Y)), fun(rowSums(X.up))) # minimal/maximal row sum
+        if(verbose)
+            if(method=="worst")
+                cat("Min of row sums of Y: ", mrs[1],"\n")
+            else
+                cat("Max of row sums of Y: ", mrs[1],"\n")
+        if(abs(mrs[1]-mrs[2]) <= eps) break # we use equality here as it entails eps=0
+        else X.up <- Y
+    }
+    X.up.star <- Y # take the last rearranged matrix Y as \overline{X}^*
+    s.up <- mrs[1] # with corresponding minimal/maximal row sum
+
+    ## Step 7 (return \underline{s}_N, \overline{s}_N)
+    c(lower=s.low, upper=s.up) # return the range; in practice often very narrow and ~= worst/best VaR
+}
+
 

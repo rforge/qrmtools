@@ -7,7 +7,8 @@
   Compute the worst Value-at-Risk for given marginal distributions.
 }
 \usage{
-worst_VaR_hom(alpha, d, method=c("Wang", "Wang.Par", "dual"), interval=NULL, ...)
+worst_VaR_hom(alpha, d, method=c("Wang", "Wang.Par", "dual"),
+              interval=NULL, tol=NULL, ...)
 dual_bound(s, d, pF, ...)
 crude_VaR_bounds(alpha, d, qF, ...)
 }
@@ -29,6 +30,11 @@ crude_VaR_bounds(alpha, d, qF, ...)
     note that the lower endpoint of the initial interval has to be
     sufficiently large in order for the the inner root-finding algorithm
     to find a root; see Details.}
+  \item{tol}{Tolerance for the involved root-finding algorithm (passed
+    to \code{\link{uniroot}()}; defaults to \code{2.2204e–16}).
+    For \code{method="dual"}, \code{tol} is
+    used for the outer root-finding algorithm only (defaults to
+    \code{.Machine$double.eps^0.25} as \code{\link{uniroot}()}).}
   \item{pF, qF}{The loss distribution and quantile functions,
     respectively; the latter can be a \code{\link{list}} of quantile
     functions.}
@@ -68,14 +74,16 @@ crude_VaR_bounds(alpha, d, qF, ...)
 
   For \code{method="Wang"} and \code{method="Wang.Par"}, the method
   presented in Embrechts, Puccetti, \enc{Rüschendorf}{Rueschendorf},
-  Wang, Beleraj (2014, Proposition 3.1) is implemented. This
-  requires one \code{\link{uniroot}()} and, for the generic
-  \code{method="Wang"}, \code{\link{integrate}()}. The critical part
-  for these methods is the lower endpoint of the initial interval.
-  If the (marginal) distribution function has finite first moment,
-  this can be taken as 0. However, if it has infinite first moment,
-  the lower endpoint has to be positive (and below the unknown root
-  and smaller than the upper endpoint \eqn{(1-\alpha)/d}{(1-alpha)/d}).
+  Wang, Beleraj (2014, Proposition 3.1) is implemented. This requires
+  one \code{\link{uniroot}()} and, for the generic \code{method="Wang"},
+  one \code{\link{integrate}()}. The critical part for these methods is
+  the lower endpoint of the initial interval.  If the (marginal)
+  distribution function has finite first moment, this can be taken as
+  0. However, if it has infinite first moment, the lower endpoint has to
+  be positive (below the unknown root and smaller than the upper
+  endpoint \eqn{(1-\alpha)/d}{(1-alpha)/d}). Also note that our default
+  uses a higer tolerance than that of \code{\link{uniroot}()}, which is
+  critical here.
 
   For \code{method="dual"}, the method presented of
   Embrechts, Puccetti, \enc{Rüschendorf}{Rueschendorf},
@@ -103,22 +111,26 @@ crude_VaR_bounds(alpha, d, qF, ...)
   \code{demo(worst_VaR)}
 }
 \examples{
-## setup
+## Setup
 alpha <- 0.99 # VaR confidence level
 th <- 2 # Pareto parameter
 pF <- function(q) pPar(q, theta=th) # marginal distribution function
 qF <- function(p) qPar(p, theta=th) # marginal quantile function
 
 ## d=2: compute worst VaR ('method' is ignored)
-worst_VaR_hom(alpha, d=2, qF=qF) # ~= 26.28
+stopifnot(all.equal(worst_VaR_hom(alpha, d=2, qF=qF), 26.28427, tolerance=1e-7))
 
 ## d=8: compare the various methods
 d <- 8 # dimension
-I <- crude_VaR_bounds(alpha, d=d, qF=qF)
+I <- crude_VaR_bounds(alpha, d=d, qF=qF) # crude bound
 ## or: I <- crude_VaR_bounds(alpha, d=d, qF=qPar, theta=th)
 (worst.VaR.Wang <- worst_VaR_hom(alpha, d=d, method="Wang", qF=qF))
 (worst.VaR.Par  <- worst_VaR_hom(alpha, d=d, method="Wang.Par", theta=th))
 (worst.VaR.dual <- worst_VaR_hom(alpha, d=d, method="dual", interval=I, pF=pF))
-stopifnot(all.equal(worst.VaR.Wang, worst.VaR.Par))
+stopifnot(all.equal(worst.VaR.Wang, worst.VaR.Par, worst.VaR.dual))
+
+## d=8: what happens with
+## TODO Wang.Par vs Wang.Par with default tol => plot
+## TODO: refer to demo for more plots
 }
 \keyword{distribution}

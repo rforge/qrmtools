@@ -8,8 +8,8 @@ doPDF <- !dev.interactive(orNone=TRUE)
 
 ## setup
 alpha <- 0.99
-d <- 8
-th <- 2
+d <- 20
+th <- 3
 qF <- function(p) qPar(p, theta=th)
 pF <- function(q) pPar(q, theta=th)
 
@@ -142,10 +142,37 @@ if(doPDF) dev.off.pdf(file=file)
 
 ### 1.3) Compare various methods of VaR_bound_hom() ############################
 
-## TODO AM: quite different values; also check with Wang's method but Pareto case
-## RA => 141 => Wang's method seems to have a bug
+## TODO MH: plot as a function in theta for various 'd'
+## TODO: implement RA algo (+ with *matrix* input) + include in the plot here
 init <- crude_VaR_bounds(alpha, d=d, qF=qPar, theta=th)
 (worst.VaR.Wang <- worst_VaR_hom(alpha, d=d, qF=function(p) qPar(p, theta=th)))
 (worst.VaR.Par  <- worst_VaR_hom(alpha, d=d, method="Wang.Par", theta=th))
 (worst.VaR.dual <- worst_VaR_hom(alpha, d=d, method="dual", interval=init, pF=pF))
 
+
+require(qrmtools)
+n <- 51
+d <- 3
+th <- 2
+alpha <- 0.99
+
+## TODO: create a function to create an input matrix :-)
+qPar. <- function(p, theta) (1-p)^(-1/theta)-1
+
+quantile_matrix <- function(alpha, qmargins, N) {
+    stopifnot(n >= 2)
+    sq <- seq(alpha, 1, length.out=n)
+    sq[n] <- (sq[n]+sq[n-1])/2
+    outer(seq_len(n), seq_along(theta), function(i, j) qPar.(sq[i], theta=theta[j]))
+}
+quantile_matrix(alpha, theta=th, n=n, d=d)
+quantile_matrix(alpha, theta=1:3, n=n, d=d)
+
+## Step 2
+q <- switch(bound, # length N+1
+            "worst" = alpha+(1-alpha)*0:N/N,
+            "best" = alpha*0:N/N,
+            stop("wrong argument 'bound'"))
+Z <- sapply(1:d, function(j) qmargins[[j]](q)) # (N+1, d) matrix
+X <- Z[1:N,] # (N, d) matrix; best bound for the VaR bound
+Y <- Z[2:(N+1),] # (N, d) matrix; worst bound for the VaR bound

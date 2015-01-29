@@ -61,21 +61,27 @@ rGPD <- function(n, xi, beta)
 
 ### Par(theta) = GPD(1/theta, 1/theta), theta > 0 distribution #################
 
+## Note: - hard-coded here to be vectorized in the main argument and theta
+##       - F(x) = 1-(1+x)^{-theta}
+
 ## Density of the Par(theta) distribution
 dPar <- function(x, theta, log=FALSE)
-    dGPD(x, xi=1/theta, beta=1/theta, log=log)
+    if(log) log(theta)-(theta+1)*log1p(x) else theta*(1+x)^(-theta-1)
 
 ## Distribution function of the Par(theta) distribution
 pPar <- function(q, theta, lower.tail=TRUE, log.p=FALSE)
-    pGPD(q, xi=1/theta, beta=1/theta, lower.tail=lower.tail, log.p=log.p)
+    if(lower.tail)
+        if(log.p) log(1-(1+x)^(-theta)) else 1-(1+x)^(-theta)
+    else if(log.p) -theta*log1p(x) else (1+x)^(-theta)
 
 ## Quantile function of the Par(theta) distribution
 qPar <- function(p, theta, lower.tail=TRUE, log.p=FALSE)
-    qGPD(p, xi=1/theta, beta=1/theta, lower.tail=lower.tail, log.p=log.p)
+    if(lower.tail)
+        if(log.p) (-expm1(p))^(-1/theta)-1 else (1-p)^(-1/theta)-1
+    else if(log.p) expm1(-p/theta) else p^(-1/theta)-1
 
 ## Random variate generation from the Par(theta) distribution
-rPar <- function(n, theta)
-    qGPD(runif(n), xi=1/theta, beta=1/theta)
+rPar <- function(n, theta) qPar(runif(n), theta=theta)
 
 ## Primitive of the Par(theta) survival function
 bar_pPar_primitive <- function(q, theta)
