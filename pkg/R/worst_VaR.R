@@ -2,7 +2,13 @@
 
 ### 1) Crude VaR bounds (for both best and worst VaR) ##########################
 
-## Crude bounds for any VaR_alpha
+##' @title Crude bounds for any VaR_alpha
+##' @param alpha confidence level
+##' @param d dimension
+##' @param qF (list of) marginal quantile functions
+##' @param ... ellipsis argument passed to qF()
+##' @return 2-vector containing crude VaR_alpha bounds
+##' @author Marius Hofert
 crude_VaR_bounds <- function(alpha, d, qF, ...)
 {
     if(is.function(qF))
@@ -21,9 +27,15 @@ crude_VaR_bounds <- function(alpha, d, qF, ...)
 
 ### Dual bound #################################################################
 
-## D(s,t) = d \int_{t}^{s-(d-1)t} \bar{F}(x) dx / (s-dt)
-## s is any real number, d > 2, t < s/d. If t -> s/d-, l'Hospital's Rule shows
-## that D(s, s/d) = d\bar{F}(s/d)
+##' @title D(s,t) = d \int_{t}^{s-(d-1)t} \bar{F}(x) dx / (s-dt)
+##' @param s real number
+##' @param t real number < s/d
+##' @param d dimension (integer > 2)
+##' @param pF marginal distribution function (same for all d)
+##' @param ... ellipsis argument passed to integrate()
+##' @return D(s,t)
+##' @author Marius Hofert
+##' @note If t -> s/d-, l'Hospital's Rule shows that D(s, s/d) = d\bar{F}(s/d)
 dual_bound_2 <- function(s, t, d, pF, ...)
 {
     stopifnot(length(t) == 1)
@@ -33,22 +45,32 @@ dual_bound_2 <- function(s, t, d, pF, ...)
     d * (1 - (1/(s-d*t)) * integrate(pF, lower=t, upper=s-(d-1)*t, ...)$value)
 }
 
-## Return function \bar{F}(t) + (d-1) * \bar{F}(s-(d-1)*t)
+##' @title Auxiliary function \bar{F}(t) + (d-1) * \bar{F}(s-(d-1)*t)
+##' @param s real number
+##' @param t real number < s/d
+##' @param d dimension (integer > 2)
+##' @param pF marginal distribution function (same for all d)
+##' @return \bar{F}(t) + (d-1) * \bar{F}(s-(d-1)*t)
+##' @author Marius Hofert
 dual_bound_2_deriv_term <- function(s, t, d, pF)
     1-pF(t) + (d-1)*(1-pF(s-(d-1)*t))
 
-## Dual bound D(s)
-## note: - f will be optimized in t
-##       - f depends on s (not suitable for vectorization)
-## The "first-order condition" (second equality in (14) in 2)) comes from the
-## fact that
-## (d/dt) D(s,t) = [ (-d)[\bar{F}(s-(d-1)t)(d-1)+\bar{F}(t)](s-dt) +
-##                 d^2 \int_{t}^{s-(d-1)t} \bar{F}(x) dx ] / (s-dt)^2 = 0
-## if and only if
-## d (\int_{t}^{s-(d-1)t} \bar{F}(x) dx) / (s-dt) = \bar{F}(s-(d-1)t)(d-1)-\bar{F}(t)
-## => solving d (\int_{t}^{s-(d-1)t} \bar{F}(x) dx) / (s-dt) -
-##          (\bar{F}(s-(d-1)t)(d-1)-\bar{F}(t)) = 0
-##    as a function in t for sufficiently large s leads to D(s)
+##' @title Dual bound D(s)
+##' @param s real number
+##' @param d dimension (integer > 2)
+##' @param pF marginal distribution function (same for all d)
+##' @param ... ellipsis argument passed to dual_bound_2()'s integrate()
+##' @return D(s)
+##' @author Marius Hofert
+##' @note The "first-order condition" (second equality in (14) in 2)) comes from the
+##'       fact that
+##'       (d/dt) D(s,t) = [ (-d)[\bar{F}(s-(d-1)t)(d-1)+\bar{F}(t)](s-dt) +
+##'                         d^2 \int_{t}^{s-(d-1)t} \bar{F}(x) dx ] / (s-dt)^2 = 0
+##'       if and only if
+##'       d (\int_{t}^{s-(d-1)t} \bar{F}(x) dx) / (s-dt) = \bar{F}(s-(d-1)t)(d-1)-\bar{F}(t)
+##'       => solving d (\int_{t}^{s-(d-1)t} \bar{F}(x) dx) / (s-dt) -
+##'                  (\bar{F}(s-(d-1)t)(d-1)-\bar{F}(t)) = 0
+##'          as a function in t for sufficiently large s leads to D(s)
 dual_bound <- function(s, d, pF, ...)
 {
     stopifnot(length(s) == 1, s >= 0)
@@ -74,8 +96,16 @@ dual_bound <- function(s, d, pF, ...)
 
 ### Wang's methods #############################################################
 
-## Conditional expectation (\bar{I}(c)) for computing the worst VaR according
-## to Embrechts, Puccetti, Rueschendorf, Wang, Beleraj (2014, Prop. 3.1)
+##' @title Conditional expectation (\bar{I}(c)) for computing the worst VaR as
+##'        in Embrechts, Puccetti, Rueschendorf, Wang, Beleraj (2014, Prop. 3.1)
+##' @param c evaluation point
+##' @param alpha confidence level alpha
+##' @param d dimension d
+##' @param method character string giving the method
+##'        generic = numerical integration; Wang.Par = Pareto distibution
+##' @param ... ellipsis argument passed to integrate()
+##' @return \bar{I}(c)
+##' @author Marius Hofert
 Wang_Ibar <- function(c, alpha, d, method=c("generic", "Wang.Par"), ...)
 {
     a <- alpha + (d-1)*c
@@ -110,9 +140,18 @@ Wang_Ibar <- function(c, alpha, d, method=c("generic", "Wang.Par"), ...)
            stop("Wrong method"))
 }
 
-## Right-hand side term in the objective function for computing the worst VaR
-## according to Embrechts, Puccetti, Rueschendorf, Wang, Beleraj (2014, Prop. 3.1)
-## for the correct 'c', this is the conditional expectation
+##' @title Right-hand side term in the objective function for computing the worst VaR
+##'        as in Embrechts, Puccetti, Rueschendorf, Wang, Beleraj (2014, Prop. 3.1)
+##' @param c evaluation point
+##' @param alpha confidence level alpha
+##' @param d dimension d
+##' @param method character string giving the method
+##'        generic = numerical integration; Wang.Par = Pareto distibution
+##' @param ... ellipsis argument containing theta (for method="Wang.Par")
+##'        or qF (for method="generic")
+##' @return Right-hand side term in Prop. 3.1
+##' @author Marius Hofert
+##' @note for the correct 'c', this is the conditional expectation
 Wang_h_aux <- function(c, alpha, d, method=c("generic", "Wang.Par"), ...)
 {
     ddd <- list(...)
@@ -123,8 +162,15 @@ Wang_h_aux <- function(c, alpha, d, method=c("generic", "Wang.Par"), ...)
     qF(a)*(d-1)/d + qF(b)/d
 }
 
-## Objective function for computing the worst VaR according to
-## Embrechts, Puccetti, Rueschendorf, Wang, Beleraj (2014, Prop. 3.1)
+##' @title Objective function for computing the worst VaR as in
+##'        Embrechts, Puccetti, Rueschendorf, Wang, Beleraj (2014, Prop. 3.1)
+##' @param c evaluation point
+##' @param alpha confidence level alpha
+##' @param d dimension d
+##' @param method character string giving the method
+##' @param ... ellipsis argument passed to Wang_h_aux() and Wang_Ibar()
+##' @return objective function for computing the worst VaR
+##' @author Marius Hofert
 Wang_h <- function(c, alpha, d, method=c("generic", "Wang.Par"), ...)
 {
     stopifnot(0 <= c, c <= (1-alpha)/d) # sanity check (otherwise b > a)
@@ -135,12 +181,6 @@ Wang_h <- function(c, alpha, d, method=c("generic", "Wang.Par"), ...)
 
 ### Main wrapper function for computing the worst VaR in the homogeneous case ##
 
-## Compute the worst VaR_\alpha in the homogeneous case with:
-## 1) d=2: Embrechts, Puccetti, Rueschendorf (2013, Proposition 2)
-## 2) d>=3:
-##    "Wang": Embrechts, Puccetti, Rueschendorf, Wang, Beleraj (2014, Prop. 3.1)
-##    "dual": Embrechts, Puccetti, Rueschendorf (2013, Proposition 4)
-##
 ## Assumptions:
 ## - d=2: ultimately decreasing density (for x >= x0), alpha >= F(x0)
 ## - "Wang": F needs to live on [0, Inf), admitting a positive density which is
@@ -148,6 +188,22 @@ Wang_h <- function(c, alpha, d, method=c("generic", "Wang.Par"), ...)
 ## - "dual": F needs to be continuous with unbounded support and and ultimately
 ##           decreasing density, F(0) = 0 (otherwise, 0 as a lower bound for
 ##           uniroot() in dual_bound() is not valid)
+
+##' @title Compute the worst VaR_\alpha in the homogeneous case with:
+##'        1) d=2: Embrechts, Puccetti, Rueschendorf (2013, Proposition 2)
+##'        2) d>=3:
+##'           "Wang": Embrechts, Puccetti, Rueschendorf, Wang, Beleraj (2014, Prop. 3.1)
+##'           "Wang.Par": the same, just with explicit formula for the integral
+##'                       in the Pareto case
+##'           "dual": Embrechts, Puccetti, Rueschendorf (2013, Proposition 4)
+##' @param alpha confidence level
+##' @param d dimension
+##' @param method character string giving the method
+##' @param interval initial interval
+##' @param tol uniroot() x-tolerance
+##' @param ... ellipsis arguments passed to Wang_h() (for d>=3), dual_bound()
+##' @return worst VaR in the homogeneous case
+##' @author Marius Hofert
 worst_VaR_hom <- function(alpha, d, method=c("Wang", "Wang.Par", "dual"),
                           interval=NULL, tol=NULL, ...)
 {
@@ -245,38 +301,17 @@ worst_VaR_hom <- function(alpha, d, method=c("Wang", "Wang.Par", "dual"),
 oppositely_order <- function(x)
 {
     ## stopifnot(is.matrix(x), (d <- ncol(x)) >= 2); no checking here due to speed
-    for(j in seq_len(d)) x[,j] <- sort(x[,j], decreasing=TRUE)[rank(rowSums(x[,-j]))]
+    for(j in seq_len(ncol(x)))
+        x[,j] <- sort(x[,j], decreasing=TRUE)[rank(rowSums(x[,-j]))]
     x
 }
 
-## TODO: - comment here + export + document all + use below as demo
-quantile_matrix <- function(alpha, qmargins, N, method=c("worst", "best")) {
-    stopifnot(0 <= alpha, alpha <= 1, is.list(qmargins),
-              (d <- length(qmargins)) >= 2, N >= 2)
-    method <- match.arg(method)
-    ## compute quantiles
-    p <- if(method=="worst") alpha + (1-alpha)*0:N/N else alpha*0:N/N
-    res <- sapply(qmargins, function(qF) qF(p))
-    ## adjust those that are +/- Inf
-    ## use alpha+(1-alpha)*(N-1+N)/(2*N) = alpha+(1-alpha)*(1-1/(2*N)) instead of 1 quantile
-    if(method == "worst")
-        res[N+1,] <- sapply(1:d, function(j) if(is.infinite(res[N+1,j]))
-                            qmargins[[j]](alpha+(1-alpha)*(1-1/(2*N))) else res[N+1,j])
-    else # method="best"; use alpha*(0+1)/2 = alpha/2 instead of 0 quantile
-        res[1,] <- sapply(1:d, function(j) if(is.infinite(res[1,j]))
-                            qmargins[[j]](alpha/2) else res[1,j])
-    res
-}
-quantile_matrix(0.9, qmargins=list(qF1=qnorm, qF2=function(p) qPar(p, theta=2)),
-                N=10)
-
-
-##' @title Computing lower/upper Bounds for the Worst VaR
-##' @param x (N, d)-matrix of quantiles containing
-##'        F_j^{-1}(alpha + (1-alpha)*i/N), i=0,..,N (if method="worst");
-##'        F_j^{-1}(alpha*i/N), i=0,..,N (if method="best")
+##' @title Computing lower/upper bounds for the worst VaR
 ##' @param alpha confidence level
+##' @param qF list of (d) quantile functions (vectorized)
+##' @param N number of discretization points
 ##' @param eps epsilon error to determine convergence
+##' @param rel.error logical indicating whether 'eps' is 'absolute' or 'relative'
 ##' @param method character indicating which VaR is approximated (worst/best)
 ##' @param verbose logical indicating whether additional output is written
 ##' @return lower and upper bounds for the worst (or best) VaR
@@ -286,18 +321,30 @@ quantile_matrix(0.9, qmargins=list(qF1=qnorm, qF2=function(p) qPar(p, theta=2)),
 ##'       - We use "<= eps" to determine convergence instead of "< eps" as
 ##'         this then also nicely works with "= 0" (if eps=0) which stops in
 ##'         case the matrices are identical (no change at all).
-RA <- function(x, alpha, eps=0, method=c("worst", "best"), verbose=FALSE)
+RA <- function(alpha, qF, N, eps=0, rel.error=TRUE, method=c("worst", "best"),
+               verbose=FALSE)
 {
     ## Checks and Step 1 (get N, eps)
-    stopifnot(is.matrix(x), (nr <- nrow(x)) >= 3, (d <- ncol(x)) >= 2,
-              0 < alpha, alpha < 1, eps >= 0)
-    if(!all(is.finite(x))) stop("x must contain only finite numerical values")
+    stopifnot(0 < alpha, alpha < 1, is.list(qF), (d <- length(qF)) >= 2,
+              sapply(qF, is.function), N >= 2, eps >= 0, is.logical(rel.error),
+              is.logical(verbose))
     method <- match.arg(method)
-    N <- nr-1 # number of discretization points N; N >= 2
 
-    ## Steps 2, 3 (build/get \underline{X}^\alpha, \overline{X}^\alpha and permute their columns)
-    X.low <- apply(x[1:(N-1),], 2, sample) # = \underline{X}^\alpha; for lower bound
-    X.up  <- apply(x[2:N,],     2, sample) # = \overline{X}^\alpha; for upper bound
+    ## Step 2 (build \underline{X}^\alpha, \overline{X}^\alpha)
+    p <- if(method=="worst") alpha + (1-alpha)*0:N/N else alpha*0:N/N
+    X <- sapply(qF, function(qF) qF(p))
+    ## adjust those that are +/- Inf
+    ## use alpha+(1-alpha)*(N-1+N)/(2*N) = alpha+(1-alpha)*(1-1/(2*N)) instead of 1 quantile
+    if(method == "worst")
+        X[N+1,] <- sapply(1:d, function(j) if(is.infinite(X[N+1,j]))
+                            qF[[j]](alpha+(1-alpha)*(1-1/(2*N))) else X[N+1,j])
+    else # method="best"; use alpha*(0+1)/2 = alpha/2 instead of 0 quantile
+        X[1,] <- sapply(1:d, function(j) if(is.infinite(X[1,j]))
+                            qF[[j]](alpha/2) else X[1,j])
+
+    ## Step 3 (randomly permute each column of \underline{X}^\alpha, \overline{X}^\alpha)
+    X.low <- apply(X[1:(N-1),], 2, sample) # = \underline{X}^\alpha; for lower bound
+    X.up  <- apply(X[2:N,],     2, sample) # = \overline{X}^\alpha; for upper bound
 
     ## Steps 4, 5 (determine \underline{X}^*)
     ## repeat oppositely ordering \underline{X}^\alpha until there is only an
@@ -311,7 +358,7 @@ RA <- function(x, alpha, eps=0, method=c("worst", "best"), verbose=FALSE)
                 cat("Min of row sums of Y: ", mrs[1],"\n")
             else
                 cat("Max of row sums of Y: ", mrs[1],"\n")
-        if(abs(mrs[1]-mrs[2]) <= eps) break # we use equality here as it entails eps=0
+        if(abs((mrs[1]-mrs[2])/mrs[1]) <= eps) break # we use equality here as it entails eps=0
         else X.low <- Y
     }
     X.low.star <- Y # take the last rearranged matrix Y as \underline{X}^*

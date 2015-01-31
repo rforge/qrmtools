@@ -1,7 +1,12 @@
 ### GPD(xi, beta) distribution #################################################
 
-## Density of the GPD(xi, beta) distribution
-## vectorized in x
+##' @title Density of the GPD(xi, beta) distribution
+##' @param x evaluation points
+##' @param xi parameter xi
+##' @param beta parameter beta
+##' @param log logical indicating whether the log density is computed
+##' @return density of the GPD(xi, beta) distribution
+##' @author Marius Hofert
 dGPD <- function(x, xi, beta, log=FALSE)
 {
     stopifnot(beta > 0)
@@ -19,8 +24,14 @@ dGPD <- function(x, xi, beta, log=FALSE)
     res
 }
 
-## Distribution function of the GPD(xi, beta) distribution
-## vectorized in q
+##' @title Distribution function of the GPD(xi, beta) distribution (vectorized in q)
+##' @param q quantile
+##' @param xi parameter xi
+##' @param beta parameter beta
+##' @param lower.tail logical indicating whether lower/upper tail is used
+##' @param log.p logical indicating whether probabilities are given as log()
+##' @return distribution function of the GPD(xi, beta) distribution
+##' @author Marius Hofert
 pGPD <- function(q, xi, beta, lower.tail=TRUE, log.p=FALSE)
 {
     stopifnot(beta > 0)
@@ -37,8 +48,14 @@ pGPD <- function(q, xi, beta, lower.tail=TRUE, log.p=FALSE)
     }
 }
 
-## Quantile function of the GPD(xi, beta) distribution
-## vectorized in p
+##' @title Quantile function of the GPD(xi, beta) distribution (vectorized in p)
+##' @param p probability
+##' @param xi parameter xi
+##' @param beta parameter beta
+##' @param lower.tail logical indicating whether lower/upper tail is used
+##' @param log.p logical indicating whether probabilities are given as log()
+##' @return quantile function of the GPD(xi, beta) distribution
+##' @author Marius Hofert
 qGPD <- function(p, xi, beta, lower.tail=TRUE, log.p=FALSE)
 {
     stopifnot(beta > 0)
@@ -54,7 +71,12 @@ qGPD <- function(p, xi, beta, lower.tail=TRUE, log.p=FALSE)
     }
 }
 
-## Random variate generation from the GPD(xi, beta) distribution
+##' @title Generating random numbers from a GPD(xi, beta) distribution
+##' @param n sample size n
+##' @param xi parameter xi
+##' @param beta parameter beta
+##' @return n-vector containing GPD(xi, beta) random numbers
+##' @author Marius Hofert
 rGPD <- function(n, xi, beta)
     qGPD(runif(n), xi=xi, beta=beta)
 
@@ -64,26 +86,51 @@ rGPD <- function(n, xi, beta)
 ## Note: - hard-coded here to be vectorized in the main argument and theta
 ##       - F(x) = 1-(1+x)^{-theta}
 
-## Density of the Par(theta) distribution
+##' @title Density of the Par(theta) distribution
+##' @param x evaluation points
+##' @param theta parameter theta
+##' @param log logical indicating whether the log density is computed
+##' @return density of the Par(theta) distribution
+##' @author Marius Hofert
 dPar <- function(x, theta, log=FALSE)
     if(log) log(theta)-(theta+1)*log1p(x) else theta*(1+x)^(-theta-1)
 
-## Distribution function of the Par(theta) distribution
+##' @title Distribution function of the Par(theta) distribution
+##' @param q quantile
+##' @param theta parameter theta
+##' @param lower.tail logical indicating whether lower/upper tail is used
+##' @param log.p logical indicating whether probabilities are given as log()
+##' @return distribution function of the Par(theta) distribution
+##' @author Marius Hofert
 pPar <- function(q, theta, lower.tail=TRUE, log.p=FALSE)
-    if(lower.tail)
-        if(log.p) log(1-(1+x)^(-theta)) else 1-(1+x)^(-theta)
-    else if(log.p) -theta*log1p(x) else (1+x)^(-theta)
+    if(lower.tail) {
+        if(log.p) log(1-(1+q)^(-theta)) else 1-(1+q)^(-theta)
+    } else if(log.p) -theta*log1p(q) else (1+q)^(-theta)
 
-## Quantile function of the Par(theta) distribution
+##' @title Quantile function of the Par(theta) distribution
+##' @param p probability
+##' @param theta parameter theta
+##' @param lower.tail logical indicating whether lower/upper tail is used
+##' @param log.p logical indicating whether probabilities are given as log()
+##' @return quantile function of the Par(theta) distribution
+##' @author Marius Hofert
 qPar <- function(p, theta, lower.tail=TRUE, log.p=FALSE)
-    if(lower.tail)
+    if(lower.tail) {
         if(log.p) (-expm1(p))^(-1/theta)-1 else (1-p)^(-1/theta)-1
-    else if(log.p) expm1(-p/theta) else p^(-1/theta)-1
+    } else if(log.p) expm1(-p/theta) else p^(-1/theta)-1
 
-## Random variate generation from the Par(theta) distribution
+##' @title Generating random numbers from a Pareto(theta) distribution
+##' @param n sample size n
+##' @param theta parameter theta
+##' @return n-vector containing Pareto(theta) random numbers
+##' @author Marius Hofert
 rPar <- function(n, theta) qPar(runif(n), theta=theta)
 
-## Primitive of the Par(theta) survival function
+##' @title Primitive of the Par(theta) survival function
+##' @param q quantile
+##' @param theta parameter theta
+##' @return \int\bar{F}(x) dx
+##' @author Marius Hofert
 bar_pPar_primitive <- function(q, theta)
     if(theta==1) log1p(q) else (1+q)^(1-theta) / (1-theta)
 
