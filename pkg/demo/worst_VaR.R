@@ -9,7 +9,7 @@ doPDF <- !dev.interactive(orNone=TRUE)
 ## Setup
 alpha <- 0.99 # confidence level
 d <- 8 # dimension (affects file names below)
-th <- 3 # Pareto parameter (affects file names below)
+th <- 2 # Pareto parameter (affects file names below)
 qF <- function(p) qPar(p, theta=th) # Pareto quantile function
 pF <- function(q) pPar(q, theta=th) # Pareto distribution function
 
@@ -159,9 +159,9 @@ colnames(res) <- c("crude.low", "crude.up", "Wang", "Wang.Par",
 ## ~= 15s
 for(i in seq_len(n.th)) {
     ## crude bounds (also used as initial interval for method "dual" below)
-    init <- crude_VaR_bounds(alpha, d=d, qF=qFs[[i]])
-    res[i,"crude.low"] <- init[1]
-    res[i,"crude.up"] <- init[2]
+    I <- crude_VaR_bounds(alpha, d=d, qF=qFs[[i]])
+    res[i,"crude.low"] <- I[1]
+    res[i,"crude.up"] <- I[2]
     ## method "Wang" (numerical integration critical for theta > 1 small)
     Wang.num.res <- tryCatch(worst_VaR_hom(alpha, d=d, qF=qFs[[i]]), error=function(e) e)
     if(is(Wang.num.res, "simpleError")) {
@@ -175,10 +175,11 @@ for(i in seq_len(n.th)) {
     res[i,"Wang.Par.def.tol"] <- worst_VaR_hom(alpha, d=d, method="Wang.Par", theta=th[i],
                                                tol=.Machine$double.eps^0.25)
     ## method "dual"
-    res[i,"dual"] <- worst_VaR_hom(alpha, d=d, method="dual", interval=init,
+    res[i,"dual"] <- worst_VaR_hom(alpha, d=d, method="dual", interval=I,
                                    pF=pFs[[i]])
     ## Rearrangement Algorithm
-    RA.res <- RA(alpha, qF=rep(list(qFs[[i]]), d), N=N, eps=0.01) # with 1% relative error
+    set.seed(271) # use the same sampling for each theta
+    RA.res <- RA(alpha, d=d, qF=qFs[[i]], N=N, eps=0.01) # with 1% relative error
     res[i,"RA.low"] <- RA.res[1]
     res[i,"RA.up"]  <- RA.res[2]
 }
@@ -187,7 +188,7 @@ for(i in seq_len(n.th)) {
 res. <- res[,c(-1,-2)] # omit crude bounds, too crude
 res. <- res.[,1:5]/res.[,6] # standardize w.r.t. RA.up
 if(doPDF)
-    pdf(file=(file <- paste0("fig_worst_VaR_",alpha,"_hom_compare_d=",d,"_N=",N,".pdf")),
+    pdf(file=(file <- paste0("fig_worst_VaR_",alpha,"_hom_comparison_d=",d,"_N=",N,".pdf")),
         width=6.5, height=6.5)
 par(pty="s")
 plot(th, res.[,"Wang"], type="l", ylim=range(res.), xlab=expression(theta),
@@ -198,9 +199,9 @@ lines(th, res.[,"Wang.Par"], col="gray50", lty=2, lwd=3) # ~= res.[,"Wang"]
 lines(th, res.[,"dual"], col="gray20", lty=2, lwd=1) # ~= res.[,"Wang"]
 lines(th, res.[,"RA.low"], col="black")
 lines(th, res.[,"Wang.Par.def.tol"], col="red")
-legend("topright", inset=0.02, y.intersp=1.2,
+legend("topright", inset=0.02, y.intersp=1.2, bty="n",
        col=c("gray80", "gray50", "gray20", "black", "red"),
-       lty=c(2,2,2,1,1), lwd=c(5,3,1,1,1), bty="n",
+       lty=c(2,2,2,1,1), lwd=c(5,3,1,1,1),
        legend=c("Wang (num. int.)", "Wang (expl. int.)", "Dual bound",
                 "lower RA bound", "Wang (uniroot() tol.)"))
 if(doPDF) dev.off.pdf(file=file)

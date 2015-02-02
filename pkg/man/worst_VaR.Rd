@@ -1,16 +1,19 @@
 \name{worst_VaR}
+\alias{crude_VaR_bounds}
 \alias{worst_VaR_hom}
 \alias{dual_bound}
-\alias{crude_VaR_bounds}
+\alias{RA}
 \title{Worst Value-at-Risk for Given Margins}
 \description{
   Compute the worst Value-at-Risk for given marginal distributions.
 }
 \usage{
+crude_VaR_bounds(alpha, d, qF, ...)
 worst_VaR_hom(alpha, d, method=c("Wang", "Wang.Par", "dual"),
               interval=NULL, tol=NULL, ...)
 dual_bound(s, d, pF, ...)
-crude_VaR_bounds(alpha, d, qF, ...)
+RA(alpha, d, qF, N, method=c("worst", "best"), eps=0, rel.error=TRUE,
+   sample=TRUE, xtra=FALSE)
 }
 \arguments{
   \item{alpha}{Value-at-Risk confidence level (e.g., 0.99).}
@@ -21,8 +24,9 @@ crude_VaR_bounds(alpha, d, qF, ...)
     Proposition 3.1); the latter assumes Pareto margins and thus does
     not require numerical integration. \code{method="dual"} applies the
     dual bound approach as in Embrechts, Puccetti,
-    \enc{Rüschendorf}{Rueschendorf} (2013, Proposition 4). Note that
-    \code{method} is ignored for \code{d=2}; see Details.}
+    \enc{Rüschendorf}{Rueschendorf} (2013, Proposition 4). For
+    \code{RA()}, \code{method} indicates whether bounds for the worst
+    (i.e., largest) or the best (i.e., smallest) Value-at-Risk is computed.}
   \item{interval}{Initial interval (a \code{\link{numeric}(2)}). For
     \code{method="Wang"} and \code{method="Wang.Par"}, if not provided,
     the initivial interval is
@@ -35,10 +39,26 @@ crude_VaR_bounds(alpha, d, qF, ...)
     For \code{method="dual"}, \code{tol} is
     used for the outer root-finding algorithm only (defaults to
     \code{.Machine$double.eps^0.25} as \code{\link{uniroot}()}).}
-  \item{pF, qF}{The loss distribution and quantile functions,
-    respectively; the latter can be a \code{\link{list}} of quantile
-    functions.}
+  \item{qF}{The marginal quantile function in the homogeneous case or,
+    for \code{crude_VaR_bounds()} and \code{RA()}, a list (of length
+    \code{d}) with the marginal quantile functions.}
+  \item{pF}{The marginal loss distribution function.}
   \item{s}{Dual bound evaluation point.}
+  \item{N}{Number of discretization points.}
+  \item{eps}{Convergence tolerance for the minimal (for the worst
+    Value-at-Risk) or maximal (for the best Value-at-Risk) row
+    sums. \code{eps} can be \eqn{\ge 0}{>=0} or \code{NULL}. If
+    \code{eps=NULL}, the iteration is done until the two internal (\code{N},
+    \code{d})-matrices of quantiles do not change anymore, i.e., until
+    each column is oppositely ordered to the sum of all other columns.}
+  \item{rel.error}{\code{\link{logical}} indicating whether \code{eps}
+    is measured relative to the last rearranged matrix of quantiles.}
+  \item{sample}{\code{\link{logical}} indicating whether each column of
+    the two internal matrices of quantiles (see Step 3 of the Rearrangement
+    Algorithm in Embrechts, Puccetti, \enc{Rüschendorf}{Rueschendorf} (2013))
+    are sampled before the iteration begins.}
+  \item{xtra}{\code{\link{logical}} indicating whether extra results
+    are computed and returned; see Value.}
   \item{\dots}{For
     \describe{
       \item{\code{worst_VaR_hom()}:}{For \code{d=2} or
@@ -56,20 +76,30 @@ crude_VaR_bounds(alpha, d, qF, ...)
     }}
 }
 \value{
-  \code{worst_VaR_hom()} returns the worst Value-at-Risk at confidence
-  level \eqn{\alpha}{alpha} for \eqn{d} risks with equal distribution
-  function specified by the ellipsis \code{...}.
-
-  \code{dual_bound()} returns the value of the dual bound \eqn{D(s)} as
-  given in Embrechts, Puccetti, \enc{Rüschendorf}{Rueschendorf} (2013, Eq. (12)).
-
   \code{crude_VaR_bounds()} returns crude lower and upper bounds for
   Value-at-Risk at confidence level \eqn{\alpha}{alpha} for any
   \eqn{d}-dimensional model with marginal quantile functions
   specified by \code{qF}.
+
+  \code{worst_VaR_hom()} returns the worst (i.e., largest) Value-at-Risk at
+  confidence level \eqn{\alpha}{alpha} for \eqn{d} risks with equal
+  distribution function specified by the ellipsis \code{...}.
+
+  \code{dual_bound()} returns the value of the dual bound \eqn{D(s)} as
+  given in Embrechts, Puccetti, \enc{Rüschendorf}{Rueschendorf}
+  (2013, Eq. (12)).
+
+  \code{RA()} returns a bivariate vector containing lower and upper
+  bounds for the worst (i.e., largest; if \code{method="worst"}) and best
+  (i.e., smallest; if \code{method="best"}) Value-at-Risk with the given
+  marginal(s). If \code{xtra=TRUE}, the return value is a list of length
+  three containing the two bounds, the corresponding numbers of
+  oppositely ordered columns after each iteration and the minimal
+  (for the worst Value-at-Risk) or maximal (for the best Value-at-Risk)
+  row sums after each iteration.
 }
 \details{
-  For \code{d=2}, the method of Embrechts, Puccetti,
+  for \code{d=2}, the method of Embrechts, Puccetti,
   \enc{Rüschendorf}{Rueschendorf} (2013, Proposition 2) is implemented.
 
   For \code{method="Wang"} and \code{method="Wang.Par"}, the method
@@ -77,7 +107,7 @@ crude_VaR_bounds(alpha, d, qF, ...)
   Wang, Beleraj (2014, Proposition 3.1) is implemented. This requires
   one \code{\link{uniroot}()} and, for the generic \code{method="Wang"},
   one \code{\link{integrate}()}. The critical part for these methods is
-  the lower endpoint of the initial interval.  If the (marginal)
+  the lower endpoint of the initial interval. If the (marginal)
   distribution function has finite first moment, this can be taken as
   0. However, if it has infinite first moment, the lower endpoint has to
   be positive (below the unknown root and smaller than the upper
@@ -86,16 +116,33 @@ crude_VaR_bounds(alpha, d, qF, ...)
   critical here.
 
   For \code{method="dual"}, the method presented of
-  Embrechts, Puccetti, \enc{Rüschendorf}{Rueschendorf},
+  Embrechts, Puccetti, \enc{Rüschendorf}{Rueschendorf}
   (2013, Proposition 4) is implemented. This
   requires two (nested) \code{\link{uniroot}()}, and an
   \code{\link{integrate}()}. For the inner root-finding
   procedure to find a root, the lower endpoint of the provided initial
   \code{interval} has to be \dQuote{sufficiently large}.
 
-  Note that both of these approaches for computing the worst
+  Note that both of these approaches for computing the worst (i.e., largest)
   Value-at-Risk in the homogeneous case are numerically non-trivial.
   See the source code and \code{demo(worst_VaR)} for more details.
+
+  For the Rearrangement Algorithm \code{RA()}, convergence is determined
+  if the minimal (for the worst Value-at-Risk) or maximal (for the best
+  Value-at-Risk) row sums after an iteration did change at most by
+  \code{eps} (so \eqn{\le\epsilon}{<= eps}). This is slightly different
+  from Embrechts, Puccetti, \enc{Rüschendorf}{Rueschendorf} (2013) who
+  use \eqn{<\epsilon}{< eps} but then also applies in the limiting
+  case \eqn{\epsilon=0}{eps=0}. Furthermore, note that the Rearrangement
+  Algorithm needs to evalute the 1-quantile (for the worst
+  Value-at-Risk) and the 0-quantile (for the best Value-at-Risk). As it
+  can only handle finite values, the 1-quantile and the 0-quantile need
+  to be adjusted if infinite. Instead of the 0-quantile, the
+  \eqn{\alpha/(2N)}{alpha/(2N)}-quantile is computed and instead of the
+  1-quantile the
+  \eqn{\alpha+(1-\alpha)(1-1/(2N))}{alpha+(1-alpha)(1-1/(2N))}-quantile
+  is computed for such margins (if the 0-quantile or the 1-quantile is
+  finite, no adjustment is made).
 }
 \author{Marius Hofert}
 \references{
@@ -108,29 +155,63 @@ crude_VaR_bounds(alpha, d, qF, ...)
     Finance} \bold{37}, 2750--2764.
 }
 \seealso{
-  \code{demo(worst_VaR)}
+  \code{demo(worst_VaR)} for more example calls, numerical challenges
+  encoutered and a comparison of the different methods for computing
+  the worst (i.e., largest) Value-at-Risk.
 }
 \examples{
 ## Setup
 alpha <- 0.99 # VaR confidence level
 th <- 2 # Pareto parameter
-pF <- function(q) pPar(q, theta=th) # marginal distribution function
-qF <- function(p) qPar(p, theta=th) # marginal quantile function
+qF <- function(p) qPar(p, theta=th) # Pareto quantile function
+pF <- function(q) pPar(q, theta=th) # Pareto distribution function
 
-## d=2: compute worst VaR ('method' is ignored)
+## d=2: Compute worst VaR ('method' is ignored)
 stopifnot(all.equal(worst_VaR_hom(alpha, d=2, qF=qF), 26.28427, tolerance=1e-7))
 
-## d=8: compare the various methods
+## d=8: Compare the various methods in the homogeneous case (equal margins)
 d <- 8 # dimension
 I <- crude_VaR_bounds(alpha, d=d, qF=qF) # crude bound
 ## or: I <- crude_VaR_bounds(alpha, d=d, qF=qPar, theta=th)
-(worst.VaR.Wang <- worst_VaR_hom(alpha, d=d, method="Wang", qF=qF))
-(worst.VaR.Par  <- worst_VaR_hom(alpha, d=d, method="Wang.Par", theta=th))
-(worst.VaR.dual <- worst_VaR_hom(alpha, d=d, method="dual", interval=I, pF=pF))
-stopifnot(all.equal(worst.VaR.Wang, worst.VaR.Par, worst.VaR.dual))
+(worst.VaR.Wang     <- worst_VaR_hom(alpha, d=d, method="Wang", qF=qF))
+(worst.VaR.Wang.Par <- worst_VaR_hom(alpha, d=d, method="Wang.Par", theta=th))
+(worst.VaR.dual     <- worst_VaR_hom(alpha, d=d, method="dual", interval=I, pF=pF))
+stopifnot(all.equal(c(worst.VaR.Wang, worst.VaR.Wang.Par), rep(worst.VaR.dual, 2),
+                    tolerance=1e-6))
+## Compare with the Rearrangement Algorithm
+set.seed(271) # for (the sampling) Step 3 in the Rearrangement Algorithm
+(worst.VaR.RA <- RA(alpha, d=d, qF=qF, N=1000))
+set.seed(271)
+(worst.VaR.RA <- RA(alpha, d=d, qF=qF, N=1000, eps=0.01))
 
-## d=8: what happens with
-## TODO Wang.Par vs Wang.Par with default tol => plot
-## TODO: refer to demo for more plots
+## RA(..., xtra=TRUE)
+set.seed(271)
+RA.xtra <- RA(alpha, d=d, qF=qF, N=1000, xtra=TRUE)
+ran <- range(RA.xtra$m.row.sums)
+plot(RA.xtra$m.row.sums[[1]], type="b", ylim=ran, xlab="Iteration",
+     ylab=paste0("Minimal row sum (# of oppositely ordered columns: lower=",
+     RA.xtra$num.opp.ordered.cols[1],", upper=",
+     RA.xtra$num.opp.ordered.cols[2],")"),
+     main=substitute("Rearrangement Algorithm for"~alpha==a.*","~d==d.*" and Par("*
+                     th.*")", list(a.=alpha, d.=d, th.=th)))
+lines(1:length(RA.xtra$m.row.sums[[2]]), RA.xtra$m.row.sums[[2]], type="b",
+      col="blue")
+legend("bottomright", inset=0.02, y.intersp=1.2, bty="n", lty=rep(1,2),
+       col=c("blue", "black"), legend=c("upper bound", "lower bound"))
+
+## "Reproducing" an example from Embrechts, Puccetti, Rueschendorf (2013)
+## (seed unknown, eps unknown)
+set.seed(271)
+(RA.xtra <- RA(alpha, d=3, qF=qF, N=50, xtra=TRUE))
+stopifnot(all.equal(RA.xtra$bounds[1], 45.11593, tolerance=1e-7),
+          all.equal(RA.xtra$bounds[2], 46.40413, tolerance=1e-7),
+          RA.xtra$num.opp.ordered == c(3,3))
+
+## An example from Embrechts, Puccetti, Rueschendorf (2013) with larger N
+## (first two decimals are equal)
+if(FALSE) {
+    RA. <- RA(alpha, d=3, qF=qF, N=1e5) # ~ 15s
+    stopifnot(all.equal(RA., rep(45.98, 2), tolerance=3e-4))
+}
 }
 \keyword{distribution}
