@@ -305,13 +305,13 @@ worst_VaR_hom <- function(alpha, d, method=c("Wang", "Wang.Par", "dual"),
 ##'            best [depending on optim.fun]) VaR
 ##'         2) minimal [for worst VaR] or maximal [for best VaR] row sum
 ##'         3) number of oppositely ordered columns
-##'         4) logical indicating whether maxiter has been reached
+##'         4) number of iterations through the matrix columns used for the last N
 ##' @author Marius Hofert
 RA_aux <- function(X, optim.fun, err.fun, maxiter, eps)
 {
-    count <- 0
     m.row.sums <- c()
     d <- ncol(X)
+    count <- 0
     while (TRUE) {
         ## counter related quantities
         count <- count + 1 # increase counter
@@ -324,9 +324,8 @@ RA_aux <- function(X, optim.fun, err.fun, maxiter, eps)
         mrs.new <- optim.fun(rowSums(Y)) # new min/max row sum
         m.row.sums <- c(m.row.sums, mrs.new) # append min/max row sum
         ## check convergence (we use "<= eps" as it entails eps=0)
-        maxiter.reached <- count == maxiter
-        stp <- maxiter.reached || if(is.null(eps)) all(Y == X) else
-                                  err.fun(mrs.new, mrs.old) <= eps
+        stp <- (count == maxiter) || if(is.null(eps)) all(Y == X) else
+               err.fun(mrs.new, mrs.old) <= eps
         if(stp) {
             num.opp.ordered.cols <- sum(sapply(seq_len(d), function(j)
                     all(sort(Y[,j], decreasing=TRUE)[rank(rowSums(Y[,-j]))] == Y[,j])))
@@ -334,8 +333,7 @@ RA_aux <- function(X, optim.fun, err.fun, maxiter, eps)
         } else X <- Y
     }
     list(bound=mrs.new, m.row.sums=m.row.sums,
-         num.opp.ordered.cols=num.opp.ordered.cols,
-         maxiter.reached=maxiter.reached)
+         num.opp.ordered.cols=num.opp.ordered.cols, num.iter=count)
 }
 
 ##' @title Computing Lower/Upper Bounds for the Worst VaR
@@ -357,8 +355,7 @@ RA_aux <- function(X, optim.fun, err.fun, maxiter, eps)
 ##'            lower and upper bounds
 ##'         3) actual N used in the last iteration/increase of N
 ##'         4) number of oppositely ordered columns for lower and upper bounds
-##'         5) logical indicating, for lower and upper bounds, whether maxiter
-##'            has been reached
+##'         5) number of iterations through the matrix columns used for the last N
 ##' @author Marius Hofert
 ##' @note - Notation is from p. 2757 in Embrechts, Puccetti, Rueschendorf (2013);
 ##'         variables are named according to the 'worst' VaR case.
@@ -436,5 +433,5 @@ RA <- function(alpha, d, qF, N, maxiter, method=c("worst", "best"), eps=0, rel.e
          used.N=c(N., N..),
          num.opp.ordered.cols=c(res.low$num.opp.ordered.cols,
                                 res.up$num.opp.ordered.cols),
-         maxiter.reached=c(res.low$maxiter.reached, res.up$maxiter.reached))
+         num.iter=c(res.low$num.iter, res.up$num.iter))
 }

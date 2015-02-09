@@ -110,9 +110,9 @@ RA(alpha, d, qF, N, maxiter, method=c("worst", "best"), eps=0, rel.error=TRUE,
       Rearrangement Algorithm).}
     \item{\code{num.opp.ordered.cols}}{a bivariate vector containing
       the number of oppositely ordered columns for the lower and upper bound.}
-    \item{\code{maxiter.reached}}{a bivariate vector of logicals
-      indicating, for the lower and upper bound, whether \code{maxiter}
-      has been reached.}
+    \item{\code{num.iter}}{a bivariate vector containing, for the lower
+      and upper bound, the actual used number of iterations over the
+      columns of the underlying matrix of quantiles.}
   }
 }
 \details{
@@ -194,39 +194,42 @@ stopifnot(all.equal(c(worst.VaR.Wang, worst.VaR.Wang.Par), rep(worst.VaR.dual, 2
                     tolerance=1e-6))
 ## Compare with the Rearrangement Algorithm
 set.seed(271) # for (the sampling) Step 3 in the Rearrangement Algorithm
-RA. <- RA(alpha, d=d, qF=qF, N=1000, eps=0.01)
-(worst.VaR.RA <- RA.$bounds)
+RA1 <- RA(alpha, d=d, qF=qF, N=1000, eps=0.01)
+(worst.VaR.RA <- RA1$bounds)
 set.seed(271)
-RA. <- RA(alpha, d=d, qF=qF, N=1000)
-(worst.VaR.RA <- RA.$bounds)
+RA2 <- RA(alpha, d=d, qF=qF, N=1000)
+(worst.VaR.RA <- RA2$bounds)
+## Adaptive Rearrangement Algorithm
+set.seed(271)
+RA3 <- RA(alpha, d=d, qF=qF, N=10^(2:4), maxiter=10, eps=0.01)
 
 ## Using additional output of RA()
 set.seed(271)
-ran <- range(RA.$m.row.sums)
-plot(RA.$m.row.sums[[1]], type="b", ylim=ran, xlab="Iteration",
+ran <- range(RA2$m.row.sums)
+plot(RA2$m.row.sums[[2]], type="b", ylim=ran, xlab="Iteration",
      ylab=paste0("Minimal row sum (# of oppositely ordered columns: lower=",
-     RA.$num.opp.ordered.cols[1],", upper=",
-     RA.$num.opp.ordered.cols[2],")"),
+     RA2$num.opp.ordered.cols[1],", upper=",
+     RA2$num.opp.ordered.cols[2],")"),
      main=substitute("Rearrangement Algorithm for"~alpha==a.*","~d==d.*" and Par("*
                      th.*")", list(a.=alpha, d.=d, th.=th)))
-lines(1:length(RA.$m.row.sums[[2]]), RA.$m.row.sums[[2]], type="b",
+lines(1:length(RA2$m.row.sums[[1]]), RA2$m.row.sums[[1]], type="b",
       col="blue")
 legend("bottomright", inset=0.02, y.intersp=1.2, bty="n", lty=rep(1,2),
-       col=c("blue", "black"), legend=c("upper bound", "lower bound"))
+       col=c("black", "blue"), legend=c("upper bound", "lower bound"))
 
 ## "Reproducing" an example from Embrechts, Puccetti, Rueschendorf (2013)
 ## (seed unknown, eps unknown)
 set.seed(271)
-(RA. <- RA(alpha, d=3, qF=qF, N=50))
-stopifnot(all.equal(RA.$bounds[1], 45.11593, tolerance=1e-7),
-          all.equal(RA.$bounds[2], 46.40413, tolerance=1e-7),
-          RA.$num.opp.ordered == c(3,3))
+(RA4 <- RA(alpha, d=3, qF=qF, N=50))
+stopifnot(all.equal(RA4$bounds[1], 45.11593, tolerance=1e-7),
+          all.equal(RA4$bounds[2], 46.40413, tolerance=1e-7),
+          RA4$num.opp.ordered == c(3,3))
 
 ## An example from Embrechts, Puccetti, Rueschendorf (2013) with larger N
 ## (first two decimals are equal)
 if(FALSE) {
-    RA. <- RA(alpha, d=3, qF=qF, N=1e5) # ~ 15s
-    stopifnot(all.equal(RA.$bounds, rep(45.98, 2), tolerance=3e-4))
+    RA5 <- RA(alpha, d=3, qF=qF, N=1e5) # ~ 15s
+    stopifnot(all.equal(RA5$bounds, rep(45.98, 2), tolerance=3e-4))
 }
 }
 \keyword{distribution}
