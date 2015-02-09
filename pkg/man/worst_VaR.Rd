@@ -12,8 +12,8 @@ crude_VaR_bounds(alpha, d, qF, ...)
 worst_VaR_hom(alpha, d, method=c("Wang", "Wang.Par", "dual"),
               interval=NULL, tol=NULL, ...)
 dual_bound(s, d, pF, ...)
-RA(alpha, d, qF, N, method=c("worst", "best"), eps=0, rel.error=TRUE,
-   sample=TRUE, xtra=FALSE)
+RA(alpha, d, qF, N, maxiter, method=c("worst", "best"), eps=0, rel.error=TRUE,
+   sample=TRUE)
 }
 \arguments{
   \item{alpha}{Value-at-Risk confidence level (e.g., 0.99).}
@@ -44,7 +44,15 @@ RA(alpha, d, qF, N, method=c("worst", "best"), eps=0, rel.error=TRUE,
     \code{d}) with the marginal quantile functions.}
   \item{pF}{The marginal loss distribution function.}
   \item{s}{Dual bound evaluation point.}
-  \item{N}{Number of discretization points.}
+  \item{N}{Number of discretization points. This can be a vector of
+    discretization points in which case an adaptive version of the
+    rearrangement algorithm is used. For each number of discretization
+    points, maximal \code{maxiter}-many iterations through the columns
+    of the underlying matrix of quantiles are conducted, checking after
+    each of these iterations whether the desired accuracy has been achieved.}
+  \item{maxiter}{maximal number of iterations over the columns of the
+    underlying matrix of quantiles; if missing then \code{maxiter} is
+    internally set to \code{Inf}.}
   \item{eps}{Convergence tolerance for the minimal (for the worst
     Value-at-Risk) or maximal (for the best Value-at-Risk) row
     sums. \code{eps} can be \eqn{\ge 0}{>=0} or \code{NULL}. If
@@ -57,8 +65,6 @@ RA(alpha, d, qF, N, method=c("worst", "best"), eps=0, rel.error=TRUE,
     the two internal matrices of quantiles (see Step 3 of the Rearrangement
     Algorithm in Embrechts, Puccetti, \enc{Rüschendorf}{Rueschendorf} (2013))
     are sampled before the iteration begins.}
-  \item{xtra}{\code{\link{logical}} indicating whether extra results
-    are computed and returned; see Value.}
   \item{\dots}{For
     \describe{
       \item{\code{worst_VaR_hom()}:}{For \code{d=2} or
@@ -89,21 +95,25 @@ RA(alpha, d, qF, N, method=c("worst", "best"), eps=0, rel.error=TRUE,
   given in Embrechts, Puccetti, \enc{Rüschendorf}{Rueschendorf}
   (2013, Eq. (12)).
 
-  \code{RA()} returns a bivariate vector containing lower and upper
-  bounds for the worst (i.e., largest; if \code{method="worst"}) and best
-  (i.e., smallest; if \code{method="best"}) Value-at-Risk with the given
-  marginal(s). If \code{xtra=TRUE}, the return value is a list of length
-  three containing the two bounds, the corresponding numbers of
-  oppositely ordered columns after each iteration and the minimal
-  (for the worst Value-at-Risk) or maximal (for the best Value-at-Risk)
-  row sums after each iteration.
+  \code{RA()} returns a \code{\link{list}} containing
+  \describe{
+    \item{\code{bounds}}{a bivariate vector containing the computed lower
+      and upper bound for (worst or best) Value-at-Risk.}
+    \item{\code{num.opp.ordered.cols}}{a bivariate vector containing
+       the number of oppositely ordered columns for the lower and upper bound.}
+     \item{\code{m.row.sums}}{a list of length two containing minimal
+       (for worst Value-at-Risk) or maximal (for best Value-at-risk)
+       row sums for the lower and upper bound.}
+    \item{\code{maxiter.reached}}{a bivariate vector of logicals
+      indicating, for the lower and upper bound, whether \code{maxiter}
+      has been reached.}
+  }
 }
 \details{
-  for \code{d=2}, the method of Embrechts, Puccetti,
-  \enc{Rüschendorf}{Rueschendorf} (2013, Proposition 2) is implemented.
-
-  For \code{method="Wang"} and \code{method="Wang.Par"}, the method
-  presented in Embrechts, Puccetti, \enc{Rüschendorf}{Rueschendorf},
+  For \code{d=2}, \code{worst_VaR_hom()} implements the method of
+  Embrechts, Puccetti, \enc{Rüschendorf}{Rueschendorf} (2013,
+  Proposition 2). For \code{method="Wang"} and \code{method="Wang.Par"},
+  the method presented in Embrechts, Puccetti, \enc{Rüschendorf}{Rueschendorf},
   Wang, Beleraj (2014, Proposition 3.1) is implemented. This requires
   one \code{\link{uniroot}()} and, for the generic \code{method="Wang"},
   one \code{\link{integrate}()}. The critical part for these methods is
@@ -113,9 +123,7 @@ RA(alpha, d, qF, N, method=c("worst", "best"), eps=0, rel.error=TRUE,
   be positive (below the unknown root and smaller than the upper
   endpoint \eqn{(1-\alpha)/d}{(1-alpha)/d}). Also note that our default
   uses a higer tolerance than that of \code{\link{uniroot}()}, which is
-  critical here.
-
-  For \code{method="dual"}, the method presented of
+  critical here. For \code{method="dual"}, the method presented of
   Embrechts, Puccetti, \enc{Rüschendorf}{Rueschendorf}
   (2013, Proposition 4) is implemented. This
   requires two (nested) \code{\link{uniroot}()}, and an
@@ -132,14 +140,14 @@ RA(alpha, d, qF, N, method=c("worst", "best"), eps=0, rel.error=TRUE,
   Value-at-Risk) row sums after an iteration did change at most by
   \code{eps} (so \eqn{\le\epsilon}{<= eps}). This is slightly different
   from Embrechts, Puccetti, \enc{Rüschendorf}{Rueschendorf} (2013) who
-  use \eqn{<\epsilon}{< eps} but then also applies in the limiting
-  case \eqn{\epsilon=0}{eps=0}. Furthermore, note that the Rearrangement
-  Algorithm needs to evalute the 1-quantile (for the worst
-  Value-at-Risk) and the 0-quantile (for the best Value-at-Risk). As it
-  can only handle finite values, the 1-quantile and the 0-quantile need
-  to be adjusted if infinite. Instead of the 0-quantile, the
-  \eqn{\alpha/(2N)}{alpha/(2N)}-quantile is computed and instead of the
-  1-quantile the
+  use \eqn{<\epsilon}{< eps} but then also applies in the limiting case
+  \eqn{\epsilon=0}{eps=0}. Furthermore, note that the Rearrangement
+  Algorithm needs to evalute the 0-quantile (for the lower bound for the
+  best Value-at-Risk) and the 1-quantile (for the upper bound for the
+  worst Value-at-Risk). As it can only handle finite values, the
+  0-quantile and the 1-quantile need to be adjusted if infinite. Instead
+  of the 0-quantile, the \eqn{\alpha/(2N)}{alpha/(2N)}-quantile is
+  computed and instead of the 1-quantile the
   \eqn{\alpha+(1-\alpha)(1-1/(2N))}{alpha+(1-alpha)(1-1/(2N))}-quantile
   is computed for such margins (if the 0-quantile or the 1-quantile is
   finite, no adjustment is made).
@@ -147,8 +155,8 @@ RA(alpha, d, qF, N, method=c("worst", "best"), eps=0, rel.error=TRUE,
 \author{Marius Hofert}
 \references{
   Embrechts, P., Puccetti, G., \enc{Rüschendorf}{Rueschendorf}, L.,
-  Wang, R., Beleraj, A. (2014).
-  An Academic Response to Basel 3.5. \emph{Risks} \bold{2}(1), 25--48.
+  Wang, R., Beleraj, A. (2014).  An Academic Response to Basel
+  3.5. \emph{Risks} \bold{2}(1), 25--48.
 
   Embrechts, P., Puccetti, G., \enc{Rüschendorf}{Rueschendorf}, L. (2013).
   Model uncertainty and VaR aggregation. \emph{Journal of Banking \&
@@ -180,21 +188,22 @@ stopifnot(all.equal(c(worst.VaR.Wang, worst.VaR.Wang.Par), rep(worst.VaR.dual, 2
                     tolerance=1e-6))
 ## Compare with the Rearrangement Algorithm
 set.seed(271) # for (the sampling) Step 3 in the Rearrangement Algorithm
-(worst.VaR.RA <- RA(alpha, d=d, qF=qF, N=1000))
+RA. <- RA(alpha, d=d, qF=qF, N=1000, eps=0.01)
+(worst.VaR.RA <- RA.$bounds)
 set.seed(271)
-(worst.VaR.RA <- RA(alpha, d=d, qF=qF, N=1000, eps=0.01))
+RA. <- RA(alpha, d=d, qF=qF, N=1000)
+(worst.VaR.RA <- RA.$bounds)
 
-## RA(..., xtra=TRUE)
+## Using additional output of RA()
 set.seed(271)
-RA.xtra <- RA(alpha, d=d, qF=qF, N=1000, xtra=TRUE)
-ran <- range(RA.xtra$m.row.sums)
-plot(RA.xtra$m.row.sums[[1]], type="b", ylim=ran, xlab="Iteration",
+ran <- range(RA.$m.row.sums)
+plot(RA.$m.row.sums[[1]], type="b", ylim=ran, xlab="Iteration",
      ylab=paste0("Minimal row sum (# of oppositely ordered columns: lower=",
-     RA.xtra$num.opp.ordered.cols[1],", upper=",
-     RA.xtra$num.opp.ordered.cols[2],")"),
+     RA.$num.opp.ordered.cols[1],", upper=",
+     RA.$num.opp.ordered.cols[2],")"),
      main=substitute("Rearrangement Algorithm for"~alpha==a.*","~d==d.*" and Par("*
                      th.*")", list(a.=alpha, d.=d, th.=th)))
-lines(1:length(RA.xtra$m.row.sums[[2]]), RA.xtra$m.row.sums[[2]], type="b",
+lines(1:length(RA.$m.row.sums[[2]]), RA.$m.row.sums[[2]], type="b",
       col="blue")
 legend("bottomright", inset=0.02, y.intersp=1.2, bty="n", lty=rep(1,2),
        col=c("blue", "black"), legend=c("upper bound", "lower bound"))
@@ -202,16 +211,16 @@ legend("bottomright", inset=0.02, y.intersp=1.2, bty="n", lty=rep(1,2),
 ## "Reproducing" an example from Embrechts, Puccetti, Rueschendorf (2013)
 ## (seed unknown, eps unknown)
 set.seed(271)
-(RA.xtra <- RA(alpha, d=3, qF=qF, N=50, xtra=TRUE))
-stopifnot(all.equal(RA.xtra$bounds[1], 45.11593, tolerance=1e-7),
-          all.equal(RA.xtra$bounds[2], 46.40413, tolerance=1e-7),
-          RA.xtra$num.opp.ordered == c(3,3))
+(RA. <- RA(alpha, d=3, qF=qF, N=50))
+stopifnot(all.equal(RA.$bounds[1], 45.11593, tolerance=1e-7),
+          all.equal(RA.$bounds[2], 46.40413, tolerance=1e-7),
+          RA.$num.opp.ordered == c(3,3))
 
 ## An example from Embrechts, Puccetti, Rueschendorf (2013) with larger N
 ## (first two decimals are equal)
 if(FALSE) {
     RA. <- RA(alpha, d=3, qF=qF, N=1e5) # ~ 15s
-    stopifnot(all.equal(RA., rep(45.98, 2), tolerance=3e-4))
+    stopifnot(all.equal(RA.$bounds, rep(45.98, 2), tolerance=3e-4))
 }
 }
 \keyword{distribution}

@@ -292,128 +292,146 @@ worst_VaR_hom <- function(alpha, d, method=c("Wang", "Wang.Par", "dual"),
 
 ### Rearrangement algorithm ####################################################
 
-##' @title Computing lower/upper bounds for the worst VaR
+##' @title Auxiliary Function for Computing Steps 4 and 5 for the RA
+##' @param X (N, d)-matrix (either \underline{X}^\alpha or \overline{X}^\alpha)
+##' @param optim.fun optimization function (either min [for worst VaR] or max
+##'        [for best VaR])
+##' @param err.fun error function (absolute or relative)
+##' @param maxiter maximal number of iterations
+##' @param eps epsilon error to determine convergence; if NULL, then the
+##'        iteration is done until the matrix doesn't change
+##' @return 4-list containing the
+##'         1) computed (lower or upper [depending on X]) bound for (worst or
+##'            best [depending on optim.fun]) VaR
+##'         2) number of oppositely ordered columns
+##'         3) minimal [for worst VaR] or maximal [for best VaR] row sum
+##'         4) logical indicating whether maxiter has been reached
+##' @author Marius Hofert
+RA_aux <- function(X, optim.fun, err.fun, maxiter, eps)
+{
+    count <- 0
+    m.row.sums <- c()
+    d <- ncol(X)
+    while (TRUE) {
+        ## counter related quantities
+        count <- count + 1 # increase counter
+        mrs.old <- if(count == 1) optim.fun(rowSums(X)) else mrs.new # old min/max row sum
+        ## oppositely order X (=> Y)
+        Y <- X
+        for(j in 1:d)
+            Y[,j] <- sort(Y[,j], decreasing=TRUE)[rank(rowSums(Y[,-j]))]
+        ## compute minimal/maximal row sums
+        mrs.new <- optim.fun(rowSums(Y)) # new min/max row sum
+        m.row.sums <- c(m.row.sums, mrs.new) # append min/max row sum
+        ## check convergence (we use "<= eps" as it entails eps=0)
+        maxiter.reached <- count == maxiter
+        stp <- maxiter.reached || if(is.null(eps)) all(Y == X) else
+                                  err.fun(mrs.new, mrs.old) <= eps
+        if(stp) {
+            num.opp.ordered.cols <- sum(sapply(seq_len(d), function(j)
+                    all(sort(Y[,j], decreasing=TRUE)[rank(rowSums(Y[,-j]))] == Y[,j])))
+            break
+        } else X <- Y
+    }
+    list(bound=mrs.new, num.opp.ordered.cols=num.opp.ordered.cols,
+         m.row.sums=m.row.sums, maxiter.reached=maxiter.reached)
+}
+
+##' @title Computing Lower/Upper Bounds for the Worst VaR
 ##' @param alpha confidence level
 ##' @param d dimension
 ##' @param qF a marginal quantile function (homogeneous case) or a d-list of such;
 ##'        note that each marginal quantile function has to be vectorized in p
-##' @param N number of discretization points
+##' @param N (vector of) number(s) of discretization points
+##' @param maxiter maximal number of iterations
+##' @param method character indicating which VaR is approximated (worst/best)
 ##' @param eps epsilon error to determine convergence; if NULL, then the
 ##'        iteration is done until the matrix doesn't change
 ##' @param rel.error logical indicating whether 'eps' is 'absolute' or 'relative'
-##' @param method character indicating which VaR is approximated (worst/best)
 ##' @param sample logical indicating whether each column of the two working
 ##'        matrices are sampled before the iteration begins
-##' @param xtra logical indicating whether the following extra information is
-##'             returned:
-##'             - the number of oppositely ordered columns (2-vector)
-##'             - the minimal (method=="worst") or maximal (method=="best") row
-##'               sums (2-list)
-##' @return lower and upper bounds for the worst (or best) VaR
-##'         (a list if xtra=TRUE)
+##' @return 4-list containing the
+##'         1) computed lower and upper bounds for (worst or best) VaR
+##'         2) number of oppositely ordered columns for lower and upper bounds
+##'         3) minimal [for worst VaR] or maximal [for best VaR] row sums for
+##'            lower and upper bounds
+##'         4) logical indicating, for lower and upper bounds, whether maxiter
+##'            has been reached
 ##' @author Marius Hofert
 ##' @note - Notation is from p. 2757 in Embrechts, Puccetti, Rueschendorf (2013);
 ##'         variables are named according to the 'worst' VaR case.
 ##'       - We use "<= eps" to determine convergence instead of "< eps" as
 ##'         this then also nicely works with "= 0" (if eps=0) which stops in
 ##'         case the matrices are identical (no change at all).
-RA <- function(alpha, d, qF, N, method=c("worst", "best"), eps=0, rel.error=TRUE,
-               sample=TRUE, xtra=FALSE)
+RA <- function(alpha, d, qF, N, maxiter, method=c("worst", "best"), eps=0, rel.error=TRUE,
+               sample=TRUE)
 {
     ## Checks and Step 1 (get N, eps)
-    stopifnot(0 < alpha, alpha < 1, N >= 2, is.null(eps) || eps >= 0,
-              is.logical(rel.error), is.logical(xtra))
+    stopifnot(0 < alpha, alpha < 1, is.null(eps) || eps >= 0, is.logical(rel.error),
+              length(N) >= 1, N >= 2, is.logical(sample))
+    if(missing(maxiter)) maxiter <- Inf
+    method <- match.arg(method)
     if(missing(d))
         stopifnot(is.list(qF), sapply(qF, is.function), (d <- length(qF)) >= 2)
     else { # extend the given quantile function to a list of functions
         stopifnot(is.function(qF))
         qF <- rep(list(qF), d)
     }
-    method <- match.arg(method)
 
-    ## Step 2 (build \underline{X}^\alpha, \overline{X}^\alpha)
-    p <- if(method=="worst") alpha + (1-alpha)*0:N/N else alpha*0:N/N # length N+1
-    X <- sapply(qF, function(qF) qF(p))
-    ## adjust those that are +/- Inf
-    ## use alpha+(1-alpha)*(N-1+N)/(2*N) = alpha+(1-alpha)*(1-1/(2*N)) instead of 1 quantile
-    if(method == "worst")
-        X[N+1,] <- sapply(1:d, function(j) if(is.infinite(X[N+1,j]))
-                            qF[[j]](alpha+(1-alpha)*(1-1/(2*N))) else X[N+1,j])
-    else # method="best"; use alpha*((0+1)/2 / N) = alpha/(2N) instead of 0 quantile
-        X[1,] <- sapply(1:d, function(j) if(is.infinite(X[1,j]))
-                            qF[[j]](alpha/(2*N)) else X[1,j])
+    ## Functions independent of N
+    optim.fun <- if(method=="worst") min else max
+    err.fun <- if(rel.error) function(x, y) abs((x-y)/y) else function(x,y) abs(x-y)
 
-    ## Step 3 (randomly permute each column of \underline{X}^\alpha, \overline{X}^\alpha)
-    if(sample) {
-        X.low <- apply(X[1:N,], 2, sample) # = \underline{X}^\alpha; for lower bound
-        X.up  <- apply(X[2:(N+1),], 2, sample) # = \overline{X}^\alpha; for upper bound
-    } else {
-        X.low <- X[1:N,]
-        X.up  <- X[2:(N+1),]
-    }
+    ## Loop over N (for computing the *lower* bound)
+    for(N. in N) {
 
-    ## Determine the function to be applied to the row sums
-    fun <- if(method=="worst") min else max
+        ## Step 2 (build \underline{X}^\alpha)
+        p <- if(method=="worst") alpha + (1-alpha)*0:(N.-1)/N. else alpha*0:(N.-1)/N. # N.-vector of prob.
+        X <- sapply(qF, function(qF) qF(p))
+        ## adjust those that are -Inf (for method="best")
+        ## use alpha*((0+1)/2 / N.) = alpha/(2N.) instead of 0 quantile
+        if(method == "best")
+            X[1,] <- sapply(1:d, function(j) if(is.infinite(X[1,j])) qF[[j]](alpha/(2*N.)) else X[1,j])
 
-    ## Steps 4, 5 (determine \underline{X}^*)
-    ## repeat oppositely ordering \underline{X}^\alpha until there is only an
-    ## eps change in the min (method=="worst") or max (method=="best") row sum
-    if(xtra) m.row.sums.low <- c()
-    while (TRUE) {
-        ## oppositely order X.low (=> Y)
-        Y <- X.low
-        for(j in 1:d)
-            Y[,j] <- sort(Y[,j], decreasing=TRUE)[rank(rowSums(Y[,-j]))]
-        ## compute minimal/maximal row sums
-        mrs <- c(fun(rowSums(Y)), fun(rowSums(X.low)))
-        if(xtra) m.row.sums.low <- c(m.row.sums.low, mrs[1])
-        ## check convergence (we use equality here as it entails eps=0)
-        stp <- if(is.null(eps)) all(Y == X.low) else
-               abs(if(rel.error) (mrs[1]-mrs[2])/mrs[1] else mrs[1]-mrs[2]) <= eps
-        if(stp) {
-            if(xtra)
-                num.opp.ordered.cols.low <-
-                    sum(sapply(seq_len(d), function(j)
-                        all(sort(Y[,j], decreasing=TRUE)[rank(rowSums(Y[,-j]))] == Y[,j])))
-            break
-        } else X.low <- Y
-    }
-    X.low.star <- Y # take the last rearranged matrix Y as \underline{X}^*
-    s.low <- mrs[1] # with corresponding minimal/maximal row sum
+        ## Step 3 (randomly permute each column of \underline{X}^\alpha)
+        if(sample) X <- apply(X, 2, sample)
 
-    ## Step 6 (determine \overline{X}^*)
-    ## repeat oppositely ordering \overline{X}^\alpha until there is only an
-    ## eps change in the min (method=="worst") or max (method=="best") row sum
-    if(xtra) m.row.sums.up <- c()
-    while (TRUE) {
-        ## oppositely order X.low (=> Y)
-        Y <- X.up
-        for(j in 1:d)
-            Y[,j] <- sort(Y[,j], decreasing=TRUE)[rank(rowSums(Y[,-j]))]
-        ## compute minimal/maximal row sums
-        mrs <- c(fun(rowSums(Y)), fun(rowSums(X.up)))
-        if(xtra) m.row.sums.up <- c(m.row.sums.up, mrs[1])
-        ## check convergence (we use equality here as it entails eps=0)
-        stp <- if(is.null(eps)) all(Y == X.up) else
-               abs(if(rel.error) (mrs[1]-mrs[2])/mrs[1] else mrs[1]-mrs[2]) <= eps
-        if(stp) {
-            if(xtra)
-                num.opp.ordered.cols.up <-
-                    sum(sapply(seq_len(d), function(j)
-                        all(sort(Y[,j], decreasing=TRUE)[rank(rowSums(Y[,-j]))] == Y[,j])))
-            break
-        } else X.up <- Y
-    }
-    X.up.star <- Y # take the last rearranged matrix Y as \overline{X}^*
-    s.up <- mrs[1] # with corresponding minimal/maximal row sum
+        ## Steps 4, 5 (determine \underline{X}^*)
+        ## repeat oppositely ordering \underline{X}^\alpha until there is only an
+        ## eps change in the min (method="worst") or max (method="best") row sum
+        ## or until we reached maxiter number of iterations
+        res.low <- RA_aux(X, optim.fun=optim.fun, err.fun=err.fun, maxiter=maxiter,
+                          eps=eps)
 
-    ## Step 7 (return \underline{s}_N, \overline{s}_N)
-    if(xtra) {
-        bounds <- c(s.low, s.up)
-        num.opp.ordered.cols <- c(num.opp.ordered.cols.low,
-                                  num.opp.ordered.cols.up)
-        m.row.sums <- list(m.row.sums.low, m.row.sums.up)
-        list(bounds=bounds, num.opp.ordered.cols=num.opp.ordered.cols,
-             m.row.sums=m.row.sums)
-    } else c(s.low, s.up) # return the range; in practice often very narrow and ~= worst/best VaR
+    } # for() for approximating (best/worst) VaR from below
+
+    ## Loop over N (for computing the *upper* bound)
+    for(N. in N) {
+
+        ## Step 2 (build \overline{X}^\alpha)
+        p <- if(method=="worst") alpha + (1-alpha)*1:N./N. else alpha*1:N./N. # N.-vector of prob.
+        X <- sapply(qF, function(qF) qF(p))
+        ## adjust those that are Inf (for method="worst")
+        ## use alpha+(1-alpha)*(N.-1+N.)/(2*N.) = alpha+(1-alpha)*(1-1/(2*N.)) instead of 1 quantile
+        if(method == "worst") X[N.,] <- sapply(1:d, function(j)
+            if(is.infinite(X[N.,j])) qF[[j]](alpha+(1-alpha)*(1-1/(2*N.))) else X[N.,j])
+
+        ## Step 3 (randomly permute each column of \overline{X}^\alpha)
+        if(sample) X <- apply(X, 2, sample)
+
+        ## Step 6 (determine \overline{X}^*)
+        ## repeat oppositely ordering \overline{X}^\alpha until there is only an
+        ## eps change in the min (method="worst") or max (method="best") row sum
+        ## or until we reached maxiter number of iterations
+        res.up <- RA_aux(X, optim.fun=optim.fun, err.fun=err.fun, maxiter=maxiter,
+                         eps=eps)
+
+    } # for() for approximating (best/worst) VaR from above
+
+    ## Step 7 (return \underline{s}_N, \overline{s}_N and other info)
+    list(bounds=c(res.low$bound, res.up$bound),
+         num.opp.ordered.cols=c(res.low$num.opp.ordered.cols,
+                                res.up$num.opp.ordered.cols),
+         m.row.sums=list(res.low$m.row.sums, res.up$m.row.sums),
+         maxiter.reached=c(res.low$maxiter.reached, res.up$maxiter.reached))
 }
