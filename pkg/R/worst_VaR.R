@@ -303,8 +303,8 @@ worst_VaR_hom <- function(alpha, d, method=c("Wang", "Wang.Par", "dual"),
 ##' @return 4-list containing the
 ##'         1) computed (lower or upper [depending on X]) bound for (worst or
 ##'            best [depending on optim.fun]) VaR
-##'         2) number of oppositely ordered columns
-##'         3) minimal [for worst VaR] or maximal [for best VaR] row sum
+##'         2) minimal [for worst VaR] or maximal [for best VaR] row sum
+##'         3) number of oppositely ordered columns
 ##'         4) logical indicating whether maxiter has been reached
 ##' @author Marius Hofert
 RA_aux <- function(X, optim.fun, err.fun, maxiter, eps)
@@ -333,8 +333,9 @@ RA_aux <- function(X, optim.fun, err.fun, maxiter, eps)
             break
         } else X <- Y
     }
-    list(bound=mrs.new, num.opp.ordered.cols=num.opp.ordered.cols,
-         m.row.sums=m.row.sums, maxiter.reached=maxiter.reached)
+    list(bound=mrs.new, m.row.sums=m.row.sums,
+         num.opp.ordered.cols=num.opp.ordered.cols,
+         maxiter.reached=maxiter.reached)
 }
 
 ##' @title Computing Lower/Upper Bounds for the Worst VaR
@@ -350,12 +351,13 @@ RA_aux <- function(X, optim.fun, err.fun, maxiter, eps)
 ##' @param rel.error logical indicating whether 'eps' is 'absolute' or 'relative'
 ##' @param sample logical indicating whether each column of the two working
 ##'        matrices are sampled before the iteration begins
-##' @return 4-list containing the
+##' @return 5-list containing the
 ##'         1) computed lower and upper bounds for (worst or best) VaR
-##'         2) number of oppositely ordered columns for lower and upper bounds
-##'         3) minimal [for worst VaR] or maximal [for best VaR] row sums for
+##'         2) minimal [for worst VaR] or maximal [for best VaR] row sums for
 ##'            lower and upper bounds
-##'         4) logical indicating, for lower and upper bounds, whether maxiter
+##'         3) actual N used in the last iteration/increase of N
+##'         4) number of oppositely ordered columns for lower and upper bounds
+##'         5) logical indicating, for lower and upper bounds, whether maxiter
 ##'            has been reached
 ##' @author Marius Hofert
 ##' @note - Notation is from p. 2757 in Embrechts, Puccetti, Rueschendorf (2013);
@@ -406,15 +408,15 @@ RA <- function(alpha, d, qF, N, maxiter, method=c("worst", "best"), eps=0, rel.e
     } # for() for approximating (best/worst) VaR from below
 
     ## Loop over N (for computing the *upper* bound)
-    for(N. in N) {
+    for(N.. in N) {
 
         ## Step 2 (build \overline{X}^\alpha)
-        p <- if(method=="worst") alpha + (1-alpha)*1:N./N. else alpha*1:N./N. # N.-vector of prob.
+        p <- if(method=="worst") alpha + (1-alpha)*1:N../N.. else alpha*1:N../N.. # N..-vector of prob.
         X <- sapply(qF, function(qF) qF(p))
         ## adjust those that are Inf (for method="worst")
-        ## use alpha+(1-alpha)*(N.-1+N.)/(2*N.) = alpha+(1-alpha)*(1-1/(2*N.)) instead of 1 quantile
-        if(method == "worst") X[N.,] <- sapply(1:d, function(j)
-            if(is.infinite(X[N.,j])) qF[[j]](alpha+(1-alpha)*(1-1/(2*N.))) else X[N.,j])
+        ## use alpha+(1-alpha)*(N..-1+N..)/(2*N..) = alpha+(1-alpha)*(1-1/(2*N..)) instead of 1 quantile
+        if(method == "worst") X[N..,] <- sapply(1:d, function(j)
+            if(is.infinite(X[N..,j])) qF[[j]](alpha+(1-alpha)*(1-1/(2*N..))) else X[N..,j])
 
         ## Step 3 (randomly permute each column of \overline{X}^\alpha)
         if(sample) X <- apply(X, 2, sample)
@@ -430,8 +432,9 @@ RA <- function(alpha, d, qF, N, maxiter, method=c("worst", "best"), eps=0, rel.e
 
     ## Step 7 (return \underline{s}_N, \overline{s}_N and other info)
     list(bounds=c(res.low$bound, res.up$bound),
+         m.row.sums=list(res.low$m.row.sums, res.up$m.row.sums),
+         used.N=c(N., N..),
          num.opp.ordered.cols=c(res.low$num.opp.ordered.cols,
                                 res.up$num.opp.ordered.cols),
-         m.row.sums=list(res.low$m.row.sums, res.up$m.row.sums),
          maxiter.reached=c(res.low$maxiter.reached, res.up$maxiter.reached))
 }

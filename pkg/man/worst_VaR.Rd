@@ -99,11 +99,17 @@ RA(alpha, d, qF, N, maxiter, method=c("worst", "best"), eps=0, rel.error=TRUE,
   \describe{
     \item{\code{bounds}}{a bivariate vector containing the computed lower
       and upper bound for (worst or best) Value-at-Risk.}
+    \item{\code{m.row.sums}}{a list of length two containing minimal
+      (for worst Value-at-Risk) or maximal (for best Value-at-risk)
+      row sums for the lower and upper bound.}
+    \item{\code{used.N}}{a bivariate vector containing the actual
+      \code{N} used for computing the lower and upper bound; this is
+      only interesting if \code{N} is a vector in which case the first
+      element of \code{N} (for the lower and the upper bound) is
+      returned for which the desired accuracy is achieved (Adaptive
+      Rearrangement Algorithm).}
     \item{\code{num.opp.ordered.cols}}{a bivariate vector containing
-       the number of oppositely ordered columns for the lower and upper bound.}
-     \item{\code{m.row.sums}}{a list of length two containing minimal
-       (for worst Value-at-Risk) or maximal (for best Value-at-risk)
-       row sums for the lower and upper bound.}
+      the number of oppositely ordered columns for the lower and upper bound.}
     \item{\code{maxiter.reached}}{a bivariate vector of logicals
       indicating, for the lower and upper bound, whether \code{maxiter}
       has been reached.}
