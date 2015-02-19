@@ -143,20 +143,52 @@ if(doPDF) dev.off.pdf(file=file)
 
 ### 2) Compare 'crude', "Wang" (numerical), "Wang.Par", "dual", 'RA' ###########
 
+### 2.1) Addressing numerical issues for theta <= 1 ############################
+
+## Setup (as before)
+alpha <- 0.99 # confidence level
+d <- 8 # dimension
+
+## Why we can't use interval[1]=0 if theta in (0,1]
+interval <- c(0, (1-alpha)/d)
+c <- interval[1]
+method <- "Wang.Par"
+th <- 0.99
+qrmtools:::Wang_h(c, alpha=alpha, d=d, method=method, theta=th) # NaN => uniroot() fails
+qrmtools:::Wang_Ibar(c, alpha=alpha, d=d, method=method, theta=th) # Inf
+qrmtools:::Wang_h_aux(c, alpha=alpha, d=d, method=method, theta=th) # Inf
+## note: Wang_h() is NaN for c <= 1e-17
+qrmtools:::Wang_h(.Machine$double.eps, alpha=alpha, d=d, method=method, theta=th) # okay
+
+## Check the default interval[1]=.Machine$double.eps if theta in (0,1]
+n.th <- 128 # number of thetas
+th <- 2^seq(-4, 2, length.out=n.th) # thetas
+VaR  <- sapply(th, function(th.) worst_VaR_hom(alpha, d=d, method="Wang.Par", theta=th.))
+plot(th, VaR,  type="l", log="y")
+## VaR. <- sapply(th, function(th.) worst_VaR_hom(alpha, d=d, method="Wang.Par", theta=th.,
+##                                                tol=.Machine$double.eps))
+## plot(th, VaR., type="l", log="y")
+## => no improvement around theta = 0.5
+
+
+### 2.2) Graphical comparison for theta > 1 ####################################
+
 ## Setup
 alpha <- 0.99 # confidence level
 d <- 8 # dimension
 n.th <- 64 # number of thetas
-th <- seq(1.2, 5, length.out=n.th) # thetas
+th.low <- 1.05 # or 0.05 (to see how much the methods differ for theta in (0,1])
+th.up <- 5
+th <- seq(th.low, th.up, length.out=n.th) # thetas
 qFs <- lapply(th, function(th.) {th.; function(p) qPar(p, theta=th.)}) # n.th-vector of Pareto quantile functions
 pFs <- lapply(th, function(th.) {th.; function(q) pPar(q, theta=th.)}) # n.th-vector of Pareto dfs
-N <- 1000 # number of discretization points for RA()
+N <- 1e4 # number of discretization points for RA(); N=1e5 does not improve the situation
 
 ## Compute values
 res <- matrix(, nrow=n.th, ncol=8)
 colnames(res) <- c("crude.low", "crude.up", "Wang", "Wang.Par",
-                   "Wang.Par.def.tol", "dual", "RA.low", "RA.up")
-## ~= 15s
+                   "Wang.Par.uniroot.tol", "dual", "RA.low", "RA.up")
+## ~= 1min
 for(i in seq_len(n.th)) {
     ## crude bounds (also used as initial interval for method "dual" below)
     I <- crude_VaR_bounds(alpha, d=d, qF=qFs[[i]])
@@ -169,11 +201,11 @@ for(i in seq_len(n.th)) {
         Wang.num.res <- NA
     }
     res[i,"Wang"] <- Wang.num.res
-    ## method "Wang.Par" (even that has problems for theta > 1 small [uniroot])
+    ## method "Wang.Par"
     res[i,"Wang.Par"] <- worst_VaR_hom(alpha, d=d, method="Wang.Par", theta=th[i])
     ## method "Wang.Par" (with uniroot()'s default tolerance)
-    res[i,"Wang.Par.def.tol"] <- worst_VaR_hom(alpha, d=d, method="Wang.Par", theta=th[i],
-                                               tol=.Machine$double.eps^0.25)
+    res[i,"Wang.Par.uniroot.tol"] <- worst_VaR_hom(alpha, d=d, method="Wang.Par", theta=th[i],
+                                                   tol=.Machine$double.eps^0.25)
     ## method "dual"
     res[i,"dual"] <- worst_VaR_hom(alpha, d=d, method="dual", interval=I,
                                    pF=pFs[[i]])
@@ -187,18 +219,19 @@ for(i in seq_len(n.th)) {
 ## Plot
 res. <- res[,c(-1,-2)] # omit crude bounds, too crude
 res. <- res.[,1:5]/res.[,6] # standardize w.r.t. RA.up
-if(doPDF)
-    pdf(file=(file <- paste0("fig_worst_VaR_",alpha,"_hom_comparison_d=",d,"_N=",N,".pdf")),
-        width=6.5, height=6.5)
+if(doPDF) {
+    file <- paste0("fig_worst_VaR_",alpha,"_hom_comparison_d=",d,"_N=",N,"_theta_low=",th.low,".pdf")
+    pdf(file=(file), width=6.5, height=6.5)
+}
 par(pty="s")
-plot(th, res.[,"Wang"], type="l", ylim=range(res.), xlab=expression(theta),
-     ylab=expression(bar(VaR)[alpha]*group("(",L^{"+"},")")~
+plot(th, res.[,"Wang"], type="l", ylim=range(res., na.rm=TRUE),
+     xlab=expression(theta), ylab=expression(bar(VaR)[alpha]*group("(",L^{"+"},")")~
      "standardized by the upper RA bound for d = 8 and F being Par("*theta*")"),
      col="gray80", lty=2, lwd=5)
 lines(th, res.[,"Wang.Par"], col="gray50", lty=2, lwd=3) # ~= res.[,"Wang"]
 lines(th, res.[,"dual"], col="gray20", lty=2, lwd=1) # ~= res.[,"Wang"]
 lines(th, res.[,"RA.low"], col="black")
-lines(th, res.[,"Wang.Par.def.tol"], col="red")
+lines(th, res.[,"Wang.Par.uniroot.tol"], col="red")
 legend("topright", inset=0.02, y.intersp=1.2, bty="n",
        col=c("gray80", "gray50", "gray20", "black", "red"),
        lty=c(2,2,2,1,1), lwd=c(5,3,1,1,1),

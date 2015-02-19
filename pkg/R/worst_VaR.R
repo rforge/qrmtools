@@ -235,11 +235,10 @@ worst_VaR_hom <- function(alpha, d, method=c("Wang", "Wang.Par", "dual"),
                    stop("interval[1] needs to be >= 0, interval[2] needs to be <= (1-alpha)/d")
                ## c_u: guarantee that uniroot() doesn't fail due to root at (1-alpha)/d
                h.up <- .Machine$double.xmin
-               ## c_l: compute and check whether we have opposite sign
-               ##      idea: give good error message
+               ## c_l: compute and check validity
                h.low <- Wang_h(interval[1], alpha=alpha, d=d, ...)
                if(is.na(h.low))
-                   stop("Objective function at interval[1] is not a number. Provide a larger interval[1].")
+                   stop("Objective function at interval[1] is NA/NaN. Provide a larger interval[1].")
                if(h.up * h.low >= 0)
                    stop("Objective function at end points of 'interval' not of opposite sign. Provide a smaller interval[1].")
                ## root-finding on 'interval'
@@ -255,17 +254,20 @@ worst_VaR_hom <- function(alpha, d, method=c("Wang", "Wang.Par", "dual"),
                th <- list(...)$theta
                stopifnot(length(th) == 1, th > 0) # check theta here
                ## check 'interval'
-               if(is.null(interval)) interval <- c(0, (1-alpha)/d)
+               if(is.null(interval)) # note: we can be more specific here
+                   interval <- c(if(th <= 1) .Machine$double.eps else 0, (1-alpha)/d)
                else if(!(0 <= interval[1] && interval[2] <= (1-alpha)/d &&
                          interval[1]<interval[2]))
                    stop("interval[1] needs to be >= 0, interval[2] needs to be <= (1-alpha)/d")
                ## c_u: guarantee that uniroot() doesn't fail due to root at (1-alpha)/d
                h.up <- .Machine$double.xmin
-               ## c_l: compute and check whether we have opposite sign
-               ##      idea: give good error message
+               ## c_l: compute and check validity (note: we can be more specific here)
+               if(th <= 1 && interval[1] == 0)
+                   stop("If theta <=1, interval[1] has to be > 0 as otherwise the internal Wang_h() is NaN")
                h.low <- Wang_h(interval[1], alpha=alpha, d=d, method="Wang.Par", ...)
-               if(is.na(h.low))
-                   stop("Objective function at interval[1] is not a number. Provide a larger interval[1].")
+               ## former check (not necessary anymore due to check theta <= 1 && interval[1] == 0)
+               ## if(is.na(h.low))
+               ##     stop("Objective function at interval[1] is NA/NaN. Provide a larger interval[1].")
                if(h.up * h.low >= 0)
                    stop("Objective function at end points of 'interval' not of opposite sign. Provide a smaller interval[1].")
                ## root-finding on 'interval'
