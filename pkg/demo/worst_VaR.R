@@ -110,7 +110,7 @@ sapply(c(0, (1-alpha)/d), function(c.)
 ### Check *without* numerical integration
 
 ## Check objective function h(c) (Wang_h()) for theta = 1/2 (remains so flat for d=100)
-yc... <- sapply(c, function(c.) qrmtools:::Wang_h(c., alpha=alpha, d=100, method="Wang.Par", theta=1/2))
+yc... <- sapply(c, function(c.) qrmtools:::Wang_h(c., alpha=alpha, d=d, method="Wang.Par", theta=1/2))
 if(doPDF)
     pdf(file=(file <- paste0("fig_worst_VaR_",alpha,"_hom_Wang_h_Par=",0.5,"_d=",d,".pdf")),
         width=6.5, height=6.5)
@@ -200,7 +200,7 @@ N <- 1e4 # number of discretization points for RA(); N=1e5 does not improve the 
 res <- matrix(, nrow=n.th, ncol=8)
 colnames(res) <- c("crude.low", "crude.up", "Wang", "Wang.Par",
                    "Wang.Par.uniroot.tol", "dual", "RA.low", "RA.up")
-## ~= 1min
+## ~= 1--2min
 for(i in seq_len(n.th)) {
     ## crude bounds (also used as initial interval for method "dual" below)
     I <- crude_VaR_bounds(alpha, d=d, qF=qFs[[i]])
@@ -223,7 +223,7 @@ for(i in seq_len(n.th)) {
                                    pF=pFs[[i]])
     ## Rearrangement Algorithm
     set.seed(271) # use the same sampling for each theta
-    RA. <- RA(alpha, d=d, qF=qFs[[i]], eps=0.01, N=N) # with 1% relative error
+    RA. <- RA(alpha, d=d, qF=qFs[[i]], N=N, abs.err=0.001)
     res[i,"RA.low"] <- RA.$bounds[1]
     res[i,"RA.up"]  <- RA.$bounds[2]
 }
