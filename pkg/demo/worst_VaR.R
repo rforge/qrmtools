@@ -88,7 +88,7 @@ yc. <- qrmtools:::Wang_h_aux(c=c, alpha=alpha, d=d, qF=qF)
 plot(c, yc., type="l", xlab="c (in initial interval)",
      ylab=expression(frac(d-1,d)~{F^{-1}}(a[c])+frac(1,d)~{F^{-1}}(b[c])))
 
-## Check objective function Wang_h()
+## Check objective function h(c) (Wang_h()) for the chosen theta
 yc.. <- sapply(c, function(c.) qrmtools:::Wang_h(c., alpha=alpha, d=d, qF=qF))
 if(doPDF)
     pdf(file=(file <- paste0("fig_worst_VaR_",alpha,"_hom_Wang_h_Par=",th,"_d=",d,".pdf")),
@@ -109,15 +109,27 @@ sapply(c(0, (1-alpha)/d), function(c.)
 
 ### Check *without* numerical integration
 
-## Compute worst VaR_alpha for various Par(theta)
+## Check objective function h(c) (Wang_h()) for theta = 1/2 (remains so flat for d=100)
+yc... <- sapply(c, function(c.) qrmtools:::Wang_h(c., alpha=alpha, d=100, method="Wang.Par", theta=1/2))
+if(doPDF)
+    pdf(file=(file <- paste0("fig_worst_VaR_",alpha,"_hom_Wang_h_Par=",0.5,"_d=",d,".pdf")),
+        width=6.5, height=6.5)
+par(pty="s")
+plot(c, yc..., type="l", xlab="c (in initial interval)",
+     ylab=expression("h(c) for"~~alpha~"= 0.99, d = 8 and F being Par(1/2)"))
+abline(h=0, lty=2)
+if(doPDF) dev.off.pdf(file=file)
+
+## Compute worst VaR_alpha for d=8 and various Par(theta)
 ## Note: for theta in (0, 1], c_l has to be > 0
 theta. <- c(0.5, 1, 2, 4) # theta values
-alpha. <- 2^seq(-10, -0.001, length.out=128) # alpha values (in (0,1))
+alpha. <- rev(1-2^seq(-10, -0.001, length.out=128)) # alpha values (in (0,1); concentrated near 1)
+d <- 8 # or d=100
 worst.VaR.Wang  <- sapply(theta., function(th)
                           sapply(alpha., function(a) {
-                              I <- c(if(th > 1) 0 else 1e-6, (1-a)/d)
-                              worst_VaR_hom(a, d=8, interval=I,
-                                            method="Wang.Par", theta=th)
+                              worst_VaR_hom(a, d=d, interval=c(if(th <= 1) .Machine$double.eps else 0,
+                                                               (1-a)/d), # as worst_VaR_hom()
+                                            method="Wang.Par", theta=th) #, tol=1e-100) (no improvement)
                                             ## numerical integration fails here:
                                             ## method="Wang", qF=function(p) qPar(p, theta=th))
                           })) # (alpha, theta) matrix
@@ -129,8 +141,8 @@ if(doPDF)
 par(pty="s")
 plot(1-alpha., worst.VaR.Wang[,1], type="l", log="xy", ylim=range(worst.VaR.Wang),
      xlab=expression(1-alpha),
-     ylab=expression(bar(VaR)[alpha]*group("(",L^{"+"},")")~
-     "for d = 8 and F being Par("*theta*")"))
+     ylab=substitute(bar(VaR)[alpha]*group("(",L^{"+"},")")~
+     "for d ="~d.~"and F being Par("*theta*")", list(d.=d)))
 lines(1-alpha., worst.VaR.Wang[,2], col="blue")
 lines(1-alpha., worst.VaR.Wang[,3], col="orange")
 lines(1-alpha., worst.VaR.Wang[,4], col="red")
@@ -171,7 +183,7 @@ plot(th, VaR,  type="l", log="y")
 ## => no improvement around theta = 0.5
 
 
-### 2.2) Graphical comparison for theta > 1 ####################################
+### 2.2) Graphical comparison ##################################################
 
 ## Setup
 alpha <- 0.99 # confidence level
@@ -225,7 +237,7 @@ if(doPDF) {
 }
 par(pty="s")
 plot(th, res.[,"Wang"], type="l", ylim=range(res., na.rm=TRUE),
-     xlab=expression(theta), ylab=expression(bar(VaR)[alpha]*group("(",L^{"+"},")")~
+     xlab=expression(theta), ylab=expression(bar(VaR)[0.99]*group("(",L^{"+"},")")~
      "standardized by the upper RA bound for d = 8 and F being Par("*theta*")"),
      col="gray80", lty=2, lwd=5)
 lines(th, res.[,"Wang.Par"], col="gray50", lty=2, lwd=3) # ~= res.[,"Wang"]
@@ -235,6 +247,6 @@ lines(th, res.[,"Wang.Par.uniroot.tol"], col="red")
 legend("topright", inset=0.02, y.intersp=1.2, bty="n",
        col=c("gray80", "gray50", "gray20", "black", "red"),
        lty=c(2,2,2,1,1), lwd=c(5,3,1,1,1),
-       legend=c("Wang (num. int.)", "Wang (expl. int.)", "Dual bound",
+       legend=c("Wang (num. int.)", "Wang", "Dual bound",
                 "lower RA bound", "Wang (uniroot() tol.)"))
 if(doPDF) dev.off.pdf(file=file)

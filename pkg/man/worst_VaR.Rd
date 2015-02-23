@@ -3,30 +3,40 @@
 \alias{worst_VaR_hom}
 \alias{dual_bound}
 \alias{RA}
+\alias{ARA}
 \title{Worst Value-at-Risk for Given Margins}
 \description{
-  Compute the worst Value-at-Risk for given marginal distributions.
+  Compute the worst Value-at-Risk for given marginal distributions under
+  various setups.
 }
 \usage{
 crude_VaR_bounds(alpha, d, qF, ...)
 worst_VaR_hom(alpha, d, method=c("Wang", "Wang.Par", "dual"),
               interval=NULL, tol=NULL, ...)
 dual_bound(s, d, pF, ...)
-RA(alpha, d, qF, N, maxiter, method=c("worst", "best"), eps=0, rel.error=TRUE,
-   sample=TRUE)
+RA(alpha, d, qF, N, abs.err=NULL, maxiter=Inf, method=c("worst", "best"), sample=TRUE)
+ARA(alpha, d, qF, N=2^seq(8, 20, by=1), rel.err=c(0.01, 0.01), maxiter=10,
+    method=c("worst", "best"), sample=TRUE)
 }
 \arguments{
   \item{alpha}{Value-at-Risk confidence level (e.g., 0.99).}
   \item{d}{Dimension (number of risk factors).}
-  \item{method}{Method (a \code{\link{character}}). \code{method="Wang"}
-    and \code{method="Wang.Par"} apply the approach of Embrechts,
-    Puccetti, \enc{Rüschendorf}{Rueschendorf}, Wang and Beleraj (2014,
-    Proposition 3.1); the latter assumes Pareto margins and thus does
-    not require numerical integration. \code{method="dual"} applies the
-    dual bound approach as in Embrechts, Puccetti,
-    \enc{Rüschendorf}{Rueschendorf} (2013, Proposition 4). For
-    \code{RA()}, \code{method} indicates whether bounds for the worst
-    (i.e., largest) or the best (i.e., smallest) Value-at-Risk is computed.}
+  \item{qF}{The marginal quantile function in the homogeneous case or,
+    for \code{crude_VaR_bounds()} and \code{RA()}, a list (of length
+    \code{d}) with the marginal quantile functions.}
+  \item{method}{A \code{\link{character}}. For
+    \describe{
+      \item{\code{worst_VaR_hom()}:}{\code{method="Wang"}
+	and \code{method="Wang.Par"} apply the approach of Embrechts,
+	Puccetti, \enc{Rüschendorf}{Rueschendorf}, Wang and Beleraj (2014,
+	Proposition 3.1); the latter assumes Pareto margins and thus does
+	not require numerical integration. \code{method="dual"} applies the
+	dual bound approach as in Embrechts, Puccetti,
+	\enc{Rüschendorf}{Rueschendorf} (2013, Proposition 4).}
+      \item{\code{RA()}, \code{ARA()}:}{\code{method} indicates whether bounds
+	for the worst (i.e., largest) or the best (i.e., smallest)
+	Value-at-Risk are computed.}
+  }}
   \item{interval}{Initial interval (a \code{\link{numeric}(2)}). For
     \code{method="Wang"} and \code{method="Wang.Par"}, if not provided,
     the initivial interval is
@@ -39,28 +49,36 @@ RA(alpha, d, qF, N, maxiter, method=c("worst", "best"), eps=0, rel.error=TRUE,
     For \code{method="dual"}, \code{tol} is
     used for the outer root-finding algorithm only (defaults to
     \code{.Machine$double.eps^0.25} as \code{\link{uniroot}()}).}
-  \item{qF}{The marginal quantile function in the homogeneous case or,
-    for \code{crude_VaR_bounds()} and \code{RA()}, a list (of length
-    \code{d}) with the marginal quantile functions.}
-  \item{pF}{The marginal loss distribution function.}
   \item{s}{Dual bound evaluation point.}
-  \item{N}{Number of discretization points. This can be a vector of
-    discretization points in which case an adaptive version of the
-    rearrangement algorithm is used. For each number of discretization
-    points, maximal \code{maxiter}-many iterations through the columns
-    of the underlying matrix of quantiles are conducted, checking after
-    each of these iterations whether the desired accuracy has been achieved.}
+  \item{pF}{The marginal loss distribution function.}
+  \item{N}{Number of discretization points. For
+    \describe{
+      \item{\code{RA()}:}{A positive integer.}
+      \item{\code{ARA()}:}{A vector of positive integers. For each
+	such number, at most \code{maxiter}-many iterations through the columns
+	of the underlying matrix of quantiles are conducted, checking after
+	each of these iterations whether the desired relative errors
+	(both individually and jointly; see below) has been
+	achieved.}
+  }}
+  \item{abs.err}{Absolute error \eqn{\epsilon}{epsilon} to determine
+    the individual convergence (change in the computed minimal
+    (for worst Value-at-Risk) or maximal (for best Value-at-Risk)
+    row sums for the lower and upper bound). If \code{NULL} (the
+    default) and \code{maxiter} has not been reached, the iterations
+    through the columns of the underlying matrix of quantiles is done
+    until the matrix does not change anymore, i.e., until each column
+    is oppositely ordered to the sum of all others.}
+  \item{rel.err}{A vector of length containing two relative errors,
+    the individual relative error (first component; used to determine
+    convergence of the minimal (for worst Value-at-Risk) or maximal
+    (for best Value-at-Risk) row sums for the lower and upper bound)
+    and the joint relative error (second component; relative error
+    between the computed lower and upper bound computed with respect
+    to the upper bound). Note that \code{rel.err[1]} is allowed to be
+    \code{NULL}; see \code{abs.err} above for how to interpret this case.}
   \item{maxiter}{maximal number of iterations over the columns of the
-    underlying matrix of quantiles; if missing then \code{maxiter} is
-    internally set to \code{Inf}.}
-  \item{eps}{Convergence tolerance for the minimal (for the worst
-    Value-at-Risk) or maximal (for the best Value-at-Risk) row
-    sums. \code{eps} can be \eqn{\ge 0}{>=0} or \code{NULL}. If
-    \code{eps=NULL}, the iteration is done until the two internal (\code{N},
-    \code{d})-matrices of quantiles do not change anymore, i.e., until
-    each column is oppositely ordered to the sum of all other columns.}
-  \item{rel.error}{\code{\link{logical}} indicating whether \code{eps}
-    is measured relative to the last rearranged matrix of quantiles.}
+    underlying matrix of quantiles (can be set to \code{Inf}).}
   \item{sample}{\code{\link{logical}} indicating whether each column of
     the two internal matrices of quantiles (see Step 3 of the Rearrangement
     Algorithm in Embrechts, Puccetti, \enc{Rüschendorf}{Rueschendorf} (2013))
@@ -97,22 +115,38 @@ RA(alpha, d, qF, N, maxiter, method=c("worst", "best"), eps=0, rel.error=TRUE,
 
   \code{RA()} returns a \code{\link{list}} containing
   \describe{
-    \item{\code{bounds}}{a bivariate vector containing the computed lower
+    \item{\code{bounds}:}{A bivariate vector containing the computed lower
       and upper bound for (worst or best) Value-at-Risk.}
-    \item{\code{m.row.sums}}{a list of length two containing minimal
-      (for worst Value-at-Risk) or maximal (for best Value-at-risk)
-      row sums for the lower and upper bound.}
-    \item{\code{used.N}}{a bivariate vector containing the actual
-      \code{N} used for computing the lower and upper bound; this is
-      only interesting if \code{N} is a vector in which case the first
-      element of \code{N} (for the lower and the upper bound) is
-      returned for which the desired accuracy is achieved (Adaptive
-      Rearrangement Algorithm).}
-    \item{\code{num.opp.ordered.cols}}{a bivariate vector containing
-      the number of oppositely ordered columns for the lower and upper bound.}
-    \item{\code{num.iter}}{a bivariate vector containing, for the lower
+    \item{\code{rel.DU.spread}:}{relative error between lower and upper
+      bound (computed with respect to the upper bound).}
+    \item{\code{individual.err}:}{A bivariate vector containing the
+      individual errors (i.e., the absolute change of the minimal
+      (for worst Value-at-Risk) or maximal (for best Value-at-Risk)
+      row sums for the lower (first component) and upper bound (second
+      component) in the last iteration).}
+    \item{\code{num.iter}:}{A bivariate vector containing, for the lower
       and upper bound, the actual used number of iterations over the
       columns of the underlying matrix of quantiles.}
+    \item{\code{m.row.sums}:}{A list of length two containing minimal
+      (for worst Value-at-Risk) or maximal (for best Value-at-Risk)
+      row sums for the lower and upper bound.}
+    \item{\code{num.opp.ordered}:}{A bivariate vector containing
+      the number of oppositely ordered columns for the lower and upper bound.}
+  }
+
+  \code{ARA()} returns a \code{\link{list}} containing
+  \describe{
+    \item{\code{bounds}:}{See \code{RA()}.}
+    \item{\code{rel.DU.spread}:}{See \code{RA()}.}
+    \item{\code{individual.err}:}{See \code{RA()}.}
+    \item{\code{joint.err}:}{The joint relative error reached (i.e.,
+      the relative error between the computed lower and upper bound
+      computed with respect to the upper bound).}
+    \item{\code{N.used}:}{The actual \code{N} used for computing
+      the (final) lower and upper bound.}
+    \item{\code{num.iter}:}{See \code{RA()}.}
+    \item{\code{m.row.sums}:}{See \code{RA()}.}
+    \item{\code{num.opp.ordered}:}{See \code{RA()}.}
   }
 }
 \details{
@@ -141,16 +175,27 @@ RA(alpha, d, qF, N, maxiter, method=c("worst", "best"), eps=0, rel.error=TRUE,
   Value-at-Risk in the homogeneous case are numerically non-trivial.
   See the source code and \code{demo(worst_VaR)} for more details.
 
-  For the Rearrangement Algorithm \code{RA()}, convergence is determined
-  if the minimal (for the worst Value-at-Risk) or maximal (for the best
-  Value-at-Risk) row sums after an iteration did change at most by
-  \code{eps} (so \eqn{\le\epsilon}{<= eps}). This is slightly different
-  from Embrechts, Puccetti, \enc{Rüschendorf}{Rueschendorf} (2013) who
-  use \eqn{<\epsilon}{< eps} but then also applies in the limiting case
-  \eqn{\epsilon=0}{eps=0}. Furthermore, note that the Rearrangement
-  Algorithm needs to evalute the 0-quantile (for the lower bound for the
-  best Value-at-Risk) and the 1-quantile (for the upper bound for the
-  worst Value-at-Risk). As it can only handle finite values, the
+  For the Rearrangement Algorithm \code{RA()}, unless
+  \code{maxiter}-many iterations have been reached, convergence is
+  determined for the lower and the upper bound if the minimal
+  (for the worst Value-at-Risk) or maximal (for the best
+  Value-at-Risk) row sums after an iteration did not change by more than
+  (the absolute error) \code{abs.err} (so \eqn{\le\epsilon}{<= eps}). This
+  is slightly different from Embrechts, Puccetti, \
+  enc{Rüschendorf}{Rueschendorf} (2013) who use \eqn{<\epsilon}{< eps}
+  but this slight modification has the advantage of allowing
+  \eqn{\epsilon=0}{eps=0}. For the Adaptive Rearrangement
+  Algorithm \code{ARA()}, again unless \code{maxiter}-many iterations
+  have been reached, convergence is determined if the minimal
+  (for the worst Value-at-Risk) or maximal (for the best
+  Value-at-Risk) row sums after an iteration did not change by more than
+  (the individual relative error) \code{rel.err[1]} \emph{and} the
+  relative (joint) error between both bounds is at most \code{rel.err[2]}.
+
+  Note that both \code{RA()} and \code{ARA()} need to evalute the
+  0-quantile (for the lower bound for the best Value-at-Risk) and
+  the 1-quantile (for the upper bound for the
+  worst Value-at-Risk). As the algorithms can only handle finite values, the
   0-quantile and the 1-quantile need to be adjusted if infinite. Instead
   of the 0-quantile, the \eqn{\alpha/(2N)}{alpha/(2N)}-quantile is
   computed and instead of the 1-quantile the
@@ -194,22 +239,23 @@ stopifnot(all.equal(c(worst.VaR.Wang, worst.VaR.Wang.Par), rep(worst.VaR.dual, 2
                     tolerance=1e-6))
 ## Compare with the Rearrangement Algorithm
 set.seed(271) # for (the sampling) Step 3 in the Rearrangement Algorithm
-RA1 <- RA(alpha, d=d, qF=qF, N=1000, eps=0.01)
+RA1 <- RA(alpha, d=d, qF=qF, abs.err=0.01, N=1000)
 (worst.VaR.RA <- RA1$bounds)
 set.seed(271)
 RA2 <- RA(alpha, d=d, qF=qF, N=1000)
 (worst.VaR.RA <- RA2$bounds)
-## Adaptive Rearrangement Algorithm
+## Adaptive Rearrangement Algorithm (with defaults)
 set.seed(271)
-RA3 <- RA(alpha, d=d, qF=qF, N=10^(2:4), maxiter=10, eps=0.01)
+ARA1 <- ARA(alpha, d=d, qF=qF)
+(worst.VaR.ARA <- ARA1$bounds)
 
 ## Using additional output of RA()
 set.seed(271)
 ran <- range(RA2$m.row.sums)
 plot(RA2$m.row.sums[[2]], type="b", ylim=ran, xlab="Iteration",
      ylab=paste0("Minimal row sum (# of oppositely ordered columns: lower=",
-     RA2$num.opp.ordered.cols[1],", upper=",
-     RA2$num.opp.ordered.cols[2],")"),
+     RA2$num.opp.ordered[1],", upper=",
+     RA2$num.opp.ordered[2],")"),
      main=substitute("Rearrangement Algorithm for"~alpha==a.*","~d==d.*" and Par("*
                      th.*")", list(a.=alpha, d.=d, th.=th)))
 lines(1:length(RA2$m.row.sums[[1]]), RA2$m.row.sums[[1]], type="b",
@@ -220,16 +266,16 @@ legend("bottomright", inset=0.02, y.intersp=1.2, bty="n", lty=rep(1,2),
 ## "Reproducing" an example from Embrechts, Puccetti, Rueschendorf (2013)
 ## (seed unknown, eps unknown)
 set.seed(271)
-(RA4 <- RA(alpha, d=3, qF=qF, N=50))
-stopifnot(all.equal(RA4$bounds[1], 45.11593, tolerance=1e-7),
-          all.equal(RA4$bounds[2], 46.40413, tolerance=1e-7),
-          RA4$num.opp.ordered == c(3,3))
+(RA3 <- RA(alpha, d=3, qF=qF, N=50))
+stopifnot(all.equal(RA3$bounds[1], 45.11593, tolerance=1e-7),
+          all.equal(RA3$bounds[2], 46.40413, tolerance=1e-7),
+          RA3$num.opp.ordered == c(3,3))
 
 ## An example from Embrechts, Puccetti, Rueschendorf (2013) with larger N
 ## (first two decimals are equal)
 if(FALSE) {
-    RA5 <- RA(alpha, d=3, qF=qF, N=1e5) # ~ 15s
-    stopifnot(all.equal(RA5$bounds, rep(45.98, 2), tolerance=3e-4))
+    RA4 <- RA(alpha, d=3, qF=qF, N=1e5) # ~ 15s
+    stopifnot(all.equal(RA4$bounds, rep(45.98, 2), tolerance=3e-4))
 }
 }
 \keyword{distribution}

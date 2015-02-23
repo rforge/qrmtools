@@ -211,7 +211,7 @@ worst_VaR_hom <- function(alpha, d, method=c("Wang", "Wang.Par", "dual"),
     stopifnot(0<alpha, alpha<1, d>=2)
     method <- match.arg(method)
     if(is.null(tol)) # use higher tolerance (MATLAB default) for Wang's approach (matters!)
-        tol <- if(method!="dual") 2.2204e-16 else .Machine$double.eps^0.25
+        tol <- if(method!="dual") 2.2204e-16 else .Machine$double.eps^0.25 # uniroot()'s default
 
     ## d == 2
     if(d == 2) { # see Embrechts, Puccetti, Rueschendorf (2013, Proposition 2)
@@ -230,9 +230,11 @@ worst_VaR_hom <- function(alpha, d, method=c("Wang", "Wang.Par", "dual"),
                    stop("Method 'Wang' requires the quantile function qF of F")
                ## check 'interval'
                if(is.null(interval)) interval <- c(0, (1-alpha)/d)
-               else if(!(0 <= interval[1] && interval[2] <= (1-alpha)/d &&
-                         interval[1]<interval[2]))
-                   stop("interval[1] needs to be >= 0, interval[2] needs to be <= (1-alpha)/d")
+               else {
+                   if(interval[1] < 0) stop("interval[1] needs to be >= 0")
+                   if(interval[1] > (1-alpha)/d) stop("interval[2] needs to be <= (1-alpha)/d")
+                   if(interval[1] >= interval[2]) stop("interval[1] needs to be smaller than interval[2]")
+               }
                ## c_u: guarantee that uniroot() doesn't fail due to root at (1-alpha)/d
                h.up <- .Machine$double.xmin
                ## c_l: compute and check validity
@@ -256,9 +258,11 @@ worst_VaR_hom <- function(alpha, d, method=c("Wang", "Wang.Par", "dual"),
                ## check 'interval'
                if(is.null(interval)) # note: we can be more specific here
                    interval <- c(if(th <= 1) .Machine$double.eps else 0, (1-alpha)/d)
-               else if(!(0 <= interval[1] && interval[2] <= (1-alpha)/d &&
-                         interval[1]<interval[2]))
-                   stop("interval[1] needs to be >= 0, interval[2] needs to be <= (1-alpha)/d")
+               else {
+                   if(interval[1] < 0) stop("interval[1] needs to be >= 0")
+                   if(interval[1] > (1-alpha)/d) stop("interval[2] needs to be <= (1-alpha)/d")
+                   if(interval[1] >= interval[2]) stop("interval[1] needs to be smaller than interval[2]")
+               }
                ## c_u: guarantee that uniroot() doesn't fail due to root at (1-alpha)/d
                h.up <- .Machine$double.xmin
                ## c_l: compute and check validity (note: we can be more specific here)
@@ -305,10 +309,14 @@ worst_VaR_hom <- function(alpha, d, method=c("Wang", "Wang.Par", "dual"),
 ##' @return 4-list containing the
 ##'         1) computed (lower or upper [depending on X]) bound for (worst or
 ##'            best [depending on optim.fun]) VaR
-##'         2) minimal [for worst VaR] or maximal [for best VaR] row sum
-##'         3) number of oppositely ordered columns
-##'         4) number of iterations through the matrix columns used for the last N
+##'         2) (individual) error reached
+##'         3) minimal [for worst VaR] or maximal [for best VaR] row sum
+##'         4) number of oppositely ordered columns
+##'         5) number of iterations through the matrix columns used for the last N
 ##' @author Marius Hofert
+##' @note We use "<= abs.err" to determine convergence instead of "< abs.err" as
+##'       this then also nicely works with "= 0" (if abs.err=0) which stops in
+##'       case the matrices are identical (no change at all).
 RA_aux <- function(X, optim.fun, err.fun, maxiter, eps)
 {
     m.row.sums <- c()
@@ -327,50 +335,49 @@ RA_aux <- function(X, optim.fun, err.fun, maxiter, eps)
         m.row.sums <- c(m.row.sums, mrs.new) # append min/max row sum
         ## check convergence (we use "<= eps" as it entails eps=0)
         stp <- (count == maxiter) || if(is.null(eps)) all(Y == X) else
-               err.fun(mrs.new, mrs.old) <= eps
+                                        err.fun(mrs.new, mrs.old) <= eps
         if(stp) {
-            num.opp.ordered.cols <- sum(sapply(seq_len(d), function(j)
-                    all(sort(Y[,j], decreasing=TRUE)[rank(rowSums(Y[,-j]))] == Y[,j])))
+            num.opp.ordered <- sum(sapply(seq_len(d), function(j)
+                    all(sort(Y[,j], decreasing=TRUE)[rank(rowSums(Y[,-j]))] == Y[,j]))) # count number of oppositely ordered columns
+            individual.err <- err.fun(mrs.new, mrs.old) # compute the (individual) error
             break
         } else X <- Y
     }
-    list(bound=mrs.new, m.row.sums=m.row.sums,
-         num.opp.ordered.cols=num.opp.ordered.cols, num.iter=count)
+    list(bound=mrs.new, individual.err=individual.err, m.row.sums=m.row.sums,
+         num.opp.ordered=num.opp.ordered, num.iter=count)
 }
 
-##' @title Computing Lower/Upper Bounds for the Worst VaR
+##' @title Computing Lower/Upper Bounds for the Worst VaR with the RA
 ##' @param alpha confidence level
 ##' @param d dimension
 ##' @param qF a marginal quantile function (homogeneous case) or a d-list of such;
 ##'        note that each marginal quantile function has to be vectorized in p
-##' @param N (vector of) number(s) of discretization points
+##' @param N number of discretization points
+##' @param abs.err absolute error to determine convergence; if NULL, then the
+##'        iteration is done until the matrix doesn't change anymore, i.e., each
+##'        column is oppositely ordered with respect to the sum of all others
 ##' @param maxiter maximal number of iterations
 ##' @param method character indicating which VaR is approximated (worst/best)
-##' @param eps epsilon error to determine convergence; if NULL, then the
-##'        iteration is done until the matrix doesn't change
-##' @param rel.error logical indicating whether 'eps' is 'absolute' or 'relative'
 ##' @param sample logical indicating whether each column of the two working
 ##'        matrices are sampled before the iteration begins
 ##' @return 5-list containing the
 ##'         1) computed lower and upper bounds for (worst or best) VaR
-##'         2) minimal [for worst VaR] or maximal [for best VaR] row sums for
+##'         2) the relative dependence uncertainty spread
+##'            "|(upper bound - lower bound) / upper bound|"
+##'         3) individual (for each bound) errors reached
+##'         4) minimal [for worst VaR] or maximal [for best VaR] row sums for
 ##'            lower and upper bounds
-##'         3) actual N used in the last iteration/increase of N
-##'         4) number of oppositely ordered columns for lower and upper bounds
-##'         5) number of iterations through the matrix columns used for the last N
+##'         5) number of oppositely ordered columns for lower and upper bounds
+##'         6) number of iterations through the matrix columns used
 ##' @author Marius Hofert
-##' @note - Notation is from p. 2757 in Embrechts, Puccetti, Rueschendorf (2013);
-##'         variables are named according to the 'worst' VaR case.
-##'       - We use "<= eps" to determine convergence instead of "< eps" as
-##'         this then also nicely works with "= 0" (if eps=0) which stops in
-##'         case the matrices are identical (no change at all).
-RA <- function(alpha, d, qF, N, maxiter, method=c("worst", "best"), eps=0, rel.error=TRUE,
-               sample=TRUE)
+##' @note Notation is from p. 2757 in Embrechts, Puccetti, Rueschendorf (2013);
+##'       variables are named according to the 'worst' VaR case.
+RA <- function(alpha, d, qF, N, abs.err=NULL, maxiter=Inf,
+               method=c("worst", "best"), sample=TRUE)
 {
-    ## Checks and Step 1 (get N, eps)
-    stopifnot(0 < alpha, alpha < 1, is.null(eps) || eps >= 0, is.logical(rel.error),
-              length(N) >= 1, N >= 2, is.logical(sample))
-    if(missing(maxiter)) maxiter <- Inf
+    ## Checks and Step 1 (get N, abs.err)
+    stopifnot(0 < alpha, alpha < 1, is.null(abs.err) || abs.err >= 0,
+              length(N) >= 1, N >= 2, maxiter >= 1, is.logical(sample))
     method <- match.arg(method)
     if(missing(d))
         stopifnot(is.list(qF), sapply(qF, is.function), (d <- length(qF)) >= 2)
@@ -379,12 +386,111 @@ RA <- function(alpha, d, qF, N, maxiter, method=c("worst", "best"), eps=0, rel.e
         qF <- rep(list(qF), d)
     }
 
-    ## Functions independent of N
+    ## Functions
     optim.fun <- if(method=="worst") min else max
-    err.fun <- if(rel.error) function(x, y) abs((x-y)/y) else function(x,y) abs(x-y)
+    err.fun <- function(x, y) abs(x-y)
 
-    ## Loop over N (for computing the *lower* bound)
+    ## Compute lower bound
+
+    ## Step 2 (build \underline{X}^\alpha)
+    p <- if(method=="worst") alpha + (1-alpha)*0:(N-1)/N else alpha*0:(N-1)/N # N-vector of prob.
+    X <- sapply(qF, function(qF) qF(p))
+    ## adjust those that are -Inf (for method="best")
+    ## use alpha*((0+1)/2 / N) = alpha/(2N) instead of 0 quantile
+    if(method == "best")
+        X[1,] <- sapply(1:d, function(j) if(is.infinite(X[1,j])) qF[[j]](alpha/(2*N)) else X[1,j])
+
+    ## Step 3 (randomly permute each column of \underline{X}^\alpha)
+    if(sample) X <- apply(X, 2, sample)
+
+    ## Steps 4, 5 (determine \underline{X}^*)
+    ## repeat oppositely ordering \underline{X}^\alpha until there is only an
+    ## abs.err change in the min (method="worst") or max (method="best") row sum
+    ## or until we reached maxiter number of iterations
+    res.low <- RA_aux(X, optim.fun=optim.fun, err.fun=err.fun, maxiter=maxiter,
+                      eps=abs.err)
+
+    ## Compute upper bound
+
+    ## Step 2 (build \overline{X}^\alpha)
+    p <- if(method=="worst") alpha + (1-alpha)*1:N/N else alpha*1:N/N # N-vector of prob.
+    X <- sapply(qF, function(qF) qF(p))
+    ## adjust those that are Inf (for method="worst")
+    ## use alpha+(1-alpha)*(N-1+N)/(2*N) = alpha+(1-alpha)*(1-1/(2*N)) instead of 1 quantile
+    if(method == "worst") X[N,] <- sapply(1:d, function(j)
+        if(is.infinite(X[N,j])) qF[[j]](alpha+(1-alpha)*(1-1/(2*N))) else X[N,j])
+
+    ## Step 3 (randomly permute each column of \overline{X}^\alpha)
+    if(sample) X <- apply(X, 2, sample)
+
+    ## Step 6 (determine \overline{X}^*)
+    ## repeat oppositely ordering \overline{X}^\alpha until there is only an
+    ## abs.err change in the min (method="worst") or max (method="best") row sum
+    ## or until we reached maxiter number of iterations
+    res.up <- RA_aux(X, optim.fun=optim.fun, err.fun=err.fun, maxiter=maxiter,
+                     eps=abs.err)
+
+    ## Step 7 (return \underline{s}_N, \overline{s}_N and other info)
+    list(bounds=c(res.low$bound, res.up$bound),
+         rel.DU.spread=abs((res.up$bound-res.low$bound)/res.up$bound),
+         individual.err=c(res.low$individual.err, res.up$individual.err),
+	 num.iter=c(res.low$num.iter, res.up$num.iter),
+         m.row.sums=list(res.low$m.row.sums, res.up$m.row.sums),
+         num.opp.ordered=c(res.low$num.opp.ordered, res.up$num.opp.ordered))
+}
+
+##' @title Computing Lower/Upper Bounds for the Worst VaR with the ARA
+##' @param alpha confidence level
+##' @param d dimension
+##' @param qF a marginal quantile function (homogeneous case) or a d-list of such;
+##'        note that each marginal quantile function has to be vectorized in p
+##' @param N vector of numbers of discretization points
+##' @param rel.err 2-vector of relative errors for determining the individual
+##'        relative error (i.e., the relative error in the minimal/maximal row sum
+##'        for each of the bounds) and the joint relative error (i.e., the relative
+##'        error between the computed lower and upper bounds). rel.err[1] can be
+##'        NULL (=> iteration is done until matrices don't change anymore, i.e.,
+##'        until each column is oppositely ordered to the sum of all others,
+##'        but only if maxiter hasn't been reached)
+##' @param maxiter maximal number of iterations per N
+##' @param method character indicating which VaR is approximated (worst/best)
+##' @param sample logical indicating whether each column of the two working
+##'        matrices are sampled before the iteration begins
+##' @return 5-list containing the
+##'         1) computed lower and upper bounds for (worst or best) VaR
+##'         2) the relative dependence uncertainty spread
+##'            "|(upper bound - lower bound) / upper bound|"
+##'         3) individual (for each bound) errors reached
+##'         4) minimal [for worst VaR] or maximal [for best VaR] row sums for
+##'            lower and upper bounds
+##'         5) number of oppositely ordered columns for lower and upper bounds
+##'         6) number of iterations through the matrix columns used
+##' @author Marius Hofert
+ARA <- function(alpha, d, qF, N=2^seq(8, 20, by=1), rel.err=c(0.01, 0.01),
+                maxiter=10, method=c("worst", "best"), sample=TRUE)
+{
+    ## Checks and Step 1 (get N, rel.err)
+    stopifnot(0 < alpha, alpha < 1, length(rel.err) == 2,
+              is.null(rel.err[1]) || rel.err[1] >=0, rel.err[2] >= 0,
+              length(N) >= 1, N >= 2, maxiter >= 1, is.logical(sample))
+    method <- match.arg(method)
+    if(missing(d))
+        stopifnot(is.list(qF), sapply(qF, is.function), (d <- length(qF)) >= 2)
+    else { # extend the given quantile function to a list of functions
+        stopifnot(is.function(qF))
+        qF <- rep(list(qF), d)
+    }
+
+    ## Functions
+    optim.fun <- if(method=="worst") min else max
+    err.fun <- function(x, y) abs((x-y)/y)
+
+    ## Loop over N
+    low.converged <- FALSE
+    up.converged <- FALSE
     for(N. in N) {
+
+        ## Compute lower bound
 
         ## Step 2 (build \underline{X}^\alpha)
         p <- if(method=="worst") alpha + (1-alpha)*0:(N.-1)/N. else alpha*0:(N.-1)/N. # N.-vector of prob.
@@ -399,41 +505,45 @@ RA <- function(alpha, d, qF, N, maxiter, method=c("worst", "best"), eps=0, rel.e
 
         ## Steps 4, 5 (determine \underline{X}^*)
         ## repeat oppositely ordering \underline{X}^\alpha until there is only an
-        ## eps change in the min (method="worst") or max (method="best") row sum
+        ## rel.err[1] change in the min (method="worst") or max (method="best") row sum
         ## or until we reached maxiter number of iterations
         res.low <- RA_aux(X, optim.fun=optim.fun, err.fun=err.fun, maxiter=maxiter,
-                          eps=eps)
+                          eps=rel.err[1])
 
-    } # for() for approximating (best/worst) VaR from below
-
-    ## Loop over N (for computing the *upper* bound)
-    for(N.. in N) {
+        ## Compute upper bound
 
         ## Step 2 (build \overline{X}^\alpha)
-        p <- if(method=="worst") alpha + (1-alpha)*1:N../N.. else alpha*1:N../N.. # N..-vector of prob.
+        p <- if(method=="worst") alpha + (1-alpha)*1:N./N. else alpha*1:N./N. # N.-vector of prob.
         X <- sapply(qF, function(qF) qF(p))
         ## adjust those that are Inf (for method="worst")
-        ## use alpha+(1-alpha)*(N..-1+N..)/(2*N..) = alpha+(1-alpha)*(1-1/(2*N..)) instead of 1 quantile
-        if(method == "worst") X[N..,] <- sapply(1:d, function(j)
-            if(is.infinite(X[N..,j])) qF[[j]](alpha+(1-alpha)*(1-1/(2*N..))) else X[N..,j])
+        ## use alpha+(1-alpha)*(N.-1+N.)/(2*N.) = alpha+(1-alpha)*(1-1/(2*N.)) instead of 1 quantile
+        if(method == "worst") X[N.,] <- sapply(1:d, function(j)
+            if(is.infinite(X[N.,j])) qF[[j]](alpha+(1-alpha)*(1-1/(2*N.))) else X[N.,j])
 
         ## Step 3 (randomly permute each column of \overline{X}^\alpha)
         if(sample) X <- apply(X, 2, sample)
 
         ## Step 6 (determine \overline{X}^*)
         ## repeat oppositely ordering \overline{X}^\alpha until there is only an
-        ## eps change in the min (method="worst") or max (method="best") row sum
+        ## rel.err[1] change in the min (method="worst") or max (method="best") row sum
         ## or until we reached maxiter number of iterations
         res.up <- RA_aux(X, optim.fun=optim.fun, err.fun=err.fun, maxiter=maxiter,
-                         eps=eps)
+                         eps=rel.err[1])
 
-    } # for() for approximating (best/worst) VaR from above
+        ## Determine convergence (individual + joint)
+        joint.err <- err.fun(res.low$bound, res.up$bound)
+        if( (max(res.low$individual.err, res.up$individual.err) <= rel.err[1]) &&
+            joint.err <= rel.err[2] ) break
+
+    }
 
     ## Step 7 (return \underline{s}_N, \overline{s}_N and other info)
     list(bounds=c(res.low$bound, res.up$bound),
+         rel.DU.spread=abs((res.up$bound-res.low$bound)/res.up$bound),
+         individual.err=c(res.low$individual.err, res.up$individual.err),
+         joint.err=joint.err, N.used=N.,
+         num.iter=c(res.low$num.iter, res.up$num.iter),
          m.row.sums=list(res.low$m.row.sums, res.up$m.row.sums),
-         used.N=c(N., N..),
-         num.opp.ordered.cols=c(res.low$num.opp.ordered.cols,
-                                res.up$num.opp.ordered.cols),
-         num.iter=c(res.low$num.iter, res.up$num.iter))
+         num.opp.ordered=c(res.low$num.opp.ordered, res.up$num.opp.ordered))
 }
+
