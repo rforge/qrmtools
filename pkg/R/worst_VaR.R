@@ -486,8 +486,6 @@ ARA <- function(alpha, d, qF, N=2^seq(8, 20, by=1), rel.err=c(0.01, 0.01),
     err.fun <- function(x, y) abs((x-y)/y)
 
     ## Loop over N
-    low.converged <- FALSE
-    up.converged <- FALSE
     for(N. in N) {
 
         ## Compute lower bound
