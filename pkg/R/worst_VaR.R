@@ -466,7 +466,7 @@ RA <- function(alpha, d, qF, N, abs.err=NULL, maxiter=Inf,
 ##'         5) number of oppositely ordered columns for lower and upper bounds
 ##'         6) number of iterations through the matrix columns used
 ##' @author Marius Hofert
-ARA <- function(alpha, d, qF, N=2^seq(8, 20, by=1), rel.err=c(0.01, 0.01),
+ARA <- function(alpha, d, qF, N=2^seq(8, 20, by=1), rel.err=c(0.001, 0.01),
                 maxiter=10, method=c("worst", "best"), sample=TRUE)
 {
     ## Checks and Step 1 (get N, rel.err)
