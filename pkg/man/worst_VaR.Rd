@@ -14,9 +14,10 @@ crude_VaR_bounds(alpha, d, qF, ...)
 worst_VaR_hom(alpha, d, method=c("Wang", "Wang.Par", "dual"),
               interval=NULL, tol=NULL, ...)
 dual_bound(s, d, pF, ...)
-RA(alpha, d, qF, N, abs.err=NULL, maxiter=Inf, method=c("worst", "best"), sample=TRUE)
+RA(alpha, d, qF, N, abs.err=NULL, maxiter=Inf, method=c("worst", "best"),
+   sample=TRUE, impl=c("C", "R"))
 ARA(alpha, d, qF, N=2^seq(8, 20, by=1), rel.err=c(0.001, 0.01), maxiter=10,
-    method=c("worst", "best"), sample=TRUE)
+    method=c("worst", "best"), sample=TRUE, impl=c("C", "R"))
 }
 \arguments{
   \item{alpha}{Value-at-Risk confidence level (e.g., 0.99).}
@@ -83,6 +84,8 @@ ARA(alpha, d, qF, N=2^seq(8, 20, by=1), rel.err=c(0.001, 0.01), maxiter=10,
     the two internal matrices of quantiles (see Step 3 of the Rearrangement
     Algorithm in Embrechts, Puccetti, \enc{Rüschendorf}{Rueschendorf} (2013))
     are sampled before the iteration begins.}
+  \item{impl}{\code{\link{character}} providing the type of
+    implementation used (C vs R).}
   \item{\dots}{For
     \describe{
       \item{\code{worst_VaR_hom()}:}{For \code{d=2} or

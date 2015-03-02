@@ -300,51 +300,67 @@ worst_VaR_hom <- function(alpha, d, method=c("Wang", "Wang.Par", "dual"),
 
 ##' @title Auxiliary Function for Computing Steps 4 and 5 for the RA
 ##' @param X (N, d)-matrix (either \underline{X}^\alpha or \overline{X}^\alpha)
-##' @param optim.fun optimization function (either min [for worst VaR] or max
-##'        [for best VaR])
-##' @param err.fun error function (absolute or relative)
+##' @param method character indicating which VaR is approximated (worst/best)
+##'        determines optimizing function (min for worst VaR; max
+##'        for best VaR)
+##' @param err character string indicating the error function used
+##'        ("absolute" or "relative")
 ##' @param maxiter maximal number of iterations
 ##' @param eps epsilon error to determine convergence; if NULL, then the
 ##'        iteration is done until the matrix doesn't change
-##' @return 4-list containing the
+##' @param impl string indicating the implementation (either "C" or "R")
+##' @return 5-list containing the
 ##'         1) computed (lower or upper [depending on X]) bound for (worst or
-##'            best [depending on optim.fun]) VaR
+##'            best [depending on method]) VaR
 ##'         2) (individual) error reached
 ##'         3) minimal [for worst VaR] or maximal [for best VaR] row sum
 ##'         4) number of oppositely ordered columns
 ##'         5) number of iterations through the matrix columns used for the last N
 ##' @author Marius Hofert
-##' @note We use "<= abs.err" to determine convergence instead of "< abs.err" as
-##'       this then also nicely works with "= 0" (if abs.err=0) which stops in
-##'       case the matrices are identical (no change at all).
-RA_aux <- function(X, optim.fun, err.fun, maxiter, eps)
+##' @note - We use "<= abs.err" to determine convergence instead of "< abs.err" as
+##'         this then also nicely works with "= 0" (if abs.err=0) which stops in
+##'         case the matrices are identical (no change at all).
+##'       - No checking here due to speed
+RA_aux <- function(X, method, err, maxiter, eps, impl)
 {
-    m.row.sums <- c()
     d <- ncol(X)
-    count <- 0
-    while (TRUE) {
-        ## counter related quantities
-        count <- count + 1 # increase counter
-        mrs.old <- if(count == 1) optim.fun(rowSums(X)) else mrs.new # old min/max row sum
-        ## oppositely order X (=> Y)
-        Y <- X
-        for(j in 1:d)
-            Y[,j] <- sort(Y[,j], decreasing=TRUE)[rank(rowSums(Y[,-j]))]
-        ## compute minimal/maximal row sums
-        mrs.new <- optim.fun(rowSums(Y)) # new min/max row sum
-        m.row.sums <- c(m.row.sums, mrs.new) # append min/max row sum
-        ## check convergence (we use "<= eps" as it entails eps=0)
-        stp <- (count == maxiter) || if(is.null(eps)) all(Y == X) else
-                                        err.fun(mrs.new, mrs.old) <= eps
-        if(stp) {
-            num.opp.ordered <- sum(sapply(seq_len(d), function(j)
-                    all(sort(Y[,j], decreasing=TRUE)[rank(rowSums(Y[,-j]))] == Y[,j]))) # count number of oppositely ordered columns
-            individual.err <- err.fun(mrs.new, mrs.old) # compute the (individual) error
-            break
-        } else X <- Y
+    if(impl=="C") {
+        if(is.null(eps)) eps <- -1 # for C code
+        if(is.infinite(maxiter)) maxiter <- -1 # for C code
+        .Call(RA_aux_, X, method, err, maxiter, eps)
+    } else { # R implementation
+        ## Define functions
+        optim.fun <- if(method=="worst") min else max
+        err.fun <- if(err=="absolute") function(x, y) abs(x-y) else # absolute error
+                                       function(x, y) abs((x-y)/y) # relative error
+        ## Loop through the columns
+        m.row.sums <- c()
+        count <- 0
+        while (TRUE) {
+            ## Counter related quantities
+            count <- count + 1 # increase counter
+            mrs.old <- if(count == 1) optim.fun(rowSums(X)) else mrs.new # old min/max row sum
+            ## Oppositely order X (=> Y)
+            Y <- X
+            for(j in 1:d)
+                Y[,j] <- sort(Y[,j])[rev(rank(rowSums(Y[,-j])))]
+            ## Compute minimal/maximal row sums
+            mrs.new <- optim.fun(rowSums(Y)) # new min/max row sum
+            m.row.sums <- c(m.row.sums, mrs.new) # append min/max row sum
+            ## Check convergence (we use "<= eps" as it entails eps=0)
+            stp <- (count == maxiter) || if(is.null(eps)) all(Y == X) else
+                                            err.fun(mrs.new, mrs.old) <= eps
+            if(stp) {
+                num.opp.ordered <- sum(sapply(seq_len(d), function(j)
+                                       all(sort(Y[,j])[rev(rank(rowSums(Y[,-j]))] == Y[,j])))) # count number of oppositely ordered columns
+                individual.err <- err.fun(mrs.new, mrs.old) # compute the (individual) error
+                break
+            } else X <- Y
+        }
+        ## Return
+        list(bound=mrs.new, individual.err=individual.err, m.row.sums=m.row.sums,
+             num.opp.ordered=num.opp.ordered, num.iter=count)
     }
-    list(bound=mrs.new, individual.err=individual.err, m.row.sums=m.row.sums,
-         num.opp.ordered=num.opp.ordered, num.iter=count)
 }
 
 ##' @title Computing Lower/Upper Bounds for the Worst VaR with the RA
@@ -360,6 +376,7 @@ RA_aux <- function(X, optim.fun, err.fun, maxiter, eps)
 ##' @param method character indicating which VaR is approximated (worst/best)
 ##' @param sample logical indicating whether each column of the two working
 ##'        matrices are sampled before the iteration begins
+##' @param impl string indicating the implementation (either "C" or "R")
 ##' @return 5-list containing the
 ##'         1) computed lower and upper bounds for (worst or best) VaR
 ##'         2) the relative dependence uncertainty spread
@@ -373,22 +390,19 @@ RA_aux <- function(X, optim.fun, err.fun, maxiter, eps)
 ##' @note Notation is from p. 2757 in Embrechts, Puccetti, Rueschendorf (2013);
 ##'       variables are named according to the 'worst' VaR case.
 RA <- function(alpha, d, qF, N, abs.err=NULL, maxiter=Inf,
-               method=c("worst", "best"), sample=TRUE)
+               method=c("worst", "best"), sample=TRUE, impl=c("C", "R"))
 {
     ## Checks and Step 1 (get N, abs.err)
     stopifnot(0 < alpha, alpha < 1, is.null(abs.err) || abs.err >= 0,
               length(N) >= 1, N >= 2, maxiter >= 1, is.logical(sample))
     method <- match.arg(method)
+    impl <- match.arg(impl)
     if(missing(d))
         stopifnot(is.list(qF), sapply(qF, is.function), (d <- length(qF)) >= 2)
     else { # extend the given quantile function to a list of functions
         stopifnot(is.function(qF))
         qF <- rep(list(qF), d)
     }
-
-    ## Functions
-    optim.fun <- if(method=="worst") min else max
-    err.fun <- function(x, y) abs(x-y)
 
     ## Compute lower bound
 
@@ -407,8 +421,8 @@ RA <- function(alpha, d, qF, N, abs.err=NULL, maxiter=Inf,
     ## repeat oppositely ordering \underline{X}^\alpha until there is only an
     ## abs.err change in the min (method="worst") or max (method="best") row sum
     ## or until we reached maxiter number of iterations
-    res.low <- RA_aux(X, optim.fun=optim.fun, err.fun=err.fun, maxiter=maxiter,
-                      eps=abs.err)
+    res.low <- RA_aux(X, method=method, err="absolute", maxiter=maxiter,
+                      eps=abs.err, impl=impl)
 
     ## Compute upper bound
 
@@ -427,8 +441,8 @@ RA <- function(alpha, d, qF, N, abs.err=NULL, maxiter=Inf,
     ## repeat oppositely ordering \overline{X}^\alpha until there is only an
     ## abs.err change in the min (method="worst") or max (method="best") row sum
     ## or until we reached maxiter number of iterations
-    res.up <- RA_aux(X, optim.fun=optim.fun, err.fun=err.fun, maxiter=maxiter,
-                     eps=abs.err)
+    res.up <- RA_aux(X, method=method, err="absolute", maxiter=maxiter,
+                     eps=abs.err, impl=impl)
 
     ## Step 7 (return \underline{s}_N, \overline{s}_N and other info)
     list(bounds=c(res.low$bound, res.up$bound),
@@ -456,6 +470,7 @@ RA <- function(alpha, d, qF, N, abs.err=NULL, maxiter=Inf,
 ##' @param method character indicating which VaR is approximated (worst/best)
 ##' @param sample logical indicating whether each column of the two working
 ##'        matrices are sampled before the iteration begins
+##' @param impl string indicating the implementation (either "C" or "R")
 ##' @return 5-list containing the
 ##'         1) computed lower and upper bounds for (worst or best) VaR
 ##'         2) the relative dependence uncertainty spread
@@ -467,23 +482,21 @@ RA <- function(alpha, d, qF, N, abs.err=NULL, maxiter=Inf,
 ##'         6) number of iterations through the matrix columns used
 ##' @author Marius Hofert
 ARA <- function(alpha, d, qF, N=2^seq(8, 20, by=1), rel.err=c(0.001, 0.01),
-                maxiter=10, method=c("worst", "best"), sample=TRUE)
+                maxiter=10, method=c("worst", "best"), sample=TRUE,
+                impl=c("C", "R"))
 {
     ## Checks and Step 1 (get N, rel.err)
     stopifnot(0 < alpha, alpha < 1, length(rel.err) == 2,
               is.null(rel.err[1]) || rel.err[1] >=0, rel.err[2] >= 0,
               length(N) >= 1, N >= 2, maxiter >= 1, is.logical(sample))
     method <- match.arg(method)
+    impl <- match.arg(impl)
     if(missing(d))
         stopifnot(is.list(qF), sapply(qF, is.function), (d <- length(qF)) >= 2)
     else { # extend the given quantile function to a list of functions
         stopifnot(is.function(qF))
         qF <- rep(list(qF), d)
     }
-
-    ## Functions
-    optim.fun <- if(method=="worst") min else max
-    err.fun <- function(x, y) abs((x-y)/y)
 
     ## Loop over N
     for(N. in N) {
@@ -505,8 +518,8 @@ ARA <- function(alpha, d, qF, N=2^seq(8, 20, by=1), rel.err=c(0.001, 0.01),
         ## repeat oppositely ordering \underline{X}^\alpha until there is only an
         ## rel.err[1] change in the min (method="worst") or max (method="best") row sum
         ## or until we reached maxiter number of iterations
-        res.low <- RA_aux(X, optim.fun=optim.fun, err.fun=err.fun, maxiter=maxiter,
-                          eps=rel.err[1])
+        res.low <- RA_aux(X, method=method, err="relative", maxiter=maxiter,
+                          eps=rel.err[1], impl=impl)
 
         ## Compute upper bound
 
@@ -525,8 +538,8 @@ ARA <- function(alpha, d, qF, N=2^seq(8, 20, by=1), rel.err=c(0.001, 0.01),
         ## repeat oppositely ordering \overline{X}^\alpha until there is only an
         ## rel.err[1] change in the min (method="worst") or max (method="best") row sum
         ## or until we reached maxiter number of iterations
-        res.up <- RA_aux(X, optim.fun=optim.fun, err.fun=err.fun, maxiter=maxiter,
-                         eps=rel.err[1])
+        res.up <- RA_aux(X, method=method, err="relative", maxiter=maxiter,
+                         eps=rel.err[1], impl=impl)
 
         ## Determine convergence (individual + joint)
         joint.err <- err.fun(res.low$bound, res.up$bound)
