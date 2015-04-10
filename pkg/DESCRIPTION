@@ -9,7 +9,7 @@ Authors@R: c(person(given = "Marius", family = "Hofert", role = c("aut", "cre"),
                     email = "marius.hofert@uwaterloo.ca"),
              person(given = "Kurt", family = "Hornik", role = "aut",
                     email = "Kurt.Hornik@R-project.org"))
-Author: Marius Hofert and Kurt Hornik
+Author: Marius Hofert [aut, cre], Kurt Hornik [aut]
 Maintainer: Marius Hofert <marius.hofert@uwaterloo.ca>
 Depends: R (>= 3.0.0)
 Imports: xts
@@ -17,6 +17,6 @@ Suggests:
 Enhances:
 License: GPL-2 | GPL-3
 URL: https://qrmtools.r-forge.r-project.org/
-NeedsCompilation: no
+NeedsCompilation: yes
 Repository: CRAN
 Date/Publication: 2014-03-25 15:26:50
