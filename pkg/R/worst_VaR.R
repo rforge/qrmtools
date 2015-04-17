@@ -352,7 +352,7 @@ RA_aux <- function(X, method, err, maxiter, eps, impl)
                                             err.fun(mrs.new, mrs.old) <= eps
             if(stp) {
                 num.opp.ordered <- sum(sapply(seq_len(d), function(j)
-                                       all(sort(Y[,j])[rev(rank(rowSums(Y[,-j]))] == Y[,j])))) # count number of oppositely ordered columns
+                                       all(sort(Y[,j])[rev(rank(rowSums(Y[,-j])))] == Y[,j]))) # count number of oppositely ordered columns
                 individual.err <- err.fun(mrs.new, mrs.old) # compute the (individual) error
                 break
             } else X <- Y

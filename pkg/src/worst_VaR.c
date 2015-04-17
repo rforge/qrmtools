@@ -116,7 +116,7 @@ void RA_aux(double **X, int N, int d, const char *method, const char *err,
         if((*count) == 1) {
             for(i=0; i<N; i++) {
                 rs[i] = 0.0;
-                for(j=0; j<d; j++) { rs[i] += X[i][j]; }
+                for(j=0; j<d; j++) rs[i] += X[i][j];
             }
             mrs_old = optim_fun(rs, N);
         } else { mrs_old = mrs_new; } /* old min/max row sum */
@@ -126,7 +126,7 @@ void RA_aux(double **X, int N, int d, const char *method, const char *err,
             /* Compute the row sum over all columns except jth */
             for(i=0; i<N; i++) {
                 rs[i] = 0.0;
-                for(l=0; l<d; l++) { if(l!=j) rs[i] += Y[i][l]; }
+                for(l=0; l<d; l++) if(l!=j) rs[i] += Y[i][l];
             }
             /* Oppositely order Y[,j] with respect to rs; so sort(Y[,j])[rev(rank(rs))] */
             for(i=0; i<N; i++) Y_j[i] = Y[i][j]; /* pick out jth column of Y */
@@ -135,7 +135,7 @@ void RA_aux(double **X, int N, int d, const char *method, const char *err,
 			  TRUE); /* decreasing */
 	    /* => ind == rev(rank(rs)) */
 	    R_rsort(Y_j, N); /* R's sort() for real arguments */
-	    for(i=0; i<N; i++) { Y[i][j] = Y_j[ind[i]]; } /* update jth column of Y */
+	    for(i=0; i<N; i++) Y[i][j] = Y_j[ind[i]];  /* update jth column of Y */
         }
 
         /* Check whether m_row_sums has space left */
@@ -147,7 +147,7 @@ void RA_aux(double **X, int N, int d, const char *method, const char *err,
         /* Compute and store minimal/maximal row sums */
 	for(i=0; i<N; i++) {
             rs[i] = 0.0;
-            for(l=0; l<d; l++) { rs[i] += Y[i][l]; }
+            for(l=0; l<d; l++) rs[i] += Y[i][l];
 	}
         mrs_new = optim_fun(rs, N); /* compute new min/max row sum */
         m_row_sums[(*count)-1] = mrs_new; /* append it to m_row_sums */

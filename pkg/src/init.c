@@ -8,7 +8,8 @@
 
 
 static const R_CallMethodDef callMethods[] = {
-	{"RA_aux_", (DL_FUNC) &RA_aux_, 5}, {NULL, NULL, 0}
+	{"RA_aux_", (DL_FUNC) &RA_aux_, 5},
+	{NULL, NULL, 0}
 };
 
 void R_init_qrng(DllInfo *dll)
