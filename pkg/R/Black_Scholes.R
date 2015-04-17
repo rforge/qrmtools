@@ -1,4 +1,4 @@
-BlackScholes <- function(t, S, r, sigma, K, T, type="call")
+BlackScholes <- function(t, S, r, sigma, K, T, type=c("call", "put"))
 {
     d1 <- (log(S/K) + (r+sigma^2/2)*(T-t))/(sigma*sqrt(T-t))
     d2 <- d1-sigma*sqrt(T-t)
