@@ -1,6 +1,6 @@
 \name{Black_Scholes}
-\alias{BlackScholes}
-\alias{BlackScholesGreeks}
+\alias{Black_Scholes}
+\alias{Black_Scholes_Greeks}
 \title{Black--Scholes formula and the Greeks}
 \description{
   Compute the Black--Scholes formula and the Greeks.

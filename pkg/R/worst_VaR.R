@@ -327,40 +327,40 @@ RA_aux <- function(X, method, err, maxiter, eps, impl)
     if(impl=="C") {
         if(is.null(eps)) eps <- -1 # for C code
         if(is.infinite(maxiter)) maxiter <- -1 # for C code
+        RA_aux_ <- NULL # to avoid "RA_aux: no visible binding for global variable 'RA_aux_'"
         .Call(RA_aux_, X, method, err, maxiter, eps)
     } else { # R implementation
-        ## Define functions
-        optim.fun <- if(method=="worst") min else max
-        err.fun <- if(err=="absolute") function(x, y) abs(x-y) else # absolute error
-                                       function(x, y) abs((x-y)/y) # relative error
-        ## Loop through the columns
-        m.row.sums <- c()
-        count <- 0
-        while (TRUE) {
-            ## Counter related quantities
-            count <- count + 1 # increase counter
-            mrs.old <- if(count == 1) optim.fun(rowSums(X)) else mrs.new # old min/max row sum
-            ## Oppositely order X (=> Y)
-            Y <- X
-            for(j in 1:d)
-                Y[,j] <- sort(Y[,j])[rev(rank(rowSums(Y[,-j])))]
-            ## Compute minimal/maximal row sums
-            mrs.new <- optim.fun(rowSums(Y)) # new min/max row sum
-            m.row.sums <- c(m.row.sums, mrs.new) # append min/max row sum
-            ## Check convergence (we use "<= eps" as it entails eps=0)
-            stp <- (count == maxiter) || if(is.null(eps)) all(Y == X) else
-                                            err.fun(mrs.new, mrs.old) <= eps
-            if(stp) {
-                num.opp.ordered <- sum(sapply(seq_len(d), function(j)
-                                       all(sort(Y[,j])[rev(rank(rowSums(Y[,-j])))] == Y[,j]))) # count number of oppositely ordered columns
-                individual.err <- err.fun(mrs.new, mrs.old) # compute the (individual) error
-                break
-            } else X <- Y
-        }
-        ## Return
-        list(bound=mrs.new, individual.err=individual.err, m.row.sums=m.row.sums,
-             num.opp.ordered=num.opp.ordered, num.iter=count)
-    }
+          ## Define helper functions
+          optim.fun <- if(method=="worst") min else max
+          err.fun <- if(err=="absolute") function(x, y) abs(x-y) else function(x, y) abs((x-y)/y)
+          ## Loop through the columns
+          m.row.sums <- c()
+          count <- 0
+          while (TRUE) {
+              ## Counter related quantities
+              count <- count + 1 # increase counter
+              mrs.old <- if(count == 1) optim.fun(rowSums(X)) else mrs.new # old min/max row sum
+              ## Oppositely order X (=> Y)
+              Y <- X
+              for(j in 1:d)
+                  Y[,j] <- sort(Y[,j])[rev(rank(rowSums(Y[,-j])))]
+              ## Compute minimal/maximal row sums
+              mrs.new <- optim.fun(rowSums(Y)) # new min/max row sum
+              m.row.sums <- c(m.row.sums, mrs.new) # append min/max row sum
+              ## Check convergence (we use "<= eps" as it entails eps=0)
+              stp <- (count == maxiter) || if(is.null(eps)) all(Y == X) else
+              err.fun(mrs.new, mrs.old) <= eps
+              if(stp) {
+                  num.opp.ordered <- sum(sapply(seq_len(d), function(j)
+                      all(sort(Y[,j])[rev(rank(rowSums(Y[,-j])))] == Y[,j]))) # count number of oppositely ordered columns
+                  individual.err <- err.fun(mrs.new, mrs.old) # compute the (individual) error
+                  break
+              } else X <- Y
+          }
+          ## Return
+          list(bound=mrs.new, individual.err=individual.err, m.row.sums=m.row.sums,
+               num.opp.ordered=num.opp.ordered, num.iter=count)
+      }
 }
 
 ##' @title Computing Lower/Upper Bounds for the Worst VaR with the RA
@@ -542,7 +542,7 @@ ARA <- function(alpha, d, qF, N=2^seq(8, 20, by=1), rel.err=c(0.001, 0.01),
                          eps=rel.err[1], impl=impl)
 
         ## Determine convergence (individual + joint)
-        joint.err <- err.fun(res.low$bound, res.up$bound)
+        joint.err <- abs((res.low$bound-res.up$bound)/res.up$bound)
         if( (max(res.low$individual.err, res.up$individual.err) <= rel.err[1]) &&
             joint.err <= rel.err[2] ) break
 

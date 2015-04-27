@@ -1,3 +1,6 @@
+useDynLib(qrmtools, .registration = TRUE)
+
+
 ### Imports ####################################################################
 
 importFrom("xts")

@@ -15,7 +15,7 @@
 int num_opp_order_cols(double **X, int N, int d)
 {
     double *rs; /* for *r*ow *s*ums (without jth column) */
-    rs = (double *) malloc(N * sizeof(double)); /* (double *) R_alloc(n, sizeof(double)) */
+    rs = (double *) R_alloc(N, sizeof(double)); /* (double *) R_alloc(n, sizeof(double)) */
     Rboolean col_opp_ordered; /* current col opp. ordered to the sum of all others? */
     int num_cols_opp_ordered = 0;
     int j, k, l, i;
@@ -38,14 +38,12 @@ int num_opp_order_cols(double **X, int N, int d)
         end:
         if(col_opp_ordered == TRUE) num_cols_opp_ordered += 1;
     }
-    /* clean-up */
-    free(rs);
     return num_cols_opp_ordered;
 }
 
 /**
  * @title Auxiliary Function for Computing Steps 4 and 5 of the RA
- * @param X (N, d)-matrix (either \underline{X}^\alpha or \overline{X}^\alpha)
+ * @param X (N,d)-matrix (either \underline{X}^\alpha or \overline{X}^\alpha)
  * @param N nrow(X)
  * @param d ncol(X)
  * @param method character indicating which VaR is approximated (worst/best)
@@ -96,15 +94,15 @@ void RA_aux(double **X, int N, int d, const char *method, const char *err,
 
     /* Allocate memory */
     double mrs_old, mrs_new;
-    double *rs, *Y_j;
+    double *Y_j;
     int *ind;
-    rs       = (double *) malloc(N * sizeof(double)); /* or (double *) R_alloc(n, sizeof(double)) */
-    Y_j      = (double *) malloc(N * sizeof(double)); /* Y[,j] */
-    ind      = (int *)    malloc(N * sizeof(int)); /* for order (permutation of 0:(N-1)) computed by R_orderVector() */
+    SEXP rs = PROTECT(allocVector(REALSXP, N)); /* vector of row sums; needs to be SEXP for R_orderVector() */
+    double *rs_ = REAL(rs); /* pointer to the value of rs */
+    Y_j      = (double *) R_alloc(N, sizeof(double)); /* Y[,j] */
+    ind      = (int *)    R_alloc(N, sizeof(int)); /* for order (permutation of 0:(N-1)) computed by R_orderVector() */
     double **Y; /* matrix; for new iteration of oppositely ordering */
-    Y        = (double **) malloc(N * sizeof(double));
-    for(i=0; i<N; i++) { Y[i] = (double *) malloc(d * sizeof(double)); }
-
+    Y        = (double **) R_alloc(N, sizeof(double));
+    for(i=0; i<N; i++) Y[i] = (double *) R_alloc(d, sizeof(double));
     Rboolean stp, change;
 
     /* Loop */
@@ -115,41 +113,42 @@ void RA_aux(double **X, int N, int d, const char *method, const char *err,
 	(*count)++; /* increase counter */
         if((*count) == 1) {
             for(i=0; i<N; i++) {
-                rs[i] = 0.0;
-                for(j=0; j<d; j++) rs[i] += X[i][j];
+                rs_[i] = 0.0;
+                for(j=0; j<d; j++) rs_[i] += X[i][j];
             }
-            mrs_old = optim_fun(rs, N);
+            mrs_old = optim_fun(rs_, N);
         } else { mrs_old = mrs_new; } /* old min/max row sum */
 
         /* Go through all columns of X and oppositely order them w.r.t. to the sum of all others */
         for(j=0; j<d; j++) {
             /* Compute the row sum over all columns except jth */
             for(i=0; i<N; i++) {
-                rs[i] = 0.0;
-                for(l=0; l<d; l++) if(l!=j) rs[i] += Y[i][l];
+                rs_[i] = 0.0;
+                for(l=0; l<d; l++) if(l!=j) rs_[i] += Y[i][l];
             }
-            /* Oppositely order Y[,j] with respect to rs; so sort(Y[,j])[rev(rank(rs))] */
+            /* Oppositely order Y[,j] with respect to rs_; so sort(Y[,j])[rev(rank(rs_))] */
             for(i=0; i<N; i++) Y_j[i] = Y[i][j]; /* pick out jth column of Y */
-            R_orderVector(ind, N, rs, /* TODO: fix (how to convert rs to SEXP?) */
-			  TRUE, /* nalast (use same default as order()) */
+            R_orderVector(ind, N, rs, TRUE, /* nalast (use same default as order()) */
 			  TRUE); /* decreasing */
-	    /* => ind == rev(rank(rs)) */
+	    /* => ind == rev(rank(rs_)) */
 	    R_rsort(Y_j, N); /* R's sort() for real arguments */
 	    for(i=0; i<N; i++) Y[i][j] = Y_j[ind[i]];  /* update jth column of Y */
         }
 
         /* Check whether m_row_sums has space left */
         if((*count) >= m_row_sums_size) {
-	    m_row_sums_size += 64;
-            m_row_sums = realloc(m_row_sums, m_row_sums_size * sizeof(double));
+		m_row_sums = S_realloc(m_row_sums, m_row_sums_size,
+				       m_row_sums_size + 64,
+				       m_row_sums_size * sizeof(double));
+		m_row_sums_size += 64;
         }
 
         /* Compute and store minimal/maximal row sums */
 	for(i=0; i<N; i++) {
-            rs[i] = 0.0;
-            for(l=0; l<d; l++) rs[i] += Y[i][l];
+            rs_[i] = 0.0;
+            for(l=0; l<d; l++) rs_[i] += Y[i][l];
 	}
-        mrs_new = optim_fun(rs, N); /* compute new min/max row sum */
+        mrs_new = optim_fun(rs_, N); /* compute new min/max row sum */
         m_row_sums[(*count)-1] = mrs_new; /* append it to m_row_sums */
 
         /* Check convergence (we use "<= eps" as it entails eps=0) */
@@ -179,16 +178,13 @@ void RA_aux(double **X, int N, int d, const char *method, const char *err,
   	} else { memcpy(X, Y, N*d * sizeof(double)); } /* destination, source */
     }
 
-    /* clean-up (free memory) */
-    free(rs);
-    free(Y_j);
-    free(ind);
-    free(Y);
+    /* clean-up */
+    UNPROTECT(1); /* clean-up; number = # of PROTECT() calls */
 }
 
 /**
  * @title R Interface to C for Computing Steps 4 and 5 of the RA
- * @param X (N, d)-matrix (either \underline{X}^\alpha or \overline{X}^\alpha)
+ * @param X (N,d)-matrix (either \underline{X}^\alpha or \overline{X}^\alpha)
  * @param method character indicating which VaR is approximated (worst/best)
  *        ("worst" or "best")
  * @param err character string indicating the error function used
@@ -210,7 +206,7 @@ void RA_aux(double **X, int N, int d, const char *method, const char *err,
 SEXP RA_aux_(SEXP X, SEXP method, SEXP err, SEXP maxiter, SEXP eps)
 {
     /* Input parameters */
-    double **X_         = REAL(X); /* (N, d)-matrix; returns a pointer; TODO: fix (can we work with a matrix directly or do we always have to work with a vector and index it correctly?) */
+    double *X_          = REAL(X); /* (N,d)-matrix encoded as N*d vector; returns a pointer */
     const char *method_ = CHAR(STRING_ELT(method, 0)); /* character(1); CHAR() returns a pointer, has to be const */
     const char *err_    = CHAR(STRING_ELT(err, 0)); /* character(1) */
     int maxiter_        = asInteger(maxiter); /* numeric(1); convert double to integer */
@@ -220,34 +216,38 @@ SEXP RA_aux_(SEXP X, SEXP method, SEXP err, SEXP maxiter, SEXP eps)
     int d = dim[1]; /* ncol(X) */
 
     /* Define auxiliary variables */
-    int i;
+    int i, j;
     int m_row_sums_size = 64; /* keep track of the length of m_row_sums */
 
-    /* Allocate memory for output objects and construct pointers to them */
-    SEXP individual_err  = PROTECT(allocVector(REALSXP, 1)); /* numeric(1) */
-    SEXP m_row_sums      = PROTECT(allocVector(REALSXP, m_row_sums_size)); /* length 64 (expanded if required) */
-    SEXP num_opp_ordered = PROTECT(allocVector(INTSXP, 1)); /* integer(1) */
-    SEXP count           = PROTECT(allocVector(INTSXP, 1)); /* integer(1) */
-    SEXP bound           = PROTECT(allocVector(REALSXP, 1)); /* numeric(1) */
-    double *individual_err_ = REAL(individual_err); /* pointer to the value of individual_err */
-    double *m_row_sums_     = REAL(m_row_sums); /* pointer to the value of m_row_sums */
-    int *num_opp_ordered_   = INTEGER(num_opp_ordered); /* pointer to the value of num_opp_ordered */
-    int *count_             = INTEGER(count); /* pointer to the value of count */
-    double *bound_          = REAL(bound); /* pointer to the value of bound */
+    /* Allocate matrix and copy in X */
+    double **X__;
+    X__ = (double **) R_alloc(N, sizeof(double));
+    for(i=0; i<N; i++) X__[i] = (double *) R_alloc(d, sizeof(double));
+    for(i=0; i<N; i++) for(j=0; j<d; j++) X__[i][j] = X_[j + i*d];
+
+    /* Allocate memory for output objects and construct pointers to them
+       Kurt: - For scalars, use "double *foo;" and then "ScalarReal(*foo)" (= SEXP)
+             - For vectors, use "SEXP foo = PROTECT(allocVector(REALSXP, <size>))"
+               and then define a pointer to it via "double *foo_ = REAL(foo)" */
+    double *individual_err;
+    SEXP m_row_sums = PROTECT(allocVector(REALSXP, m_row_sums_size)); /* length 64 (expanded if required) */
+    double *m_row_sums_ = REAL(m_row_sums); /* pointer to the value of m_row_sums */
+    int *num_opp_ordered;
+    int *count;
 
     /* Main */
-    RA_aux(X_, N, d, method_, err_, maxiter_, (*eps_), /* inputs */
+    RA_aux(X__, N, d, method_, err_, maxiter_, (*eps_), /* inputs */
 	   m_row_sums_size, /* auxiliary */
-	   individual_err_, m_row_sums_, num_opp_ordered_, count_); /* outputs */
-    (*bound_) = (*m_row_sums_[(*count_)-1]); /* extract bound; TODO: fix (all I want to do is to "convert" the value m_row_sums_[(*count_)-1] to a SEXP) */
+	   individual_err, m_row_sums_, num_opp_ordered, count); /* outputs */
+    double bound = m_row_sums_[(*count)-1]; /* extract bound */
 
     /* Create result object */
     SEXP res = PROTECT(allocVector(VECSXP, 5)); /* list of length 5 */
-    SET_VECTOR_ELT(res, 0, bound); /* computed bound (min/max row sum); numeric(1) */
-    SET_VECTOR_ELT(res, 1, individual_err); /* individual error; numeric(1) */
+    SET_VECTOR_ELT(res, 0, ScalarReal(bound)); /* computed bound (min/max row sum); numeric(1) */
+    SET_VECTOR_ELT(res, 1, ScalarReal(*individual_err)); /* individual error; numeric(1) */
     SET_VECTOR_ELT(res, 2, m_row_sums); /* min/max row sums; numeric(<some length>) */
-    SET_VECTOR_ELT(res, 3, num_opp_ordered); /* number of oppositely ordered cols; integer(1) */
-    SET_VECTOR_ELT(res, 4, count); /* number of iterations; integer(1) */
+    SET_VECTOR_ELT(res, 3, ScalarInteger(*num_opp_ordered)); /* number of oppositely ordered cols; integer(1) */
+    SET_VECTOR_ELT(res, 4, ScalarInteger(*count)); /* number of iterations; integer(1) */
 
     /* Name sublists */
     char *names[5] = {"bound", "individual.err", "m.row.sums",
@@ -257,6 +257,6 @@ SEXP RA_aux_(SEXP X, SEXP method, SEXP err, SEXP maxiter, SEXP eps)
     setAttrib(res, R_NamesSymbol, nms);
 
     /* Return */
-    UNPROTECT(7); /* clean-up */
+    UNPROTECT(3); /* clean-up; number = # of PROTECT() calls */
     return res;
 }
