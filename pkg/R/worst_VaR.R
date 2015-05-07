@@ -328,7 +328,7 @@ RA_aux <- function(X, method, err, maxiter, eps, impl)
         if(is.null(eps)) eps <- -1 # for C code
         if(is.infinite(maxiter)) maxiter <- -1 # for C code
         RA_aux_ <- NULL # to avoid "RA_aux: no visible binding for global variable 'RA_aux_'"
-        .Call(RA_aux_, X, method, err, maxiter, eps)
+        .Call("RA_aux_", X, method, err, maxiter, eps)
     } else { # R implementation
           ## Define helper functions
           optim.fun <- if(method=="worst") min else max

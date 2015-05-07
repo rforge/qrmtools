@@ -4,6 +4,36 @@
 
 
 /**
+ * @title Minimum
+ * @param x vector x
+ * @param n length of x
+ * @return min(x)
+ * @author Marius Hofert
+ */
+double min(double *x, int n)
+{
+	int i;
+	double res = x[0];
+	for(i=1; i<n; i++) if(x[i] < res) res = x[i];
+	return res;
+}
+
+/**
+ * @title Maximum
+ * @param x vector x
+ * @param n length of x
+ * @return max(x)
+ * @author Marius Hofert
+ */
+double max(double *x, int n)
+{
+	int i;
+	double res = x[0];
+	for(i=1; i<n; i++) if(x[i] > res) res = x[i];
+	return res;
+}
+
+/**
  * @title Number of Columns of an (N,d)-Matrix which are Oppositely
  *        Ordered to the Sum of All Other Columns
  * @param X (N,d)-matrix
@@ -70,53 +100,38 @@ void RA_aux(double **X, int N, int d, const char *method, const char *err,
 {
     /* Running variables */
     int i, j, l;
-    /* Define auxiliary functions (declare before due to 'conditional definition' */
-    double optim_fun(double *x, int n); /* declaration */
-    double err_fun(double x, double y); /* declaration */
-    if(strcmp(method, "worst") == 0) { /* optim_fun = min */
-        double optim_fun(double *x, int n) {
-            double min = x[0];
-	    for(i=1; i<n; i++) if(x[i] < min) min = x[i];
-	    return min;
-	}
-    } else { /* optim_fun = max */
-        double optim_fun(double *x, int n) {
-            double max = x[0];
-	    for(i=1; i<n; i++) if(x[i] > max) max = x[i];
-	    return max;
-	}
-    }
-    if(strcmp(err, "absolute") == 0) {
-        double err_fun(double x, double y) { abs(x-y); }
-    } else {
-        double err_fun(double x, double y) { abs((x-y)/y); }
-    }
 
     /* Allocate memory */
-    double mrs_old, mrs_new;
-    double *Y_j;
-    int *ind;
+    int cnt;
+    double mrs_old, mrs_new, ierr;
     SEXP rs = PROTECT(allocVector(REALSXP, N)); /* vector of row sums; needs to be SEXP for R_orderVector() */
     double *rs_ = REAL(rs); /* pointer to the value of rs */
-    Y_j      = (double *) R_alloc(N, sizeof(double)); /* Y[,j] */
-    ind      = (int *)    R_alloc(N, sizeof(int)); /* for order (permutation of 0:(N-1)) computed by R_orderVector() */
+    double *Y_j;
+    Y_j = (double *) R_alloc(N, sizeof(double)); /* Y[,j] */
+    int *ind; /* for order (permutation of 0:(N-1)) computed by R_orderVector() */
+    ind = (int *) R_alloc(N, sizeof(int));
     double **Y; /* matrix; for new iteration of oppositely ordering */
-    Y        = (double **) R_alloc(N, sizeof(double));
+    Y = (double **) R_alloc(N, sizeof(double));
     for(i=0; i<N; i++) Y[i] = (double *) R_alloc(d, sizeof(double));
     Rboolean stp, change;
 
     /* Loop */
-    *count = 0;
+    cnt = 0;
     for(;;) {
 
-        /* Counter related quantities */
-	(*count)++; /* increase counter */
-        if((*count) == 1) {
+	/* Counter related quantities */
+        cnt++; /* increase counter */
+        if(cnt == 1) {
             for(i=0; i<N; i++) {
                 rs_[i] = 0.0;
                 for(j=0; j<d; j++) rs_[i] += X[i][j];
             }
-            mrs_old = optim_fun(rs_, N);
+	    /* compute min/max row sum */
+	    if(strcmp(method, "worst") == 0) {
+		    mrs_old = min(rs_, N);
+	    } else {
+		    mrs_old = max(rs_, N);
+	    }
         } else { mrs_old = mrs_new; } /* old min/max row sum */
 
         /* Go through all columns of X and oppositely order them w.r.t. to the sum of all others */
@@ -128,31 +143,40 @@ void RA_aux(double **X, int N, int d, const char *method, const char *err,
             }
             /* Oppositely order Y[,j] with respect to rs_; so sort(Y[,j])[rev(rank(rs_))] */
             for(i=0; i<N; i++) Y_j[i] = Y[i][j]; /* pick out jth column of Y */
+	    printf("Hello 0\n");
             R_orderVector(ind, N, rs, TRUE, /* nalast (use same default as order()) */
 			  TRUE); /* decreasing */
 	    /* => ind == rev(rank(rs_)) */
+	    printf("Hello 1\n");
 	    R_rsort(Y_j, N); /* R's sort() for real arguments */
+	    printf("Hello 2\n");
 	    for(i=0; i<N; i++) Y[i][j] = Y_j[ind[i]];  /* update jth column of Y */
         }
-
+	    printf("Hello 3\n");
         /* Check whether m_row_sums has space left */
-        if((*count) >= m_row_sums_size) {
+        if(cnt >= m_row_sums_size) {
 		m_row_sums = S_realloc(m_row_sums, m_row_sums_size,
 				       m_row_sums_size + 64,
 				       m_row_sums_size * sizeof(double));
 		m_row_sums_size += 64;
         }
-
+	    printf("Hello 4\n");
         /* Compute and store minimal/maximal row sums */
 	for(i=0; i<N; i++) {
             rs_[i] = 0.0;
             for(l=0; l<d; l++) rs_[i] += Y[i][l];
 	}
-        mrs_new = optim_fun(rs_, N); /* compute new min/max row sum */
-        m_row_sums[(*count)-1] = mrs_new; /* append it to m_row_sums */
-
+	/* compute new min/max row sum */
+        if(strcmp(method, "worst") == 0) {
+		mrs_new = min(rs_, N);
+	} else {
+		mrs_new = max(rs_, N);
+	}
+	/* append it to m_row_sums */
+        m_row_sums[cnt-1] = mrs_new;
+	    printf("Hello 5\n");
         /* Check convergence (we use "<= eps" as it entails eps=0) */
-        if(*count == maxiter) stp = TRUE; else { /* check number of iterations */
+        if(cnt == maxiter) stp = TRUE; else { /* check number of iterations */
             if(eps < 0) { /* check whether there was no change in the matrix */
                 change = FALSE;
                 for(i=0; i<N; i++) {
@@ -165,15 +189,23 @@ void RA_aux(double **X, int N, int d, const char *method, const char *err,
                 }
                 end:
                 if(change) { stp = FALSE; } else { stp = TRUE; }
-             }  else { /* check convergence criterion */
-	         if(err_fun(mrs_new, mrs_old) <= eps) { stp = TRUE; } else { stp = FALSE; }
-             }
+             }  else { /* check individual convergence criterion */
+		    if(strcmp(err, "absolute") == 0) {
+			    ierr = abs(mrs_new - mrs_old);
+		    } else {
+			    ierr = abs((mrs_new - mrs_old) / mrs_old);
+		    }
+		    if(ierr <= eps) { stp = TRUE; } else { stp = FALSE; }
+	    }
         }
+		    printf("Hello 6\n");
         if(stp) {
+	    /* Set counter */
+	    (*count) = cnt;
             /* Count number of oppositely ordered columns */
 	    (*num_opp_ordered) = num_opp_order_cols(Y, N, d);
-            /* Compute the (individual) error */
-            (*individual_err) = err_fun(mrs_new, mrs_old);
+            /* Compute/set individual error */
+	    (*individual_err) = ierr;
 	    break;
   	} else { memcpy(X, Y, N*d * sizeof(double)); } /* destination, source */
     }
