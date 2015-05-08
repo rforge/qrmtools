@@ -253,7 +253,6 @@ ARA1 <- ARA(alpha, d=d, qF=qF)
 (worst.VaR.ARA <- ARA1$bounds)
 
 ## Using additional output of RA()
-set.seed(271)
 ran <- range(RA2$m.row.sums)
 plot(RA2$m.row.sums[[2]], type="b", ylim=ran, xlab="Iteration",
      ylab=paste0("Minimal row sum (# of oppositely ordered columns: lower=",

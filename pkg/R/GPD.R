@@ -85,6 +85,8 @@ rGPD <- function(n, xi, beta)
 
 ## Note: - hard-coded here to be vectorized in the main argument and theta
 ##       - F(x) = 1-(1+x)^{-theta}
+##       - E[X] = 1/(theta-1) for all theta > 1
+##       - Var[X] = 2/((theta-2)(theta-1)^2) for all theta > 2
 
 ##' @title Density of the Par(theta) distribution
 ##' @param x evaluation points

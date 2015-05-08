@@ -343,7 +343,7 @@ RA_aux <- function(X, method, err, maxiter, eps, impl)
               ## Oppositely order X (=> Y)
               Y <- X
               for(j in 1:d)
-                  Y[,j] <- sort(Y[,j])[rev(rank(rowSums(Y[,-j])))]
+                  Y[,j] <- sort(Y[,j], decreasing=TRUE)[rank(rowSums(Y[,-j]))]
               ## Compute minimal/maximal row sums
               mrs.new <- optim.fun(rowSums(Y)) # new min/max row sum
               m.row.sums <- c(m.row.sums, mrs.new) # append min/max row sum
@@ -352,7 +352,7 @@ RA_aux <- function(X, method, err, maxiter, eps, impl)
               err.fun(mrs.new, mrs.old) <= eps
               if(stp) {
                   num.opp.ordered <- sum(sapply(seq_len(d), function(j)
-                      all(sort(Y[,j])[rev(rank(rowSums(Y[,-j])))] == Y[,j]))) # count number of oppositely ordered columns
+                      all(sort(Y[,j], decreasing=TRUE)[rank(rowSums(Y[,-j]))] == Y[,j]))) # count number of oppositely ordered columns
                   individual.err <- err.fun(mrs.new, mrs.old) # compute the (individual) error
                   break
               } else X <- Y
