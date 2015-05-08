@@ -68,7 +68,7 @@ rPar(n, theta)
    Princeton University Press.
 }
 \examples{
-## basic sanity checks
+## Basic sanity checks
 plot(pGPD(rGPD(1000, xi=0.5, beta=3), xi=0.5, beta=3)) # should be U[0,1]
 curve(dGPD(x, xi=0.5, beta=3), from=-1, to=5)
 }

@@ -71,11 +71,11 @@ qGPD <- function(p, xi, beta, lower.tail=TRUE, log.p=FALSE)
     }
 }
 
-##' @title Generating random numbers from a GPD(xi, beta) distribution
+##' @title Generating random variates from a GPD(xi, beta) distribution
 ##' @param n sample size n
 ##' @param xi parameter xi
 ##' @param beta parameter beta
-##' @return n-vector containing GPD(xi, beta) random numbers
+##' @return n-vector containing GPD(xi, beta) random variates
 ##' @author Marius Hofert
 rGPD <- function(n, xi, beta)
     qGPD(runif(n), xi=xi, beta=beta)
@@ -121,10 +121,10 @@ qPar <- function(p, theta, lower.tail=TRUE, log.p=FALSE)
         if(log.p) (-expm1(p))^(-1/theta)-1 else (1-p)^(-1/theta)-1
     } else if(log.p) expm1(-p/theta) else p^(-1/theta)-1
 
-##' @title Generating random numbers from a Pareto(theta) distribution
+##' @title Generating random variates from a Pareto(theta) distribution
 ##' @param n sample size n
 ##' @param theta parameter theta
-##' @return n-vector containing Pareto(theta) random numbers
+##' @return n-vector containing Pareto(theta) random variates
 ##' @author Marius Hofert
 rPar <- function(n, theta) qPar(runif(n), theta=theta)
 

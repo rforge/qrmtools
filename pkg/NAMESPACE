@@ -9,10 +9,11 @@ importFrom("xts")
 ### Exports ####################################################################
 
 export(## distributions
-       "dGPD", "pGPD", "qGPD", "rGPD",
-       "dPar", "pPar", "qPar", "rPar",
-       ## device
-       "dev.off.pdf",
-       ## worst VaR
-       "worst_VaR_hom", "dual_bound", "crude_VaR_bounds", "RA", "ARA")
+    "dGEV", "pGEV", "qGEV", "rGEV",
+    "dGPD", "pGPD", "qGPD", "rGPD",
+    "dPar", "pPar", "qPar", "rPar",
+    ## device
+    "dev.off.pdf",
+    ## worst VaR
+    "worst_VaR_hom", "dual_bound", "crude_VaR_bounds", "RA", "ARA")
 
