@@ -325,6 +325,7 @@ RA_aux <- function(X, method, err, maxiter, eps, impl)
 {
     d <- ncol(X)
     if(impl=="C") {
+        stop("Still in the works... Not available yet.") # TODO
         if(is.null(eps)) eps <- -1 # for C code
         if(is.infinite(maxiter)) maxiter <- -1 # for C code
         RA_aux_ <- NULL # to avoid "RA_aux: no visible binding for global variable 'RA_aux_'"
@@ -390,7 +391,7 @@ RA_aux <- function(X, method, err, maxiter, eps, impl)
 ##' @note Notation is from p. 2757 in Embrechts, Puccetti, Rueschendorf (2013);
 ##'       variables are named according to the 'worst' VaR case.
 RA <- function(alpha, d, qF, N, abs.err=NULL, maxiter=Inf,
-               method=c("worst", "best"), sample=TRUE, impl=c("C", "R"))
+               method=c("worst", "best"), sample=TRUE, impl=c("R", "C"))
 {
     ## Checks and Step 1 (get N, abs.err)
     stopifnot(0 < alpha, alpha < 1, is.null(abs.err) || abs.err >= 0,
@@ -483,7 +484,7 @@ RA <- function(alpha, d, qF, N, abs.err=NULL, maxiter=Inf,
 ##' @author Marius Hofert
 ARA <- function(alpha, d, qF, N=2^seq(8, 20, by=1), rel.err=c(0.001, 0.01),
                 maxiter=10, method=c("worst", "best"), sample=TRUE,
-                impl=c("C", "R"))
+                impl=c("R", "C"))
 {
     ## Checks and Step 1 (get N, rel.err)
     stopifnot(0 < alpha, alpha < 1, length(rel.err) == 2,

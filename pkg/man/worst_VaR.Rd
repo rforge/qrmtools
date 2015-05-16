@@ -15,9 +15,9 @@ worst_VaR_hom(alpha, d, method=c("Wang", "Wang.Par", "dual"),
               interval=NULL, tol=NULL, ...)
 dual_bound(s, d, pF, ...)
 RA(alpha, d, qF, N, abs.err=NULL, maxiter=Inf, method=c("worst", "best"),
-   sample=TRUE, impl=c("C", "R"))
+   sample=TRUE, impl=c("R", "C"))
 ARA(alpha, d, qF, N=2^seq(8, 20, by=1), rel.err=c(0.001, 0.01), maxiter=10,
-    method=c("worst", "best"), sample=TRUE, impl=c("C", "R"))
+    method=c("worst", "best"), sample=TRUE, impl=c("R", "C"))
 }
 \arguments{
   \item{alpha}{Value-at-Risk confidence level (e.g., 0.99).}

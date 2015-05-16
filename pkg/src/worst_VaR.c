@@ -141,26 +141,21 @@ void RA_aux(double **X, int N, int d, const char *method, const char *err,
                 rs_[i] = 0.0;
                 for(l=0; l<d; l++) if(l!=j) rs_[i] += Y[i][l];
             }
-            /* Oppositely order Y[,j] with respect to rs_; so sort(Y[,j])[rev(rank(rs_))] */
+            /* Oppositely order Y[,j] with respect to rs_ */
             for(i=0; i<N; i++) Y_j[i] = Y[i][j]; /* pick out jth column of Y */
-	    printf("Hello 0\n");
             R_orderVector(ind, N, rs, TRUE, /* nalast (use same default as order()) */
 			  TRUE); /* decreasing */
-	    /* => ind == rev(rank(rs_)) */
-	    printf("Hello 1\n");
 	    R_rsort(Y_j, N); /* R's sort() for real arguments */
-	    printf("Hello 2\n");
 	    for(i=0; i<N; i++) Y[i][j] = Y_j[ind[i]];  /* update jth column of Y */
         }
-	    printf("Hello 3\n");
         /* Check whether m_row_sums has space left */
         if(cnt >= m_row_sums_size) {
-		m_row_sums = S_realloc(m_row_sums, m_row_sums_size,
-				       m_row_sums_size + 64,
+		m_row_sums = S_realloc(m_row_sums,
+				       m_row_sums_size + 64, /* new size */
+				       m_row_sums_size, /* old size */
 				       m_row_sums_size * sizeof(double));
 		m_row_sums_size += 64;
         }
-	    printf("Hello 4\n");
         /* Compute and store minimal/maximal row sums */
 	for(i=0; i<N; i++) {
             rs_[i] = 0.0;
@@ -174,7 +169,6 @@ void RA_aux(double **X, int N, int d, const char *method, const char *err,
 	}
 	/* append it to m_row_sums */
         m_row_sums[cnt-1] = mrs_new;
-	    printf("Hello 5\n");
         /* Check convergence (we use "<= eps" as it entails eps=0) */
         if(cnt == maxiter) stp = TRUE; else { /* check number of iterations */
             if(eps < 0) { /* check whether there was no change in the matrix */
@@ -191,14 +185,13 @@ void RA_aux(double **X, int N, int d, const char *method, const char *err,
                 if(change) { stp = FALSE; } else { stp = TRUE; }
              }  else { /* check individual convergence criterion */
 		    if(strcmp(err, "absolute") == 0) {
-			    ierr = abs(mrs_new - mrs_old);
+			    ierr = fabs(mrs_new - mrs_old);
 		    } else {
-			    ierr = abs((mrs_new - mrs_old) / mrs_old);
+			    ierr = fabs((mrs_new - mrs_old) / mrs_old);
 		    }
 		    if(ierr <= eps) { stp = TRUE; } else { stp = FALSE; }
 	    }
         }
-		    printf("Hello 6\n");
         if(stp) {
 	    /* Set counter */
 	    (*count) = cnt;
