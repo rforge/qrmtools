@@ -1,3 +1,2 @@
-- Note: Kurt's suggestion on 2015-02-02: ignore note "Namespace with empty
-  importFrom: ‘xts’"
+- Deal with Note "Namespace with empty importFrom: ‘xts’"
 - get C code for worst VaR to run
