@@ -2,10 +2,10 @@ Package: qrmtools
 Version: 0.0-1
 Encoding: UTF-8
 Title: Tools for Quantitative Risk Management
-Description: Functions and data sets for reproducing selected results from "Quantitative Risk
-  Management: Concepts, Techniques and Tools" from A.J. McNeil, R. Frey and
-  P. Embrechts. New developments and auxiliary functions for Quantitative Risk
-  Manangement practice.
+Description: Functions and data sets for reproducing selected results from
+  the book "Quantitative Risk Management: Concepts, Techniques and Tools".
+  Furthermore, new developments and auxiliary functions for Quantitative
+  Risk Management practice.
 Authors@R: c(person(given = "Marius", family = "Hofert", role = c("aut", "cre"),
                     email = "marius.hofert@uwaterloo.ca"),
              person(given = "Kurt", family = "Hornik", role = "aut",
