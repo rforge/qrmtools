@@ -321,7 +321,7 @@ worst_VaR_hom <- function(alpha, d, method=c("Wang", "Wang.Par", "dual"),
 ##'         this then also nicely works with "= 0" (if abs.err=0) which stops in
 ##'         case the matrices are identical (no change at all).
 ##'       - No checking here due to speed
-RA_aux <- function(X, method, err, maxiter, eps, impl)
+RA_aux <- function(X, method=c("worst", "best"), err, maxiter, eps, impl)
 {
     d <- ncol(X)
     if(impl=="C") {

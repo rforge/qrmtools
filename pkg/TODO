@@ -1,3 +1,13 @@
 - Deal with Note "Namespace with empty importFrom: ‘xts’"
   => currently solved it using import("xts"); better solution?
-- get C code for worst VaR to run
+- get C code for worst VaR to run:
+> ## "Reproducing" an example from Embrechts, Puccetti, Rueschendorf (2013)
+> ## (seed unknown, eps unknown)
+> set.seed(271)
+> (RA3 <- RA(alpha, d=3, qF=qF, N=50))
+Error in RA_aux(X, method = method, err = "absolute", maxiter = maxiter,  :
+  unimplemented type (26) in 'listgreater'
+Calls: RA -> RA_aux -> .Call
+Execution halted
+* checking PDF version of manual ... OK
+* DONE

@@ -46,7 +46,7 @@ ARA(alpha, d, qF, N=2^seq(8, 20, by=1), rel.err=c(0.001, 0.01), maxiter=10,
     sufficiently large in order for the the inner root-finding algorithm
     to find a root; see Details.}
   \item{tol}{Tolerance for the involved root-finding algorithm (passed
-    to \code{\link{uniroot}()}; defaults to \code{2.2204e–16}).
+    to \code{\link{uniroot}()}; defaults to \eqn{2.2204*10^{-16}}{2.2204*10^{-16}}).
     For \code{method="dual"}, \code{tol} is
     used for the outer root-finding algorithm only (defaults to
     \code{.Machine$double.eps^0.25} as \code{\link{uniroot}()}).}
@@ -184,8 +184,8 @@ ARA(alpha, d, qF, N=2^seq(8, 20, by=1), rel.err=c(0.001, 0.01), maxiter=10,
   (for the worst Value-at-Risk) or maximal (for the best
   Value-at-Risk) row sums after an iteration did not change by more than
   (the absolute error) \code{abs.err} (so \eqn{\le\epsilon}{<= eps}). This
-  is slightly different from Embrechts, Puccetti, \
-  enc{Rüschendorf}{Rueschendorf} (2013) who use \eqn{<\epsilon}{< eps}
+  is slightly different from Embrechts, Puccetti,
+  \enc{Rüschendorf}{Rueschendorf} (2013) who use \eqn{<\epsilon}{< eps}
   but this slight modification has the advantage of allowing
   \eqn{\epsilon=0}{eps=0}. For the Adaptive Rearrangement
   Algorithm \code{ARA()}, again unless \code{maxiter}-many iterations

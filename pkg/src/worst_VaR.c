@@ -75,7 +75,7 @@ int num_opp_order_cols(double **X, int N, int d)
 
 /**
  * @title Auxiliary Function for Computing Steps 4 and 5 of the RA
- * @param X (N,d)-matrix (either \underline{X}^\alpha or \overline{X}^\alpha)
+ * @param X (N, d)-matrix (either \underline{X}^\alpha or \overline{X}^\alpha)
  * @param N nrow(X)
  * @param d ncol(X)
  * @param method character indicating which VaR is approximated (worst/best)
