@@ -344,7 +344,7 @@ RA_aux <- function(X, method=c("worst", "best"), err, maxiter, eps, impl)
               ## Oppositely order X (=> Y)
               Y <- X
               for(j in 1:d)
-                  Y[,j] <- sort(Y[,j], decreasing=TRUE)[rank(rowSums(Y[,-j]))]
+                  Y[,j] <- sort(Y[,j], decreasing=TRUE)[rank(rowSums(Y[,-j, drop=FALSE]))]
               ## Compute minimal/maximal row sums
               mrs.new <- optim.fun(rowSums(Y)) # new min/max row sum
               m.row.sums <- c(m.row.sums, mrs.new) # append min/max row sum
@@ -353,7 +353,7 @@ RA_aux <- function(X, method=c("worst", "best"), err, maxiter, eps, impl)
               err.fun(mrs.new, mrs.old) <= eps
               if(stp) {
                   num.opp.ordered <- sum(sapply(seq_len(d), function(j)
-                      all(sort(Y[,j], decreasing=TRUE)[rank(rowSums(Y[,-j]))] == Y[,j]))) # count number of oppositely ordered columns
+                      all(sort(Y[,j], decreasing=TRUE)[rank(rowSums(Y[,-j, drop=FALSE]))] == Y[,j]))) # count number of oppositely ordered columns
                   individual.err <- err.fun(mrs.new, mrs.old) # compute the (individual) error
                   break
               } else X <- Y
@@ -398,10 +398,11 @@ RA <- function(alpha, d, qF, N, abs.err=NULL, maxiter=Inf,
               length(N) >= 1, N >= 2, maxiter >= 1, is.logical(sample))
     method <- match.arg(method)
     impl <- match.arg(impl)
+    ## Checking of d, qF
     if(missing(d))
         stopifnot(is.list(qF), sapply(qF, is.function), (d <- length(qF)) >= 2)
     else { # extend the given quantile function to a list of functions
-        stopifnot(is.function(qF))
+        stopifnot(d >= 2, is.function(qF))
         qF <- rep(list(qF), d)
     }
 
@@ -492,10 +493,11 @@ ARA <- function(alpha, d, qF, N=2^seq(8, 20, by=1), rel.err=c(0.001, 0.01),
               length(N) >= 1, N >= 2, maxiter >= 1, is.logical(sample))
     method <- match.arg(method)
     impl <- match.arg(impl)
+    ## Checking of d, qF
     if(missing(d))
         stopifnot(is.list(qF), sapply(qF, is.function), (d <- length(qF)) >= 2)
     else { # extend the given quantile function to a list of functions
-        stopifnot(is.function(qF))
+        stopifnot(d >= 2, is.function(qF))
         qF <- rep(list(qF), d)
     }
 

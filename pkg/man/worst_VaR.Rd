@@ -21,7 +21,7 @@ ARA(alpha, d, qF, N=2^seq(8, 20, by=1), rel.err=c(0.001, 0.01), maxiter=10,
 }
 \arguments{
   \item{alpha}{Value-at-Risk confidence level (e.g., 0.99).}
-  \item{d}{Dimension (number of risk factors).}
+  \item{d}{Dimension (number of risk factors; \eqn{\ge 2}{>=2}).}
   \item{qF}{The marginal quantile function in the homogeneous case or,
     for \code{crude_VaR_bounds()} and \code{RA()}, a list (of length
     \code{d}) with the marginal quantile functions.}
@@ -222,16 +222,20 @@ ARA(alpha, d, qF, N=2^seq(8, 20, by=1), rel.err=c(0.001, 0.01), maxiter=10,
   the worst (i.e., largest) Value-at-Risk.
 }
 \examples{
-## Setup
+## Pareto setup
 alpha <- 0.99 # VaR confidence level
 th <- 2 # Pareto parameter
 qF <- function(p) qPar(p, theta=th) # Pareto quantile function
 pF <- function(q) pPar(q, theta=th) # Pareto distribution function
 
-## d=2: Compute worst VaR ('method' is ignored)
-stopifnot(all.equal(worst_VaR_hom(alpha, d=2, qF=qF), 26.28427, tolerance=1e-7))
+## d=2: Compute worst VaR explicitly (homogeneous case, 'method' is ignored)
+resW <- worst_VaR_hom(alpha, d=2, qF=qF) # explicit formula (Wang's approach)
+set.seed(271) # set seed (for reproducibility)
+resARA <- ARA(alpha, d=2, qF=qF) # Adaptive Rearrangement Algorithm (ARA)
+resRA <- RA(alpha, d=2, qF=qF, N=256, abs.err=0) # RA with N and abs.err chosen to match ARA
+stopifnot(all.equal(resW, resARA$bounds[2], resRA$bounds[2], tolerance=0.005)) # even below joint error=0.01
 
-## d=8: Compare the various methods in the homogeneous case (equal margins)
+## d=8: Compare the various methods (homogeneous case)
 d <- 8 # dimension
 I <- crude_VaR_bounds(alpha, d=d, qF=qF) # crude bound
 ## or: I <- crude_VaR_bounds(alpha, d=d, qF=qPar, theta=th)
@@ -240,44 +244,46 @@ I <- crude_VaR_bounds(alpha, d=d, qF=qF) # crude bound
 (worst.VaR.dual     <- worst_VaR_hom(alpha, d=d, method="dual", interval=I, pF=pF))
 stopifnot(all.equal(c(worst.VaR.Wang, worst.VaR.Wang.Par), rep(worst.VaR.dual, 2),
                     tolerance=1e-6))
-## Compare with the Rearrangement Algorithm
-set.seed(271) # for (the sampling) Step 3 in the Rearrangement Algorithm
-RA1 <- RA(alpha, d=d, qF=qF, abs.err=0.01, N=1000)
-(worst.VaR.RA <- RA1$bounds)
+## Compare with ARA (with defaults)
 set.seed(271)
-RA2 <- RA(alpha, d=d, qF=qF, N=1000)
-(worst.VaR.RA <- RA2$bounds)
-## Adaptive Rearrangement Algorithm (with defaults)
-set.seed(271)
-ARA1 <- ARA(alpha, d=d, qF=qF)
-(worst.VaR.ARA <- ARA1$bounds)
+resARA <- ARA(alpha, d=d, qF=qF)
+resARA$bounds
+## Compare with RA
+## 1) Choose N and abs.err chosen to match ARA results
+abs.err <- tail(abs(diff(resARA$m.row.sums[[2]])), n=1) # absolute error for RA
+resRA1 <- RA(alpha, d=d, qF=qF, N=512, abs.err=abs.err)
+resRA1$bounds
+## 2) Iterate until each column is opp. ordered to the sum of all others
+resRA. <- RA(alpha, d=d, qF=qF, N=512) # abs.err=NULL
+resRA.$bounds
 
 ## Using additional output of RA()
-ran <- range(RA2$m.row.sums)
-plot(RA2$m.row.sums[[2]], type="b", ylim=ran, xlab="Iteration",
+ran <- range(resRA.$m.row.sums)
+plot(resRA.$m.row.sums[[2]], type="b", ylim=ran, xlab="Iteration",
      ylab=paste0("Minimal row sum (# of oppositely ordered columns: lower=",
-     RA2$num.opp.ordered[1],", upper=",
-     RA2$num.opp.ordered[2],")"),
+     resRA.$num.opp.ordered[1],", upper=",
+     resRA.$num.opp.ordered[2],")"),
      main=substitute("Rearrangement Algorithm for"~alpha==a.*","~d==d.*" and Par("*
                      th.*")", list(a.=alpha, d.=d, th.=th)))
-lines(1:length(RA2$m.row.sums[[1]]), RA2$m.row.sums[[1]], type="b",
+lines(1:length(resRA.$m.row.sums[[1]]), resRA.$m.row.sums[[1]], type="b",
       col="blue")
 legend("bottomright", inset=0.02, y.intersp=1.2, bty="n", lty=rep(1,2),
        col=c("black", "blue"), legend=c("upper bound", "lower bound"))
+## => One should use ARA() instead of RA()
 
 ## "Reproducing" an example from Embrechts, Puccetti, Rueschendorf (2013)
 ## (seed unknown, eps unknown)
 set.seed(271)
-(RA3 <- RA(alpha, d=3, qF=qF, N=50))
-stopifnot(all.equal(RA3$bounds[1], 45.11593, tolerance=1e-7),
-          all.equal(RA3$bounds[2], 46.40413, tolerance=1e-7),
-          RA3$num.opp.ordered == c(3,3))
+(resRA <- RA(alpha, d=3, qF=qF, N=50))
+stopifnot(all.equal(resRA$bounds[1], 45.11593, tolerance=1e-7),
+          all.equal(resRA$bounds[2], 46.40413, tolerance=1e-7),
+          resRA$num.opp.ordered == c(3,3))
 
 ## An example from Embrechts, Puccetti, Rueschendorf (2013) with larger N
 ## (first two decimals are equal)
 if(FALSE) {
-    RA4 <- RA(alpha, d=3, qF=qF, N=1e5) # ~ 15s
-    stopifnot(all.equal(RA4$bounds, rep(45.98, 2), tolerance=3e-4))
+    resRA <- RA(alpha, d=3, qF=qF, N=1e5) # ~ 15s
+    stopifnot(all.equal(resRA$bounds, rep(45.98, 2), tolerance=3e-4))
 }
 }
 \keyword{distribution}
