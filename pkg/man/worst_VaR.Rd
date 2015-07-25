@@ -2,6 +2,7 @@
 \alias{crude_VaR_bounds}
 \alias{worst_VaR_hom}
 \alias{dual_bound}
+\alias{rearrange}
 \alias{RA}
 \alias{ARA}
 \title{Worst Value-at-Risk for Given Margins}
@@ -14,6 +15,9 @@ crude_VaR_bounds(alpha, d, qF, ...)
 worst_VaR_hom(alpha, d, method=c("Wang", "Wang.Par", "dual"),
               interval=NULL, tol=NULL, ...)
 dual_bound(s, d, pF, ...)
+
+rearrange(X, eps, err.type=c("relative", "absolute"), maxiter=Inf,
+          method=c("worst", "best"), impl=c("R", "C"))
 RA(alpha, d, qF, N, abs.err=NULL, maxiter=Inf, method=c("worst", "best"),
    sample=TRUE, impl=c("R", "C"))
 ARA(alpha, d, qF, N=2^seq(8, 20, by=1), rel.err=c(0.001, 0.01), maxiter=10,
@@ -25,7 +29,7 @@ ARA(alpha, d, qF, N=2^seq(8, 20, by=1), rel.err=c(0.001, 0.01), maxiter=10,
   \item{qF}{The marginal quantile function in the homogeneous case or,
     for \code{crude_VaR_bounds()} and \code{RA()}, a list (of length
     \code{d}) with the marginal quantile functions.}
-  \item{method}{A \code{\link{character}}. For
+  \item{method}{A \code{\link{character}} string. For
     \describe{
       \item{\code{worst_VaR_hom()}:}{\code{method="Wang"}
 	and \code{method="Wang.Par"} apply the approach of Embrechts,
@@ -34,7 +38,8 @@ ARA(alpha, d, qF, N=2^seq(8, 20, by=1), rel.err=c(0.001, 0.01), maxiter=10,
 	not require numerical integration. \code{method="dual"} applies the
 	dual bound approach as in Embrechts, Puccetti,
 	\enc{Rüschendorf}{Rueschendorf} (2013, Proposition 4).}
-      \item{\code{RA()}, \code{ARA()}:}{\code{method} indicates whether bounds
+      \item{\code{rearrange()}, \code{RA()},
+        \code{ARA()}:}{\code{method} indicates whether bounds
 	for the worst (i.e., largest) or the best (i.e., smallest)
 	Value-at-Risk are computed.}
   }}
@@ -52,6 +57,18 @@ ARA(alpha, d, qF, N=2^seq(8, 20, by=1), rel.err=c(0.001, 0.01), maxiter=10,
     \code{.Machine$double.eps^0.25} as \code{\link{uniroot}()}).}
   \item{s}{Dual bound evaluation point.}
   \item{pF}{The marginal loss distribution function.}
+  \item{X}{An (\code{N}, \code{d})-matrix containing
+    \eqn{N}-discretizations of the \eqn{d} quantiles to be rearranged.}
+  \item{eps}{Error to determine the (individual) convergence; if
+    \code{NULL}, the iteration is done until the matrix does not
+    change anymore.}
+  \item{err.type}{\code{\link{character}} string indicating the
+    error function to be used (\code{"relative"} for relative error and
+    \code{"absolute"} for absolute error).}
+  \item{maxiter}{Maximal number of iterations over the columns of the
+    underlying matrix of quantiles (can be set to \code{Inf}).}
+  \item{impl}{\code{\link{character}} string providing the type of
+    implementation used (C vs R).}
   \item{N}{Number of discretization points. For
     \describe{
       \item{\code{RA()}:}{A positive integer.}
@@ -78,14 +95,10 @@ ARA(alpha, d, qF, N=2^seq(8, 20, by=1), rel.err=c(0.001, 0.01), maxiter=10,
     between the computed lower and upper bound computed with respect
     to the upper bound). Note that \code{rel.err[1]} is allowed to be
     \code{NULL}; see \code{abs.err} above for how to interpret this case.}
-  \item{maxiter}{maximal number of iterations over the columns of the
-    underlying matrix of quantiles (can be set to \code{Inf}).}
   \item{sample}{\code{\link{logical}} indicating whether each column of
     the two internal matrices of quantiles (see Step 3 of the Rearrangement
     Algorithm in Embrechts, Puccetti, \enc{Rüschendorf}{Rueschendorf} (2013))
     are sampled before the iteration begins.}
-  \item{impl}{\code{\link{character}} providing the type of
-    implementation used (C vs R).}
   \item{\dots}{For
     \describe{
       \item{\code{worst_VaR_hom()}:}{For \code{d=2} or
@@ -116,25 +129,57 @@ ARA(alpha, d, qF, N=2^seq(8, 20, by=1), rel.err=c(0.001, 0.01), maxiter=10,
   given in Embrechts, Puccetti, \enc{Rüschendorf}{Rueschendorf}
   (2013, Eq. (12)).
 
+  \code{rearrange()} returns a \code{\link{list}} containing
+  \describe{
+    \item{\code{bound}:}{The computed (lower
+      or upper) bound for (worst or best) Value-at-Risk.}
+    \item{\code{err}:}{The error (i.e., the (absolute or
+      relative) change of the minimal (for worst Value-at-Risk) or
+      maximal (for best Value-at-Risk) row sum in the last iteration).}
+    \item{\code{num.iter}:}{The number of iterations over the
+      columns of the matrix of quantiles.}
+    \item{\code{row.sums}:}{A \code{\link{matrix}} with the same number of rows as
+      \code{X}, giving the row sums after each iteration of
+      rearrangements of \code{X}; one iteration corresponds to looping
+      over all columns and oppositely reorder each of them with respect
+      to the sum of all others. The number of columns of \code{row.sums}
+      thus corresponds to \code{num.iter}.}
+    \item{\code{m.row.sums}:}{A \code{\link{numeric}} containing minimal
+      (for worst Value-at-Risk) or maximal (for best Value-at-Risk)
+      row sums for the computed bound.}
+    \item{\code{num.opp.ordered}:}{The number of oppositely ordered
+      columns.}
+  }
+
   \code{RA()} returns a \code{\link{list}} containing
   \describe{
     \item{\code{bounds}:}{A bivariate vector containing the computed lower
-      and upper bound for (worst or best) Value-at-Risk.}
-    \item{\code{rel.DU.spread}:}{relative error between lower and upper
-      bound (computed with respect to the upper bound).}
+      and upper bound for (worst or best) Value-at-Risk; see also
+      \code{bound} returned by \code{rearrange()} above.}
+    \item{\code{rel.DU.spread}:}{relative error (computed with respect
+      to the upper bound) between lower and upper bound.}
     \item{\code{individual.err}:}{A bivariate vector containing the
       individual errors (i.e., the absolute change of the minimal
       (for worst Value-at-Risk) or maximal (for best Value-at-Risk)
       row sums for the lower (first component) and upper bound (second
-      component) in the last iteration).}
+      component) in the last iteration of \code{rearrange()}); see also
+      \code{err} returned by \code{rearrange()} above.}
     \item{\code{num.iter}:}{A bivariate vector containing, for the lower
-      and upper bound, the actual used number of iterations over the
-      columns of the underlying matrix of quantiles.}
+      and upper bound, the number of iterations over the
+      columns of the underlying matrix of quantiles; see also
+      \code{num.iter} returned by \code{rearrange()} above.}
+    \item{\code{row.sums}:}{A list of length two containing the computed
+      matrices of row sums (one column for each iteration) for the lower
+      and upper bound; see also \code{rearrange()} above; see also
+      \code{row.sums} returned by \code{rearrange()} above.}
     \item{\code{m.row.sums}:}{A list of length two containing minimal
       (for worst Value-at-Risk) or maximal (for best Value-at-Risk)
-      row sums for the lower and upper bound.}
+      row sums for the computed lower and upper bounds; see also \code{m.row.sums}
+      returned by \code{rearrange()} above.}
     \item{\code{num.opp.ordered}:}{A bivariate vector containing
-      the number of oppositely ordered columns for the lower and upper bound.}
+      the number of oppositely ordered columns for the lower and upper
+      bound; see also \code{num.opp.ordered} returend by
+      \code{rearrange()} above.}
   }
 
   \code{ARA()} returns a \code{\link{list}} containing
@@ -148,6 +193,7 @@ ARA(alpha, d, qF, N=2^seq(8, 20, by=1), rel.err=c(0.001, 0.01), maxiter=10,
     \item{\code{N.used}:}{The actual \code{N} used for computing
       the (final) lower and upper bound.}
     \item{\code{num.iter}:}{See \code{RA()}.}
+    \item{\code{row.sums}:}{See \code{RA()}.}
     \item{\code{m.row.sums}:}{See \code{RA()}.}
     \item{\code{num.opp.ordered}:}{See \code{RA()}.}
   }
@@ -177,6 +223,10 @@ ARA(alpha, d, qF, N=2^seq(8, 20, by=1), rel.err=c(0.001, 0.01), maxiter=10,
   Note that both of these approaches for computing the worst (i.e., largest)
   Value-at-Risk in the homogeneous case are numerically non-trivial.
   See the source code and \code{demo(worst_VaR)} for more details.
+
+  \code{rearrange()} is an auxiliary function which is called by
+  \code{RA()} and \code{ARA()}. For performance reasons, no checking is
+  done. It should only be used by experts.
 
   For the Rearrangement Algorithm \code{RA()}, unless
   \code{maxiter}-many iterations have been reached, convergence is
@@ -215,6 +265,11 @@ ARA(alpha, d, qF, N=2^seq(8, 20, by=1), rel.err=c(0.001, 0.01), maxiter=10,
   Embrechts, P., Puccetti, G., \enc{Rüschendorf}{Rueschendorf}, L. (2013).
   Model uncertainty and VaR aggregation. \emph{Journal of Banking \&
     Finance} \bold{37}, 2750--2764.
+
+  Hofert, M., Memartoluie, A., Saunders, D., Wirjanto, T. (2015).
+  Improved Algorithms for Computing Worst Value-at-Risk:
+  Numerical Challenges and the Adaptive Rearrangement Algorithm.
+  See http://arxiv.org/abs/1505.02281.
 }
 \seealso{
   \code{demo(worst_VaR)} for more example calls, numerical challenges
