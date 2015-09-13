@@ -16,11 +16,11 @@ worst_VaR_hom(alpha, d, method=c("Wang", "Wang.Par", "Wang.Par.trafo", "dual"),
               interval=NULL, tol=NULL, ...)
 dual_bound(s, d, pF, tol=.Machine$double.eps^0.25, ...)
 
-rearrange(X, eps, err.type=c("relative", "absolute"), maxiter=Inf,
+rearrange(X, tol, tol.type=c("relative", "absolute"), maxiter=Inf,
           method=c("worst", "best"), impl=c("R", "C"))
-RA(alpha, d, qF, N, abs.err=NULL, maxiter=Inf, method=c("worst", "best"),
+RA(alpha, d, qF, N, abstol=NULL, maxiter=Inf, method=c("worst", "best"),
    sample=TRUE, impl=c("R", "C"))
-ARA(alpha, d, qF, N=2^seq(8, 20, by=1), rel.err=c(0.001, 0.01), maxiter=10,
+ARA(alpha, d, qF, N=2^seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=10,
     method=c("worst", "best"), sample=TRUE, impl=c("R", "C"))
 }
 \arguments{
@@ -61,24 +61,28 @@ ARA(alpha, d, qF, N=2^seq(8, 20, by=1), rel.err=c(0.001, 0.01), maxiter=10,
 	sufficiently large in order for the the inner root-finding algorithm
 	to find a root; see Details.}
   }}
-  \item{tol}{Tolerance for the involved root-finding algorithm as passed
-    to \code{\link{uniroot}()}. This defaults to
-    \eqn{2.2204*10^{-16}}{2.2204*10^{-16}}
-    for \code{method="Wang"} or \code{method="Wang.Par"} (where a
-    smaller tolerance is crucial) and to \code{\link{uniroot}()}'s
-    default \code{.Machine$double.eps^0.25} otherwise. Note that for
-    \code{method="dual"}, \code{tol} is used for both the outer
-    and the inner root-finding procedure.}
+  \item{tol}{
+    \describe{
+      \item{\code{worst_VaR_hom()}:}{The tolerance for the involved
+	root-finding algorithm as passed
+	to \code{\link{uniroot}()}. This defaults to
+	\eqn{2.2204*10^{-16}}{2.2204*10^{-16}}
+	for \code{method="Wang"} or \code{method="Wang.Par"} (where a
+	smaller tolerance is crucial) and to \code{\link{uniroot}()}'s
+	default \code{.Machine$double.eps^0.25} otherwise. Note that for
+	\code{method="dual"}, \code{tol} is used for both the outer
+	and the inner root-finding procedure.}
+      \item{\code{rearrange()}:}{Tolerance to determine the (individual)
+	convergence; if \code{NULL}, the iteration is done until the
+	matrix does not change anymore.}
+  }}
+  \item{tol.type}{\code{\link{character}} string indicating the
+    type of convergence tolerance function to be used (\code{"relative"}
+    for relative tolerance and \code{"absolute"} for absolute tolerance).}
   \item{s}{Dual bound evaluation point.}
   \item{pF}{The marginal loss distribution function.}
   \item{X}{An (\code{N}, \code{d})-matrix containing
     \eqn{N}-discretizations of the \eqn{d} quantiles to be rearranged.}
-  \item{eps}{Error to determine the (individual) convergence; if
-    \code{NULL}, the iteration is done until the matrix does not
-    change anymore.}
-  \item{err.type}{\code{\link{character}} string indicating the
-    error function to be used (\code{"relative"} for relative error and
-    \code{"absolute"} for absolute error).}
   \item{maxiter}{Maximal number of iterations over the columns of the
     underlying matrix of quantiles (can be set to \code{Inf}).}
   \item{impl}{\code{\link{character}} string providing the type of
@@ -89,26 +93,26 @@ ARA(alpha, d, qF, N=2^seq(8, 20, by=1), rel.err=c(0.001, 0.01), maxiter=10,
       \item{\code{ARA()}:}{A vector of positive integers. For each
 	such number, at most \code{maxiter}-many iterations through the columns
 	of the underlying matrix of quantiles are conducted, checking after
-	each of these iterations whether the desired relative errors
+	each of these iterations whether the desired relative tolerances
 	(both individually and jointly; see below) has been
 	achieved.}
   }}
-  \item{abs.err}{Absolute error \eqn{\epsilon}{epsilon} to determine
-    the individual convergence (change in the computed minimal
+  \item{abstol}{Absolute convergence tolerance \eqn{\epsilon}{epsilon}
+    (to determine the individual convergence, i.e., the change in the computed minimal
     (for worst Value-at-Risk) or maximal (for best Value-at-Risk)
     row sums for the lower and upper bound). If \code{NULL} (the
     default) and \code{maxiter} has not been reached, the iterations
     through the columns of the underlying matrix of quantiles is done
     until the matrix does not change anymore, i.e., until each column
     is oppositely ordered to the sum of all others.}
-  \item{rel.err}{A vector of length containing two relative errors,
-    the individual relative error (first component; used to determine
+  \item{reltol}{A vector containing two relative convergence tolerances,
+    the individual relative tolerance (first component; used to determine
     convergence of the minimal (for worst Value-at-Risk) or maximal
     (for best Value-at-Risk) row sums for the lower and upper bound)
-    and the joint relative error (second component; relative error
+    and the joint relative tolerance (second component; relative tolerance
     between the computed lower and upper bound computed with respect
-    to the upper bound). Note that \code{rel.err[1]} is allowed to be
-    \code{NULL}; see \code{abs.err} above for how to interpret this case.}
+    to the upper bound). Note that \code{reltol[1]} is allowed to be
+    \code{NULL}; see \code{abstol} above for how to interpret this case.}
   \item{sample}{\code{\link{logical}} indicating whether each column of
     the two internal matrices of quantiles (see Step 3 of the Rearrangement
     Algorithm in Embrechts et al. (2013))
@@ -153,7 +157,7 @@ ARA(alpha, d, qF, N=2^seq(8, 20, by=1), rel.err=c(0.001, 0.01), maxiter=10,
   \describe{
     \item{\code{bound}:}{The computed (lower
       or upper) bound for (worst or best) Value-at-Risk.}
-    \item{\code{err}:}{The error (i.e., the (absolute or
+    \item{\code{err}:}{The tolerance (i.e., the (absolute or
       relative) change of the minimal (for worst Value-at-Risk) or
       maximal (for best Value-at-Risk) row sum in the last iteration).}
     \item{\code{num.iter}:}{The number of iterations over the
@@ -176,10 +180,10 @@ ARA(alpha, d, qF, N=2^seq(8, 20, by=1), rel.err=c(0.001, 0.01), maxiter=10,
     \item{\code{bounds}:}{A bivariate vector containing the computed lower
       and upper bound for (worst or best) Value-at-Risk; see also
       \code{bound} returned by \code{rearrange()} above.}
-    \item{\code{rel.DU.spread}:}{relative error (computed with respect
+    \item{\code{rel.DU.spread}:}{relative tolerance (computed with respect
       to the upper bound) between lower and upper bound.}
     \item{\code{individual.err}:}{A bivariate vector containing the
-      individual errors (i.e., the absolute change of the minimal
+      individual tolerances (i.e., the absolute change of the minimal
       (for worst Value-at-Risk) or maximal (for best Value-at-Risk)
       row sums for the lower (first component) and upper bound (second
       component) in the last iteration of \code{rearrange()}); see also
@@ -207,8 +211,8 @@ ARA(alpha, d, qF, N=2^seq(8, 20, by=1), rel.err=c(0.001, 0.01), maxiter=10,
     \item{\code{bounds}:}{See \code{RA()}.}
     \item{\code{rel.DU.spread}:}{See \code{RA()}.}
     \item{\code{individual.err}:}{See \code{RA()}.}
-    \item{\code{joint.err}:}{The joint relative error reached (i.e.,
-      the relative error between the computed lower and upper bound
+    \item{\code{joint.err}:}{The joint relative tolerance reached (i.e.,
+      the relative tolerance between the computed lower and upper bound
       computed with respect to the upper bound).}
     \item{\code{N.used}:}{The actual \code{N} used for computing
       the (final) lower and upper bound.}
@@ -273,7 +277,7 @@ ARA(alpha, d, qF, N=2^seq(8, 20, by=1), rel.err=c(0.001, 0.01), maxiter=10,
   determined for the lower and the upper bound if the minimal
   (for the worst Value-at-Risk) or maximal (for the best
   Value-at-Risk) row sums after an iteration did not change by more than
-  (the absolute error) \code{abs.err} (so \eqn{\le\epsilon}{<= eps}). This
+  (the absolute tolerance) \code{abstol} (so \eqn{\le\epsilon}{<= eps}). This
   is slightly different from Embrechts et al. (2013) who use \eqn{<\epsilon}{< eps}
   but this slight modification has the advantage of allowing
   \eqn{\epsilon=0}{eps=0}.
@@ -283,8 +287,8 @@ ARA(alpha, d, qF, N=2^seq(8, 20, by=1), rel.err=c(0.001, 0.01), maxiter=10,
   have been reached, convergence is determined if the minimal
   (for the worst Value-at-Risk) or maximal (for the best
   Value-at-Risk) row sums after an iteration did not change by more than
-  (the individual relative error) \code{rel.err[1]} \emph{and} the
-  relative (joint) error between both bounds is at most \code{rel.err[2]}.
+  (the individual relative tolerance) \code{reltol[1]} \emph{and} the
+  relative (joint) tolerance between both bounds is at most \code{reltol[2]}.
 
   Note that both \code{RA()} and \code{ARA()} need to evalute the
   0-quantile (for the lower bound for the best Value-at-Risk) and
@@ -333,7 +337,7 @@ pF <- function(q, theta=th) pPar(q, theta=theta) # Pareto distribution function
 resW <- worst_VaR_hom(alpha, d=2, qF=qF)
 set.seed(271) # set seed (for reproducibility)
 resARA <- ARA(alpha, d=2, qF=qF) # Adaptive Rearrangement Algorithm (ARA)
-resRA <- RA(alpha, d=2, qF=qF, N=256, abs.err=0) # RA with N and abs.err chosen to match ARA
+resRA <- RA(alpha, d=2, qF=qF, N=256, abstol=0) # RA with N and abstol chosen to match ARA
 stopifnot(all.equal(resW, resARA$bounds[2], resRA$bounds[2], tolerance=0.005))
 
 ## d=8: Compare the various methods (in the homogeneous case)
@@ -352,12 +356,12 @@ set.seed(271)
 resARA <- ARA(alpha, d=d, qF=qF)
 resARA$bounds
 ## Compare with RA
-## 1) Choose N and abs.err chosen to match ARA results
-abs.err <- tail(abs(diff(resARA$m.row.sums[[2]])), n=1) # absolute error for RA
-resRA <- RA(alpha, d=d, qF=qF, N=512, abs.err=abs.err)
+## 1) Choose N and abstol chosen to match ARA results
+abstol <- tail(abs(diff(resARA$m.row.sums[[2]])), n=1)
+resRA <- RA(alpha, d=d, qF=qF, N=512, abstol=abstol)
 resRA$bounds
 ## 2) Iterate until each column is opp. ordered to the sum of all others
-resRA. <- RA(alpha, d=d, qF=qF, N=512) # abs.err=NULL
+resRA. <- RA(alpha, d=d, qF=qF, N=512) # abstol=NULL
 resRA.$bounds
 
 ## Using the additional results computed by RA(); for resRA.

@@ -227,7 +227,7 @@ for(i in seq_len(n.th)) {
                                    pF=pFs[[i]])
     ## Rearrangement Algorithm
     set.seed(271) # use the same sampling for each theta
-    RA. <- RA(alpha, d=d, qF=qFs[[i]], N=N, abs.err=0.001)
+    RA. <- RA(alpha, d=d, qF=qFs[[i]], N=N, abstol=0.001)
     res[i,"RA.low"] <- RA.$bounds[1]
     res[i,"RA.up"]  <- RA.$bounds[2]
 }

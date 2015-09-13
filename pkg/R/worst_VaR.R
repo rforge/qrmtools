@@ -365,9 +365,9 @@ worst_VaR_hom <- function(alpha, d, method=c("Wang", "Wang.Par", "Wang.Par.trafo
 
 ##' @title Basic Rearrangement Function for (A)RA
 ##' @param X (N, d)-matrix (either \underline{X}^\alpha or \overline{X}^\alpha)
-##' @param eps Epsilon error to determine (the individual) convergence;
+##' @param tol Tolerance to determine (the individual) convergence;
 ##'        if NULL, the iteration is done until the matrix doesn't change
-##' @param err.type Character string indicating the error function used
+##' @param tol.type Character string indicating the tolerance function used
 ##'        ("relative" or "absolute")
 ##' @param maxiter Maximal number of iterations
 ##' @param method Character indicating which VaR is approximated (worst/best)
@@ -377,7 +377,7 @@ worst_VaR_hom <- function(alpha, d, method=c("Wang", "Wang.Par", "Wang.Par.trafo
 ##' @return List containing the
 ##'         1) Computed (lower or upper [depending on X]) bound for (worst or
 ##'            best [depending on method]) VaR
-##'         2) (Individual) error reached
+##'         2) (Individual) tolerance reached
 ##'         3) (N, .)-matrix of row sums (one column for each iteration)
 ##'         4) Vector of minimal [for worst VaR] or maximal [for best VaR] row sums
 ##'         5) Number of oppositely ordered columns
@@ -387,23 +387,23 @@ worst_VaR_hom <- function(alpha, d, method=c("Wang", "Wang.Par", "Wang.Par.trafo
 ##'         this then also nicely works with "= 0" (if abs.err=0) which stops in
 ##'         case the matrices are identical (no change at all).
 ##'       - No checking here due to speed
-rearrange <- function(X, eps, err.type=c("relative", "absolute"), maxiter=Inf,
+rearrange <- function(X, tol, tol.type=c("relative", "absolute"), maxiter=Inf,
                       method=c("worst", "best"), impl=c("R", "C"))
 {
     d <- ncol(X)
     if(impl=="C") {
 
         stop("Still in the works... Not available yet.") # TODO
-        if(is.null(eps)) eps <- -1 # for C code
+        if(is.null(tol)) tol <- -1 # for C code
         if(is.infinite(maxiter)) maxiter <- -1 # for C code
         rearrange <- NULL # to avoid "RA_aux: no visible binding for global variable 'rearrange_'"
-        .Call("rearrange_", X, method, err.type, maxiter, eps)
+        .Call("rearrange_", X, method, tol.type, maxiter, tol)
 
     } else { # R implementation
 
         ## Define helper functions
         optim.fun <- if(method=="worst") min else max
-        err.fun <- if(err.type=="absolute") {
+        err.fun <- if(tol.type=="absolute") {
             function(x, y) abs(x-y)
         } else {
             function(x, y) abs((x-y)/y)
@@ -420,14 +420,14 @@ rearrange <- function(X, eps, err.type=c("relative", "absolute"), maxiter=Inf,
             Y.rs <- rowSums(Y)
             row.sums <- cbind(row.sums, Y.rs) # append the new row sums
             mrs.new <- optim.fun(Y.rs) # compute new minimal row sum
-            ## Check convergence (we use "<= eps" as it entails eps=0)
-            stp <- (ncol(row.sums) == maxiter) || if(is.null(eps)) { all(Y == X) } else {
-                err.fun(mrs.new, mrs.old) <= eps
+            ## Check convergence (we use "<= tol" as it entails tol=0)
+            stp <- (ncol(row.sums) == maxiter) || if(is.null(tol)) { all(Y == X) } else {
+                err.fun(mrs.new, mrs.old) <= tol
             }
             if(stp) {
                 num.opp.ordered <- sum(sapply(seq_len(d), function(j)
                     all(sort(Y[,j], decreasing=TRUE)[rank(rowSums(Y[,-j, drop=FALSE]))] == Y[,j]))) # count number of oppositely ordered columns
-                err <- err.fun(mrs.new, mrs.old) # compute the (individual) error
+                err <- err.fun(mrs.new, mrs.old) # compute the (individual) tolerance
                 break
             } else {
                 mrs.old <- mrs.new # update mrs.old
@@ -449,9 +449,10 @@ rearrange <- function(X, eps, err.type=c("relative", "absolute"), maxiter=Inf,
 ##' @param qF a marginal quantile function (homogeneous case) or a d-list of such;
 ##'        note that each marginal quantile function has to be vectorized in p
 ##' @param N number of discretization points
-##' @param abs.err absolute error to determine convergence; if NULL, then the
-##'        iteration is done until the matrix doesn't change anymore, i.e., each
-##'        column is oppositely ordered with respect to the sum of all others
+##' @param abstol absolute convergence tolerance (to determine convergence);
+##'        if NULL, then the iteration is done until the matrix doesn't change
+##'        anymore, i.e., each column is oppositely ordered with respect to the
+##'        sum of all others
 ##' @param maxiter maximal number of iterations
 ##' @param method character indicating which VaR is approximated (worst/best)
 ##' @param sample logical indicating whether each column of the two working
@@ -461,7 +462,7 @@ rearrange <- function(X, eps, err.type=c("relative", "absolute"), maxiter=Inf,
 ##'         1) Computed lower and upper bound for (worst or best) VaR
 ##'         2) The relative dependence uncertainty spread
 ##'            "|(upper bound - lower bound) / upper bound|"
-##'         3) (Individual) errors reached (for each bound)
+##'         3) (Individual) tolerance reached (for each bound)
 ##'         4) (N, .)-matrices of row sums (one column for each iteration) for
 ##'            the lower and upper bound
 ##'         5) Vectors of minimal [for worst VaR] or maximal [for best VaR] row sums for
@@ -471,11 +472,11 @@ rearrange <- function(X, eps, err.type=c("relative", "absolute"), maxiter=Inf,
 ##' @author Marius Hofert
 ##' @note Notation is from p. 2757 in Embrechts, Puccetti, Rueschendorf (2013);
 ##'       variables are named according to the 'worst' VaR case.
-RA <- function(alpha, d, qF, N, abs.err=NULL, maxiter=Inf,
+RA <- function(alpha, d, qF, N, abstol=NULL, maxiter=Inf,
                method=c("worst", "best"), sample=TRUE, impl=c("R", "C"))
 {
-    ## Checks and Step 1 (get N, abs.err)
-    stopifnot(0 < alpha, alpha < 1, is.null(abs.err) || abs.err >= 0,
+    ## Checks and Step 1 (get N, abstol)
+    stopifnot(0 < alpha, alpha < 1, is.null(abstol) || abstol >= 0,
               length(N) >= 1, N >= 2, maxiter >= 1, is.logical(sample))
     method <- match.arg(method)
     impl <- match.arg(impl)
@@ -502,9 +503,9 @@ RA <- function(alpha, d, qF, N, abs.err=NULL, maxiter=Inf,
 
     ## Steps 4, 5 (determine \underline{X}^*)
     ## repeat oppositely ordering \underline{X}^\alpha until there is only an
-    ## abs.err change in the min (method="worst") or max (method="best") row sum
+    ## abstol change in the min (method="worst") or max (method="best") row sum
     ## or until we reached maxiter number of iterations
-    res.low <- rearrange(X, eps=abs.err, err.type="absolute", maxiter=maxiter,
+    res.low <- rearrange(X, tol=abstol, tol.type="absolute", maxiter=maxiter,
                          method=method, impl=impl)
 
     ## Compute upper bound
@@ -522,9 +523,9 @@ RA <- function(alpha, d, qF, N, abs.err=NULL, maxiter=Inf,
 
     ## Step 6 (determine \overline{X}^*)
     ## repeat oppositely ordering \overline{X}^\alpha until there is only an
-    ## abs.err change in the min (method="worst") or max (method="best") row sum
+    ## abstol change in the min (method="worst") or max (method="best") row sum
     ## or until we reached maxiter number of iterations
-    res.up <- rearrange(X, eps=abs.err, err.type="absolute", maxiter=maxiter,
+    res.up <- rearrange(X, tol=abstol, tol.type="absolute", maxiter=maxiter,
                         method=method, impl=impl)
 
     ## Step 7 (return \underline{s}_N, \overline{s}_N and other info)
@@ -543,10 +544,11 @@ RA <- function(alpha, d, qF, N, abs.err=NULL, maxiter=Inf,
 ##' @param qF a marginal quantile function (homogeneous case) or a d-list of such;
 ##'        note that each marginal quantile function has to be vectorized in p
 ##' @param N vector of numbers of discretization points
-##' @param rel.err 2-vector of relative errors for determining the individual
-##'        relative error (i.e., the relative error in the minimal/maximal row sum
-##'        for each of the bounds) and the joint relative error (i.e., the relative
-##'        error between the computed lower and upper bounds). rel.err[1] can be
+##' @param reltol 2-vector of relative convergence tolerances
+##'        for determining the individual relative tolerance (i.e., the relative
+##'        tolerance in the minimal/maximal row sum for each of the bounds) and
+##'        the joint relative tolerance (i.e., the relative
+##'        tolerance between the computed lower and upper bounds). reltol[1] can be
 ##'        NULL (=> iteration is done until matrices don't change anymore, i.e.,
 ##'        until each column is oppositely ordered to the sum of all others,
 ##'        but only if maxiter hasn't been reached)
@@ -559,7 +561,7 @@ RA <- function(alpha, d, qF, N, abs.err=NULL, maxiter=Inf,
 ##'         1) Computed lower and upper bound for (worst or best) VaR
 ##'         2) The relative dependence uncertainty spread
 ##'            "|(upper bound - lower bound) / upper bound|"
-##'         3) (Individual) errors reached (for each bound)
+##'         3) (Individual) tolerances reached (for each bound)
 ##'         4) (N, .)-matrices of row sums (one column for each iteration) for
 ##'            the lower and upper bound
 ##'         5) Vectors of minimal [for worst VaR] or maximal [for best VaR] row sums for
@@ -567,13 +569,13 @@ RA <- function(alpha, d, qF, N, abs.err=NULL, maxiter=Inf,
 ##'         6) Number of oppositely ordered columns for the lower and upper bound
 ##'         7) Number of iterations through the matrix columns used
 ##' @author Marius Hofert
-ARA <- function(alpha, d, qF, N=2^seq(8, 20, by=1), rel.err=c(0.001, 0.01),
+ARA <- function(alpha, d, qF, N=2^seq(8, 20, by=1), reltol=c(0.001, 0.01),
                 maxiter=10, method=c("worst", "best"), sample=TRUE,
                 impl=c("R", "C"))
 {
-    ## Checks and Step 1 (get N, rel.err)
-    stopifnot(0 < alpha, alpha < 1, length(rel.err) == 2,
-              is.null(rel.err[1]) || rel.err[1] >=0, rel.err[2] >= 0,
+    ## Checks and Step 1 (get N, reltol)
+    stopifnot(0 < alpha, alpha < 1, length(reltol) == 2,
+              is.null(reltol[1]) || reltol[1] >=0, reltol[2] >= 0,
               length(N) >= 1, N >= 2, maxiter >= 1, is.logical(sample))
     method <- match.arg(method)
     impl <- match.arg(impl)
@@ -603,9 +605,9 @@ ARA <- function(alpha, d, qF, N=2^seq(8, 20, by=1), rel.err=c(0.001, 0.01),
 
         ## Steps 4, 5 (determine \underline{X}^*)
         ## repeat oppositely ordering \underline{X}^\alpha until there is only an
-        ## rel.err[1] change in the min (method="worst") or max (method="best") row sum
+        ## reltol[1] change in the min (method="worst") or max (method="best") row sum
         ## or until we reached maxiter number of iterations
-        res.low <- rearrange(X, eps=rel.err[1], err.type="relative",
+        res.low <- rearrange(X, tol=reltol[1], tol.type="relative",
                              maxiter=maxiter, method=method, impl=impl)
 
         ## Compute upper bound
@@ -623,15 +625,15 @@ ARA <- function(alpha, d, qF, N=2^seq(8, 20, by=1), rel.err=c(0.001, 0.01),
 
         ## Step 6 (determine \overline{X}^*)
         ## repeat oppositely ordering \overline{X}^\alpha until there is only an
-        ## rel.err[1] change in the min (method="worst") or max (method="best") row sum
+        ## reltol[1] change in the min (method="worst") or max (method="best") row sum
         ## or until we reached maxiter number of iterations
-        res.up <- rearrange(X, eps=rel.err[1], err.type="relative",
+        res.up <- rearrange(X, tol=reltol[1], tol.type="relative",
                              maxiter=maxiter, method=method, impl=impl)
 
         ## Determine convergence (individual + joint)
         joint.err <- abs((res.low$bound-res.up$bound)/res.up$bound)
-        if( (max(res.low$err, res.up$err) <= rel.err[1]) &&
-            joint.err <= rel.err[2] ) break
+        if( (max(res.low$err, res.up$err) <= reltol[1]) &&
+            joint.err <= reltol[2] ) break
 
     }
 
