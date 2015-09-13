@@ -72,22 +72,20 @@ dual_bound_2_deriv_term <- function(s, t, d, pF)
 ##'       => solving d (\int_{t}^{s-(d-1)t} \bar{F}(x) dx) / (s-dt) -
 ##'                  (\bar{F}(s-(d-1)t)(d-1)-\bar{F}(t)) = 0
 ##'          as a function in t for sufficiently large s leads to D(s)
-dual_bound <- function(s, d, pF, ...)
+dual_bound <- function(s, d, pF, tol=.Machine$double.eps^0.25, ...)
 {
     stopifnot(length(s) == 1, s >= 0)
     if(s > 0) {
         ## h(s, t)
         h <- function(t) dual_bound_2(s, t=t, d=d, pF=pF, ...) -
             dual_bound_2_deriv_term(s, t=t, d=d, pF=pF)
-        ## note: f(t) -> 0 for t -> s/d- this is bad for uniroot() which will
+        ## Note: f(t) -> 0 for t -> s/d- this is bad for uniroot() which will
         ##       simply stop with the root t=s/d => we thus set f.upper > 0
-        ##       alternatively, one could use (the more invasive)
-        ##       interval = c(0, s/d - .Machine$double.eps^0.25)
-        h.up <- sign(-h(0)) * .Machine$double.xmin # guarantee that uniroot() doesn't fail due to root s/d
-        t. <- uniroot(h, interval=c(0, s/d), f.upper=h.up)$root # optimal t in Equation (12) [= arginf]
+        h.up <- -h(0) # guarantee that uniroot() doesn't fail due to root s/d
+        t. <- uniroot(h, interval=c(0, s/d), f.upper=h.up, tol=tol)$root # optimal t in Equation (12) [= arginf]
         dual_bound_2_deriv_term(s, t=t., d=d, pF=pF) # dual bound D(s) in Equation (12) [= inf]
     } else {
-        ## if s = 0, then t in [0, s/d] requires t to be 0 *and* f(0) = 0, so
+        ## If s = 0, then t in [0, s/d] requires t to be 0 *and* f(0) = 0, so
         ## 0 is a root (as s/d). Furthermore, at t=0 (and with s=0),
         ## dual_bound_2_deriv_term(...) = d
         d
@@ -176,7 +174,7 @@ Wang_h <- function(c, alpha, d, method=c("generic", "Wang.Par"), ...)
 {
     stopifnot(0 <= c, c <= (1-alpha)/d) # sanity check (otherwise b > a)
     Wang_Ibar(c, alpha=alpha, d=d, method=method, ...) -
-    Wang_h_aux(c, alpha=alpha, d=d, method=method, ...)
+        Wang_h_aux(c, alpha=alpha, d=d, method=method, ...)
 }
 
 
@@ -194,9 +192,15 @@ Wang_h <- function(c, alpha, d, method=c("generic", "Wang.Par"), ...)
 ##'        1) d=2: Embrechts, Puccetti, Rueschendorf (2013, Proposition 2)
 ##'        2) d>=3:
 ##'           "Wang": Embrechts, Puccetti, Rueschendorf, Wang, Beleraj (2014, Prop. 3.1)
-##'           "Wang.Par": the same, just with explicit formula for the integral
-##'                       in the Pareto case
+##'                   Integral evaluated numerically; needs smaller default
+##'                   tolerance for uniroot()!
+##'           "Wang.Par": The same, just with explicit formula for the integral
+##'                       in the Pareto case; needs smaller default tolerance
+##'                       for uniroot()!
+##'           "Wang.Par.trafo": The same, just transforming the problem to
+##'                             a different scale
 ##'           "dual": Embrechts, Puccetti, Rueschendorf (2013, Proposition 4)
+##'                   Numerically less stable
 ##' @param alpha confidence level
 ##' @param d dimension
 ##' @param method character string giving the method
@@ -205,13 +209,15 @@ Wang_h <- function(c, alpha, d, method=c("generic", "Wang.Par"), ...)
 ##' @param ... ellipsis arguments passed to Wang_h() (for d>=3), dual_bound()
 ##' @return worst VaR in the homogeneous case
 ##' @author Marius Hofert
-worst_VaR_hom <- function(alpha, d, method=c("Wang", "Wang.Par", "dual"),
-                          interval=NULL, tol=NULL, ...)
+worst_VaR_hom <- function(alpha, d, method=c("Wang", "Wang.Par", "Wang.Par.trafo",
+                          "dual"), interval=NULL, tol=NULL, ...)
 {
     stopifnot(0<alpha, alpha<1, d>=2)
     method <- match.arg(method)
-    if(is.null(tol)) # use higher tolerance (MATLAB default) for Wang's approach (matters!)
-        tol <- if(method!="dual") 2.2204e-16 else .Machine$double.eps^0.25 # uniroot()'s default
+    if(is.null(tol)) # use smaller tolerance if required (matters; see also demo)
+        tol <- if(method=="Wang" || method=="Wang.Par")
+                   2.2204e-16 # MATLAB default
+               else .Machine$double.eps^0.25 # uniroot() default
 
     ## d == 2
     if(d == 2) { # see Embrechts, Puccetti, Rueschendorf (2013, Proposition 2)
@@ -224,71 +230,130 @@ worst_VaR_hom <- function(alpha, d, method=c("Wang", "Wang.Par", "dual"),
     ## d >= 3
     switch(method,
            "Wang" = {
-               ## check qF()
+
+               ## Check qF()
                qF <- NULL # make CRAN check happy
                if(!hasArg(qF))
                    stop("Method 'Wang' requires the quantile function qF of F")
-               ## check 'interval'
+               ## Check 'interval'
                if(is.null(interval)) interval <- c(0, (1-alpha)/d)
                else {
                    if(interval[1] < 0) stop("interval[1] needs to be >= 0")
                    if(interval[1] > (1-alpha)/d) stop("interval[2] needs to be <= (1-alpha)/d")
                    if(interval[1] >= interval[2]) stop("interval[1] needs to be smaller than interval[2]")
                }
-               ## c_u: guarantee that uniroot() doesn't fail due to root at (1-alpha)/d
-               h.up <- .Machine$double.xmin
-               ## c_l: compute and check validity
+
+               ## Compute (and adjust) function values at endpoints
                h.low <- Wang_h(interval[1], alpha=alpha, d=d, ...)
                if(is.na(h.low))
-                   stop("Objective function at interval[1] is NA/NaN. Provide a larger interval[1].")
-               if(h.up * h.low >= 0)
-                   stop("Objective function at end points of 'interval' not of opposite sign. Provide a smaller interval[1].")
-               ## root-finding on 'interval'
+                   stop("Objective function at interval[1] is NA or NaN. Provide a larger interval[1].")
+               h.up <- -h.low # avoid that uniroot() fails due to 0 at upper interval endpoint
+
+               ## Root-finding on 'interval'
                c. <- uniroot(function(c) Wang_h(c, alpha=alpha, d=d, ...),
                              interval=interval, f.lower=h.low, f.upper=h.up, tol=tol)$root
                d * Wang_h_aux(c., alpha=alpha, d=d, qF=list(...)$qF)
+
            },
-           "Wang.Par" = { # only kept for ruling out problems due to numerical integration
-               ## check 'theta'
+           "Wang.Par" = {
+
+               ## Check 'theta'
                theta <- NULL # make CRAN check happy
                if(!hasArg(theta))
                    stop("Method 'Wang.Par' requires the parameter theta")
                th <- list(...)$theta
                stopifnot(length(th) == 1, th > 0) # check theta here
-               ## check 'interval'
-               if(is.null(interval)) # note: we can be more specific here
-                   interval <- c(if(th <= 1) .Machine$double.eps else 0, (1-alpha)/d)
-               else {
+
+               ## Compute lower uniroot boundary c_l and check
+               if(is.null(interval)) {
+                   up <- (1-alpha)/d
+                   low <- if(th > 1) {
+                       (1-alpha)/((1+d/(th-1))^th+d-1)
+                   } else if(th == 1) {
+                       e <- exp(1)
+                       (1-alpha)/((d+1)^(e/(e-1))+d-1)
+                   } else { (1-th)*(1-alpha)/d }
+                   interval <- c(low, up)
+               } else {
                    if(interval[1] < 0) stop("interval[1] needs to be >= 0")
                    if(interval[1] > (1-alpha)/d) stop("interval[2] needs to be <= (1-alpha)/d")
                    if(interval[1] >= interval[2]) stop("interval[1] needs to be smaller than interval[2]")
                }
-               ## c_u: guarantee that uniroot() doesn't fail due to root at (1-alpha)/d
-               h.up <- .Machine$double.xmin
-               ## c_l: compute and check validity (note: we can be more specific here)
+
+               ## Compute (and adjust) function values at endpoints
                if(th <= 1 && interval[1] == 0)
                    stop("If theta <=1, interval[1] has to be > 0 as otherwise the internal Wang_h() is NaN")
                h.low <- Wang_h(interval[1], alpha=alpha, d=d, method="Wang.Par", ...)
-               ## former check (not necessary anymore due to check theta <= 1 && interval[1] == 0)
-               ## if(is.na(h.low))
-               ##     stop("Objective function at interval[1] is NA/NaN. Provide a larger interval[1].")
-               if(h.up * h.low >= 0)
-                   stop("Objective function at end points of 'interval' not of opposite sign. Provide a smaller interval[1].")
-               ## root-finding on 'interval'
+               h.up <- -h.low # avoid that uniroot() fails due to 0 at upper interval endpoint
+               ## Note: VaR_alpha was not monotone in alpha anymore if h.up = .Machine$double.xmin
+               ##       was chosen and theta in (0,1]
+
+               ## Root-finding on 'interval'
                c. <- uniroot(function(c)
                              Wang_h(c, alpha=alpha, d=d, method="Wang.Par", ...),
                              interval=interval, f.lower=h.low, f.upper=h.up, tol=tol)$root
                d * Wang_h_aux(c., alpha=alpha, d=d, method="Wang.Par", theta=th)
+
+           },
+           "Wang.Par.trafo" = { # here we compute the root on a different scale
+
+               ## Check 'theta'
+               theta <- NULL # make CRAN check happy
+               if(!hasArg(theta))
+                   stop("Method 'Wang.Par' requires the parameter theta")
+               th <- list(...)$theta
+               stopifnot(length(th) == 1, th > 0) # check theta here
+
+               ## Compute upper uniroot boundary (has to be in [1,Inf) here) and check
+               ## (corresponds to lower bound c_l in the original root-finding problem;
+               ## note that c_l=0 is not an option there since Wang_Ibar(0) = Inf and
+               ## Wang_h_aux(0) = Inf and thus Inf - Inf = NaN, see also:
+               ## qrmtools:::Wang_h(0, alpha=0.99, d=8, method="Wang.Par", theta=0.5)
+               ## => actually already NaN for c in [0, 1e-17])
+               if(is.null(interval)) {
+                   low <- 1
+                   up <- if(th > 1) {
+                       (1+d/(th-1))^th
+                   } else if(th == 1) {
+                       e <- exp(1)
+                       (d+1)^(e/(e-1))
+                   } else { d*th/(1-th)+1 }
+                   interval <- c(low, up)
+               } else {
+                   if(interval[1] < 1) stop("interval[1] needs to be >= 1")
+                   if(interval[1] >= interval[2]) stop("interval[1] needs to be smaller than interval[2]")
+               }
+
+               ## Define objective function
+               h.tilde <- if(th == 1) {
+                   function(x) d*log(x)/(x-1) - ((d-1)/x + 1)
+               } else {
+                   function(x)
+                       (d/(1-th)-1)*x^(-1/th + 1) - (d-1)*x^(-1/th) + x - (d*th/(1-th) + 1)
+               }
+
+               ## Compute (and adjust) function values at endpoints
+               h.up <- h.tilde(interval[2])
+               h.low <- -h.up # avoid that uniroot() fails due to 0 at lower interval endpoint
+
+               ## Root-finding on 'interval'
+               x. <- uniroot(h.tilde, interval=interval,
+                             f.lower=h.low, f.upper=h.up, tol=tol)$root
+               c. <- (1-alpha)/(x.+d-1) # convert back to c
+               d * Wang_h_aux(c., alpha=alpha, d=d, method="Wang.Par", theta=th)
+
            },
            "dual" = {
+
                pF <- NULL # make CRAN check happy
                if(!hasArg(pF))
                    stop("Method 'dual' requires the distribution function pF")
                if(!hasArg(interval))
                    stop("Method 'dual' requires an initial interval")
-               uniroot(function(s) dual_bound(s, d=d, ...)-(1-alpha),
+               uniroot(function(s) dual_bound(s, d=d, tol=tol, ...)-(1-alpha),
                        interval=interval, tol=tol)$root # s interval
-               ## note: we can't pass arguments to the inner root-finding (yet)
+               ## Note: We can't pass arguments to the inner root-finding
+
            },
            stop("Wrong method"))
 }
@@ -327,51 +392,55 @@ rearrange <- function(X, eps, err.type=c("relative", "absolute"), maxiter=Inf,
 {
     d <- ncol(X)
     if(impl=="C") {
+
         stop("Still in the works... Not available yet.") # TODO
         if(is.null(eps)) eps <- -1 # for C code
         if(is.infinite(maxiter)) maxiter <- -1 # for C code
         rearrange <- NULL # to avoid "RA_aux: no visible binding for global variable 'rearrange_'"
         .Call("rearrange_", X, method, err.type, maxiter, eps)
+
     } else { # R implementation
-          ## Define helper functions
-          optim.fun <- if(method=="worst") min else max
-          err.fun <- if(err.type=="absolute") {
-              function(x, y) abs(x-y)
-          } else {
-              function(x, y) abs((x-y)/y)
-          }
-          ## Loop through the columns
-          row.sums <- matrix(, nrow=nrow(X), ncol=0) # (N, 0)-matrix of row sums
-          mrs.old <- optim.fun(rowSums(X)) # old minimal row sum (currently: the one of X)
-          while (TRUE) {
-              ## Oppositely order X (=> Y)
-              Y <- X
-              for(j in 1:d)
-                  Y[,j] <- sort(Y[,j], decreasing=TRUE)[rank(rowSums(Y[,-j, drop=FALSE]))]
-              ## Compute row sums and minimal/maximal row sums
-              Y.rs <- rowSums(Y)
-              row.sums <- cbind(row.sums, Y.rs) # append the new row sums
-              mrs.new <- optim.fun(Y.rs) # compute new minimal row sum
-              ## Check convergence (we use "<= eps" as it entails eps=0)
-              stp <- (ncol(row.sums) == maxiter) || if(is.null(eps)) { all(Y == X) } else {
-                  err.fun(mrs.new, mrs.old) <= eps
-              }
-              if(stp) {
-                  num.opp.ordered <- sum(sapply(seq_len(d), function(j)
-                      all(sort(Y[,j], decreasing=TRUE)[rank(rowSums(Y[,-j, drop=FALSE]))] == Y[,j]))) # count number of oppositely ordered columns
-                  err <- err.fun(mrs.new, mrs.old) # compute the (individual) error
-                  break
-              } else {
-                  mrs.old <- mrs.new # update mrs.old
-                  X <- Y # update X
-              }
-          }
-          ## Return
-          colnames(row.sums) <- NULL # remove column names so that they don't appear in output
-          list(bound=mrs.new, err=err, num.iter=ncol(row.sums),
-               row.sums=row.sums, m.row.sums=apply(row.sums, 2, optim.fun),
-               num.opp.ordered=num.opp.ordered)
-      }
+
+        ## Define helper functions
+        optim.fun <- if(method=="worst") min else max
+        err.fun <- if(err.type=="absolute") {
+            function(x, y) abs(x-y)
+        } else {
+            function(x, y) abs((x-y)/y)
+        }
+        ## Loop through the columns
+        row.sums <- matrix(, nrow=nrow(X), ncol=0) # (N, 0)-matrix of row sums
+        mrs.old <- optim.fun(rowSums(X)) # old minimal row sum (currently: the one of X)
+        while (TRUE) {
+            ## Oppositely order X (=> Y)
+            Y <- X
+            for(j in 1:d)
+                Y[,j] <- sort(Y[,j], decreasing=TRUE)[rank(rowSums(Y[,-j, drop=FALSE]))]
+            ## Compute row sums and minimal/maximal row sums
+            Y.rs <- rowSums(Y)
+            row.sums <- cbind(row.sums, Y.rs) # append the new row sums
+            mrs.new <- optim.fun(Y.rs) # compute new minimal row sum
+            ## Check convergence (we use "<= eps" as it entails eps=0)
+            stp <- (ncol(row.sums) == maxiter) || if(is.null(eps)) { all(Y == X) } else {
+                err.fun(mrs.new, mrs.old) <= eps
+            }
+            if(stp) {
+                num.opp.ordered <- sum(sapply(seq_len(d), function(j)
+                    all(sort(Y[,j], decreasing=TRUE)[rank(rowSums(Y[,-j, drop=FALSE]))] == Y[,j]))) # count number of oppositely ordered columns
+                err <- err.fun(mrs.new, mrs.old) # compute the (individual) error
+                break
+            } else {
+                mrs.old <- mrs.new # update mrs.old
+                X <- Y # update X
+            }
+        }
+        ## Return
+        colnames(row.sums) <- NULL # remove column names so that they don't appear in output
+        list(bound=mrs.new, err=err, num.iter=ncol(row.sums),
+             row.sums=row.sums, m.row.sums=apply(row.sums, 2, optim.fun),
+             num.opp.ordered=num.opp.ordered)
+
+    }
 }
 
 ##' @title Computing Lower/Upper Bounds for the Worst VaR with the RA
