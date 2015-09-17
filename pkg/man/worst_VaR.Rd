@@ -20,7 +20,7 @@ rearrange(X, tol, tol.type=c("relative", "absolute"), maxiter=Inf,
           method=c("worst", "best"), impl=c("R", "C"))
 RA(alpha, d, qF, N, abstol=NULL, maxiter=Inf, method=c("worst", "best"),
    sample=TRUE, impl=c("R", "C"))
-ARA(alpha, d, qF, N=2^seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=10,
+ARA(alpha, d, qF, N=2^seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
     method=c("worst", "best"), sample=TRUE, impl=c("R", "C"))
 }
 \arguments{
@@ -40,10 +40,17 @@ ARA(alpha, d, qF, N=2^seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=10,
           root finding problem to a different scale.
 	\code{method="dual"} applies the
 	dual bound approach as in Embrechts et al. (2013, Proposition 4).}
-      \item{\code{rearrange()}, \code{RA()},
-        \code{ARA()}:}{\code{method} indicates whether bounds
+      \item{\code{rearrange()}, \code{RA()}, \code{ARA()}:}{
+	\code{method} indicates whether bounds
 	for the worst (i.e., largest) or the best (i.e., smallest)
-	Value-at-Risk are computed.}
+	Value-at-Risk should be computed.
+	These bounds are termed
+          \eqn{\underline{s}_N} and \eqn{\overline{s}_N} in the
+          literature (and below) and are theoretically not guaranteed
+          bounds of (worst or best) Value-at-Risk
+	  (however treated as such in practice and typically in line
+	  with results from \code{worst_VaR_hom()} in the homogeneous
+	  case, for example).}
   }}
   \item{interval}{Initial interval (a \code{\link{numeric}(2)}).
     provided, these are the defaults chosen:
@@ -98,9 +105,10 @@ ARA(alpha, d, qF, N=2^seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=10,
 	achieved.}
   }}
   \item{abstol}{Absolute convergence tolerance \eqn{\epsilon}{epsilon}
-    (to determine the individual convergence, i.e., the change in the computed minimal
+    to determine the individual convergence, i.e., the change in the computed minimal
     (for worst Value-at-Risk) or maximal (for best Value-at-Risk)
-    row sums for the lower and upper bound). If \code{NULL} (the
+    row sums for the lower bound \eqn{\underline{s}_N} and the upper
+    bound \eqn{\overline{s}_N}. If \code{NULL} (the
     default) and \code{maxiter} has not been reached, the iterations
     through the columns of the underlying matrix of quantiles is done
     until the matrix does not change anymore, i.e., until each column
@@ -108,10 +116,12 @@ ARA(alpha, d, qF, N=2^seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=10,
   \item{reltol}{A vector containing two relative convergence tolerances,
     the individual relative tolerance (first component; used to determine
     convergence of the minimal (for worst Value-at-Risk) or maximal
-    (for best Value-at-Risk) row sums for the lower and upper bound)
+    (for best Value-at-Risk) row sums for
+    \eqn{\underline{s}_N} and \eqn{\overline{s}_N})
     and the joint relative tolerance (second component; relative tolerance
-    between the computed lower and upper bound computed with respect
-    to the upper bound). Note that \code{reltol[1]} is allowed to be
+    between the computed \eqn{\underline{s}_N} and
+    \eqn{\overline{s}_N} with respect to \eqn{\overline{s}_N}).
+    Note that \code{reltol[1]} is allowed to be
     \code{NULL}; see \code{abstol} above for how to interpret this case.}
   \item{sample}{\code{\link{logical}} indicating whether each column of
     the two internal matrices of quantiles (see Step 3 of the Rearrangement
@@ -155,9 +165,9 @@ ARA(alpha, d, qF, N=2^seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=10,
 
   \code{rearrange()} returns a \code{\link{list}} containing
   \describe{
-    \item{\code{bound}:}{The computed (lower
-      or upper) bound for (worst or best) Value-at-Risk.}
-    \item{\code{err}:}{The tolerance (i.e., the (absolute or
+    \item{\code{bound}:}{The computed \eqn{\underline{s}_N}
+      or \eqn{\overline{s}_N}.}
+    \item{\code{tol}:}{The tolerance (i.e., the (absolute or
       relative) change of the minimal (for worst Value-at-Risk) or
       maximal (for best Value-at-Risk) row sum in the last iteration).}
     \item{\code{num.iter}:}{The number of iterations over the
@@ -170,52 +180,60 @@ ARA(alpha, d, qF, N=2^seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=10,
       thus corresponds to \code{num.iter}.}
     \item{\code{m.row.sums}:}{A \code{\link{numeric}} containing minimal
       (for worst Value-at-Risk) or maximal (for best Value-at-Risk)
-      row sums for the computed bound.}
+      row sums for each iteration and computed
+      \eqn{\underline{s}_N} and \eqn{\overline{s}_N}.}
     \item{\code{num.opp.ordered}:}{The number of oppositely ordered
       columns.}
   }
 
   \code{RA()} returns a \code{\link{list}} containing
   \describe{
-    \item{\code{bounds}:}{A bivariate vector containing the computed lower
-      and upper bound for (worst or best) Value-at-Risk; see also
-      \code{bound} returned by \code{rearrange()} above.}
-    \item{\code{rel.DU.spread}:}{relative tolerance (computed with respect
-      to the upper bound) between lower and upper bound.}
-    \item{\code{individual.err}:}{A bivariate vector containing the
+    \item{\code{bounds}:}{A bivariate vector containing the computed
+      \eqn{\underline{s}_N} and \eqn{\overline{s}_N} (the so-called
+      rearrangement range) which are typically treated as bounds for
+      (worst or best) Value-at-Risk; see also above.}
+    \item{\code{rel.ra.gap}:}{relative tolerance (also known as
+      relative rearrangement gap) between
+      \eqn{\underline{s}_N} and \eqn{\overline{s}_N} computed with
+      respect to \eqn{\overline{s}_N}.}
+    \item{\code{individual.tol}:}{A bivariate vector containing the
       individual tolerances (i.e., the absolute change of the minimal
       (for worst Value-at-Risk) or maximal (for best Value-at-Risk)
-      row sums for the lower (first component) and upper bound (second
-      component) in the last iteration of \code{rearrange()}); see also
-      \code{err} returned by \code{rearrange()} above.}
-    \item{\code{num.iter}:}{A bivariate vector containing, for the lower
-      and upper bound, the number of iterations over the
-      columns of the underlying matrix of quantiles; see also
-      \code{num.iter} returned by \code{rearrange()} above.}
+      row sums for computing \eqn{\underline{s}_N} and \eqn{\overline{s}_N}
+      in the last iteration of \code{rearrange()}); see also
+      \code{tol} returned by \code{rearrange()} above.}
+    \item{\code{num.iter}:}{A bivariate vector containing (for
+      \eqn{\underline{s}_N} and \eqn{\overline{s}_N}), the number
+      of iterations over the columns of the underlying matrix
+      of quantiles; see also \code{num.iter} returned by
+      \code{rearrange()} above.}
     \item{\code{row.sums}:}{A list of length two containing the computed
-      matrices of row sums (one column for each iteration) for the lower
-      and upper bound; see also \code{rearrange()} above; see also
+      matrices of row sums (one column for each iteration over all columns) for
+      computing \eqn{\underline{s}_N} and \eqn{\overline{s}_N}; see also
       \code{row.sums} returned by \code{rearrange()} above.}
     \item{\code{m.row.sums}:}{A list of length two containing minimal
       (for worst Value-at-Risk) or maximal (for best Value-at-Risk)
-      row sums for the computed lower and upper bounds; see also \code{m.row.sums}
+      row sums for computing \eqn{\underline{s}_N} and \eqn{\overline{s}_N};
+      see also \code{m.row.sums}
       returned by \code{rearrange()} above.}
     \item{\code{num.opp.ordered}:}{A bivariate vector containing
-      the number of oppositely ordered columns for the lower and upper
-      bound; see also \code{num.opp.ordered} returend by
+      the number of oppositely ordered columns for computing
+      \eqn{\underline{s}_N} and \eqn{\overline{s}_N};
+      see also \code{num.opp.ordered} returend by
       \code{rearrange()} above.}
   }
 
   \code{ARA()} returns a \code{\link{list}} containing
   \describe{
     \item{\code{bounds}:}{See \code{RA()}.}
-    \item{\code{rel.DU.spread}:}{See \code{RA()}.}
-    \item{\code{individual.err}:}{See \code{RA()}.}
-    \item{\code{joint.err}:}{The joint relative tolerance reached (i.e.,
-      the relative tolerance between the computed lower and upper bound
+    \item{\code{rel.ra.gap}:}{See \code{RA()}.}
+    \item{\code{individual.tol}:}{See \code{RA()}.}
+    \item{\code{joint.tol}:}{The joint relative tolerance reached (i.e.,
+      the relative tolerance between
+      \eqn{\underline{s}_N} and \eqn{\overline{s}_N}
       computed with respect to the upper bound).}
     \item{\code{N.used}:}{The actual \code{N} used for computing
-      the (final) lower and upper bound.}
+      the (final) \eqn{\underline{s}_N} and \eqn{\overline{s}_N}.}
     \item{\code{num.iter}:}{See \code{RA()}.}
     \item{\code{row.sums}:}{See \code{RA()}.}
     \item{\code{m.row.sums}:}{See \code{RA()}.}
@@ -273,14 +291,14 @@ ARA(alpha, d, qF, N=2^seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=10,
   experts.
 
   For the Rearrangement Algorithm \code{RA()}, unless
-  \code{maxiter}-many iterations have been reached, convergence is
-  determined for the lower and the upper bound if the minimal
-  (for the worst Value-at-Risk) or maximal (for the best
+  \code{maxiter}-many iterations have been reached, convergence of
+  \eqn{\underline{s}_N} and \eqn{\overline{s}_N} is determined if the
+  minimal (for the worst Value-at-Risk) or maximal (for the best
   Value-at-Risk) row sums after an iteration did not change by more than
-  (the absolute tolerance) \code{abstol} (so \eqn{\le\epsilon}{<= eps}). This
-  is slightly different from Embrechts et al. (2013) who use \eqn{<\epsilon}{< eps}
-  but this slight modification has the advantage of allowing
-  \eqn{\epsilon=0}{eps=0}.
+  (the absolute tolerance) \code{abstol} (so \eqn{\le\epsilon}{<=
+  eps}). This is slightly different from Embrechts et al. (2013) who use
+  \eqn{<\epsilon}{< eps} but this slight modification has the advantage
+  of allowing \eqn{\epsilon=0}{eps=0}.
 
   For the Adaptive Rearrangement Algorithm \code{ARA()},
   again unless \code{maxiter}-many iterations
@@ -304,6 +322,19 @@ ARA(alpha, d, qF, N=2^seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=10,
   As a rule of thumb (see the examples below,
   \code{demo(worst_VaR)} and Hofert et al. (2015) for the reasons),
   it is recommended to use \code{ARA()} instead of \code{RA()}.
+
+  On the theoretical side, let us again stress the following.
+  \code{rearrange()}, \code{RA()} and \code{ARA()} compute
+  \eqn{\underline{s}_N} and \eqn{\overline{s}_N} which are, from a
+  practical point of view, treated as bounds of the worst
+  (i.e., largest) or the best (i.e., smallest) Value-at-Risk
+  (whatever is chosen with \code{method}), but which are not
+  known to be such point from a theoretical point of view; see also
+  above. Calling them \dQuote{bounds} for worst or best Value-at-Risk is
+  thus theoretically not correct (unless proven) but \dQuote{practical}.
+  The literature thus speaks of \eqn{(\underline{s}_N, \overline{s}_N)}
+  as the rearrangement range (rather than an interval containing worst
+  or best Value-at-Risk).
 }
 \author{Marius Hofert}
 \references{

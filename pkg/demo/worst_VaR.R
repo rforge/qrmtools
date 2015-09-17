@@ -91,7 +91,7 @@ plot(c, h.aux, type="l", xlab="c (in initial interval)",
 ## the default theta
 h <- sapply(c, function(c.) qrmtools:::Wang_h(c., alpha=alpha, d=d, qF=qF))
 if(doPDF)
-    pdf(file=(file <- paste0("fig_worst_VaR_",alpha,"_hom_Wang_h_Par=2_d=",d,".pdf")),
+    pdf(file=(file <- paste0("fig_worst_VaR_",alpha,"_hom_Wang_h_Par=2_d=",d,"_num.pdf")),
         width=6, height=6)
 par(pty="s")
 plot(c, h, type="l", xlab="c (in initial interval)",
@@ -110,7 +110,7 @@ sapply(c(0, (1-alpha)/d), function(c.)
 ### 1.2.2) Check of h(c) *without* numerical integration (for a range of thetas)
 
 ## Check objective function h(c) (Wang_h() without numerical integration)
-d <- 8 # or d <- 100
+d <- 100 # or d <- 100
 c <- seq(0, (1-alpha)/d, length.out=2^13+1)
 ## => They all go further down to 0 if length.out is increased.
 ##    Smaller theta thus corresponds to a larger derivative in the root
@@ -127,8 +127,10 @@ if(doPDF)
     pdf(file=(file <- paste0("fig_worst_VaR_",alpha,"_hom_Wang_h_Par_d=",d,".pdf")),
         width=6, height=6)
 par(pty="s")
-plot(c, z[,1], type="l", log="y", xlab="c", col="maroon3", ylim=range(z, na.rm=TRUE),
-     ylab=expression("h(c) for"~~alpha~"= 0.99, d = 8 and F being Par("*theta*")"))
+plot(c, z[,1], type="l", log="y", ylim=c(1e-4, 2e7), # works for d = 8 or 100; range(z, na.rm=TRUE)
+     xlab="c", col="maroon3",
+     ylab=substitute("h(c) for"~~alpha~"= 0.99, d ="~d.~"and F being Par("*theta*")",
+                     list(d.=d)))
 abline(h=0, lty=2)
 lines(c, z[,2], col="darkorange2")
 lines(c, z[,3], col="royalblue3")
@@ -158,7 +160,8 @@ if(doPDF)
         width=6, height=6)
 par(pty="s")
 plot(1-alpha., worst.VaR.Wang[,1], type="l", log="xy", col="maroon3",
-     ylim=range(worst.VaR.Wang), xlab=expression(1-alpha),
+     ylim=c(4, 6e10), # works for d = 8 or 100; range(worst.VaR.Wang)
+     xlab=expression(1-alpha),
      ylab=substitute(bar(VaR)[alpha]*group("(",L^{"+"},")")~
      "for d ="~d.~"and F being Par("*theta*")", list(d.=d)))
 lines(1-alpha., worst.VaR.Wang[,2], col="darkorange2")

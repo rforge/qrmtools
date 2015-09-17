@@ -79,8 +79,8 @@ dual_bound <- function(s, d, pF, tol=.Machine$double.eps^0.25, ...)
         ## h(s, t)
         h <- function(t) dual_bound_2(s, t=t, d=d, pF=pF, ...) -
             dual_bound_2_deriv_term(s, t=t, d=d, pF=pF)
-        ## Note: f(t) -> 0 for t -> s/d- this is bad for uniroot() which will
-        ##       simply stop with the root t=s/d => we thus set f.upper > 0
+        ## Note: h(t) -> 0 for h -> s/d- which is bad for uniroot() as the
+        ##       latter will simply stop with the root t=s/d => we thus set f.upper > 0
         h.up <- -h(0) # guarantee that uniroot() doesn't fail due to root s/d
         t. <- uniroot(h, interval=c(0, s/d), f.upper=h.up, tol=tol)$root # optimal t in Equation (12) [= arginf]
         dual_bound_2_deriv_term(s, t=t., d=d, pF=pF) # dual bound D(s) in Equation (12) [= inf]
@@ -285,8 +285,8 @@ worst_VaR_hom <- function(alpha, d, method=c("Wang", "Wang.Par", "Wang.Par.trafo
                    stop("If theta <=1, interval[1] has to be > 0 as otherwise the internal Wang_h() is NaN")
                h.low <- Wang_h(interval[1], alpha=alpha, d=d, method="Wang.Par", ...)
                h.up <- -h.low # avoid that uniroot() fails due to 0 at upper interval endpoint
-               ## Note: VaR_alpha was not monotone in alpha anymore if h.up = .Machine$double.xmin
-               ##       was chosen and theta in (0,1]
+               ## Note: VaR_alpha not monotone in alpha anymore if h.up = .Machine$double.xmin
+               ##       is chosen
 
                ## Root-finding on 'interval'
                c. <- uniroot(function(c)
@@ -324,20 +324,20 @@ worst_VaR_hom <- function(alpha, d, method=c("Wang", "Wang.Par", "Wang.Par.trafo
                    if(interval[1] >= interval[2]) stop("interval[1] needs to be smaller than interval[2]")
                }
 
-               ## Define objective function
-               h.tilde <- if(th == 1) {
-                   function(x) d*log(x)/(x-1) - ((d-1)/x + 1)
+               ## Define objective function (\tilde{\tilde{h}})
+               h.tt <- if(th == 1) {
+                   function(x) x^2 + x*(-d*log(x)+d-2)-(d-1)
                } else {
                    function(x)
                        (d/(1-th)-1)*x^(-1/th + 1) - (d-1)*x^(-1/th) + x - (d*th/(1-th) + 1)
                }
 
                ## Compute (and adjust) function values at endpoints
-               h.up <- h.tilde(interval[2])
+               h.up <- h.tt(interval[2])
                h.low <- -h.up # avoid that uniroot() fails due to 0 at lower interval endpoint
 
                ## Root-finding on 'interval'
-               x. <- uniroot(h.tilde, interval=interval,
+               x. <- uniroot(h.tt, interval=interval,
                              f.lower=h.low, f.upper=h.up, tol=tol)$root
                c. <- (1-alpha)/(x.+d-1) # convert back to c
                d * Wang_h_aux(c., alpha=alpha, d=d, method="Wang.Par", theta=th)
@@ -349,7 +349,7 @@ worst_VaR_hom <- function(alpha, d, method=c("Wang", "Wang.Par", "Wang.Par.trafo
                if(!hasArg(pF))
                    stop("Method 'dual' requires the distribution function pF")
                if(!hasArg(interval))
-                   stop("Method 'dual' requires an initial interval")
+                   stop("Method 'dual' requires an initial interval c(s_l, s_u) to be given")
                uniroot(function(s) dual_bound(s, d=d, tol=tol, ...)-(1-alpha),
                        interval=interval, tol=tol)$root # s interval
                ## Note: We can't pass arguments to the inner root-finding
@@ -383,8 +383,8 @@ worst_VaR_hom <- function(alpha, d, method=c("Wang", "Wang.Par", "Wang.Par.trafo
 ##'         5) Number of oppositely ordered columns
 ##'         6) Number of iterations through the matrix columns used for the last N
 ##' @author Marius Hofert
-##' @note - We use "<= abs.err" to determine convergence instead of "< abs.err" as
-##'         this then also nicely works with "= 0" (if abs.err=0) which stops in
+##' @note - We use "<= tol" to determine convergence instead of "< tol" as
+##'         this then also nicely works with "= 0" (if tol=0) which stops in
 ##'         case the matrices are identical (no change at all).
 ##'       - No checking here due to speed
 rearrange <- function(X, tol, tol.type=c("relative", "absolute"), maxiter=Inf,
@@ -403,7 +403,7 @@ rearrange <- function(X, tol, tol.type=c("relative", "absolute"), maxiter=Inf,
 
         ## Define helper functions
         optim.fun <- if(method=="worst") min else max
-        err.fun <- if(tol.type=="absolute") {
+        tol.fun <- if(tol.type=="absolute") {
             function(x, y) abs(x-y)
         } else {
             function(x, y) abs((x-y)/y)
@@ -422,12 +422,12 @@ rearrange <- function(X, tol, tol.type=c("relative", "absolute"), maxiter=Inf,
             mrs.new <- optim.fun(Y.rs) # compute new minimal row sum
             ## Check convergence (we use "<= tol" as it entails tol=0)
             stp <- (ncol(row.sums) == maxiter) || if(is.null(tol)) { all(Y == X) } else {
-                err.fun(mrs.new, mrs.old) <= tol
+                tol.fun(mrs.new, mrs.old) <= tol
             }
             if(stp) {
                 num.opp.ordered <- sum(sapply(seq_len(d), function(j)
                     all(sort(Y[,j], decreasing=TRUE)[rank(rowSums(Y[,-j, drop=FALSE]))] == Y[,j]))) # count number of oppositely ordered columns
-                err <- err.fun(mrs.new, mrs.old) # compute the (individual) tolerance
+                tol <- tol.fun(mrs.new, mrs.old) # compute the (individual) tolerance
                 break
             } else {
                 mrs.old <- mrs.new # update mrs.old
@@ -436,7 +436,7 @@ rearrange <- function(X, tol, tol.type=c("relative", "absolute"), maxiter=Inf,
         }
         ## Return
         colnames(row.sums) <- NULL # remove column names so that they don't appear in output
-        list(bound=mrs.new, err=err, num.iter=ncol(row.sums),
+        list(bound=mrs.new, tol=tol, num.iter=ncol(row.sums),
              row.sums=row.sums, m.row.sums=apply(row.sums, 2, optim.fun),
              num.opp.ordered=num.opp.ordered)
 
@@ -530,8 +530,8 @@ RA <- function(alpha, d, qF, N, abstol=NULL, maxiter=Inf,
 
     ## Step 7 (return \underline{s}_N, \overline{s}_N and other info)
     list(bounds=c(res.low$bound, res.up$bound),
-         rel.DU.spread=abs((res.up$bound-res.low$bound)/res.up$bound),
-         individual.err=c(res.low$individual.err, res.up$individual.err),
+         rel.ra.gap=abs((res.up$bound-res.low$bound)/res.up$bound),
+         individual.tol=c(res.low$individual.tol, res.up$individual.tol),
 	 num.iter=c(res.low$num.iter, res.up$num.iter),
          row.sums=list(res.low$row.sums, res.up$row.sums),
          m.row.sums=list(res.low$m.row.sums, res.up$m.row.sums),
@@ -570,7 +570,7 @@ RA <- function(alpha, d, qF, N, abstol=NULL, maxiter=Inf,
 ##'         7) Number of iterations through the matrix columns used
 ##' @author Marius Hofert
 ARA <- function(alpha, d, qF, N=2^seq(8, 20, by=1), reltol=c(0.001, 0.01),
-                maxiter=10, method=c("worst", "best"), sample=TRUE,
+                maxiter=12, method=c("worst", "best"), sample=TRUE,
                 impl=c("R", "C"))
 {
     ## Checks and Step 1 (get N, reltol)
@@ -631,17 +631,17 @@ ARA <- function(alpha, d, qF, N=2^seq(8, 20, by=1), reltol=c(0.001, 0.01),
                              maxiter=maxiter, method=method, impl=impl)
 
         ## Determine convergence (individual + joint)
-        joint.err <- abs((res.low$bound-res.up$bound)/res.up$bound)
-        if( (max(res.low$err, res.up$err) <= reltol[1]) &&
-            joint.err <= reltol[2] ) break
+        joint.tol <- abs((res.low$bound-res.up$bound)/res.up$bound)
+        if( (max(res.low$tol, res.up$tol) <= reltol[1]) &&
+            joint.tol <= reltol[2] ) break
 
     }
 
     ## Step 7 (return \underline{s}_N, \overline{s}_N and other info)
     list(bounds=c(res.low$bound, res.up$bound),
-         rel.DU.spread=abs((res.up$bound-res.low$bound)/res.up$bound),
-         individual.err=c(res.low$err, res.up$err),
-         joint.err=joint.err, N.used=N.,
+         rel.ra.gap=abs((res.up$bound-res.low$bound)/res.up$bound),
+         individual.tol=c(res.low$tol, res.up$tol),
+         joint.tol=joint.tol, N.used=N.,
          num.iter=c(res.low$num.iter, res.up$num.iter),
          row.sums=list(res.low$row.sums, res.up$row.sums),
          m.row.sums=list(res.low$m.row.sums, res.up$m.row.sums),
