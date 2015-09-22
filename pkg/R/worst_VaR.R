@@ -264,34 +264,29 @@ worst_VaR_hom <- function(alpha, d, method=c("Wang", "Wang.Par", "Wang.Par.trafo
                th <- list(...)$theta
                stopifnot(length(th) == 1, th > 0) # check theta here
 
-               ## Compute lower uniroot boundary c_l and check
+               ## Compute lower uniroot boundaries and check
                if(is.null(interval)) {
-                   up <- (1-alpha)/d
                    low <- if(th > 1) {
                        (1-alpha)/((1+d/(th-1))^th+d-1)
                    } else if(th == 1) {
                        e <- exp(1)
                        (1-alpha)/((d+1)^(e/(e-1))+d-1)
                    } else { (1-th)*(1-alpha)/d }
+                   up <- if(th == 1) (1-alpha)/(3*d/2-1) else
+                         (1-alpha)*(d-1+th)/((d-1)*(2*th+d))
                    interval <- c(low, up)
                } else {
                    if(interval[1] < 0) stop("interval[1] needs to be >= 0")
                    if(interval[1] > (1-alpha)/d) stop("interval[2] needs to be <= (1-alpha)/d")
                    if(interval[1] >= interval[2]) stop("interval[1] needs to be smaller than interval[2]")
                }
-
-               ## Compute (and adjust) function values at endpoints
                if(th <= 1 && interval[1] == 0)
                    stop("If theta <=1, interval[1] has to be > 0 as otherwise the internal Wang_h() is NaN")
-               h.low <- Wang_h(interval[1], alpha=alpha, d=d, method="Wang.Par", ...)
-               h.up <- -h.low # avoid that uniroot() fails due to 0 at upper interval endpoint
-               ## Note: VaR_alpha not monotone in alpha anymore if h.up = .Machine$double.xmin
-               ##       is chosen
 
                ## Root-finding on 'interval'
                c. <- uniroot(function(c)
                              Wang_h(c, alpha=alpha, d=d, method="Wang.Par", ...),
-                             interval=interval, f.lower=h.low, f.upper=h.up, tol=tol)$root
+                             interval=interval, tol=tol)$root
                d * Wang_h_aux(c., alpha=alpha, d=d, method="Wang.Par", theta=th)
 
            },
@@ -304,14 +299,9 @@ worst_VaR_hom <- function(alpha, d, method=c("Wang", "Wang.Par", "Wang.Par.trafo
                th <- list(...)$theta
                stopifnot(length(th) == 1, th > 0) # check theta here
 
-               ## Compute upper uniroot boundary (has to be in [1,Inf) here) and check
-               ## (corresponds to lower bound c_l in the original root-finding problem;
-               ## note that c_l=0 is not an option there since Wang_Ibar(0) = Inf and
-               ## Wang_h_aux(0) = Inf and thus Inf - Inf = NaN, see also:
-               ## qrmtools:::Wang_h(0, alpha=0.99, d=8, method="Wang.Par", theta=0.5)
-               ## => actually already NaN for c in [0, 1e-17])
+               ## Compute uniroot boundaries (has to be in [1,Inf) here) and check
                if(is.null(interval)) {
-                   low <- 1
+                   low <- if(th == 1) d/2 else (d-1)*(1+th)/(d-1+th)
                    up <- if(th > 1) {
                        (1+d/(th-1))^th
                    } else if(th == 1) {
@@ -332,13 +322,8 @@ worst_VaR_hom <- function(alpha, d, method=c("Wang", "Wang.Par", "Wang.Par.trafo
                        (d/(1-th)-1)*x^(-1/th + 1) - (d-1)*x^(-1/th) + x - (d*th/(1-th) + 1)
                }
 
-               ## Compute (and adjust) function values at endpoints
-               h.up <- h.tt(interval[2])
-               h.low <- -h.up # avoid that uniroot() fails due to 0 at lower interval endpoint
-
                ## Root-finding on 'interval'
-               x. <- uniroot(h.tt, interval=interval,
-                             f.lower=h.low, f.upper=h.up, tol=tol)$root
+               x. <- uniroot(h.tt, interval=interval, tol=tol)$root
                c. <- (1-alpha)/(x.+d-1) # convert back to c
                d * Wang_h_aux(c., alpha=alpha, d=d, method="Wang.Par", theta=th)
 
