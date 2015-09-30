@@ -110,7 +110,7 @@ sapply(c(0, (1-alpha)/d), function(c.)
 ### 1.2.2) Check of h(c) *without* numerical integration (for a range of thetas)
 
 ## Check objective function h(c) (Wang_h() without numerical integration)
-d <- 100 # or d <- 100
+d <- 8 # or d <- 100
 c <- seq(0, (1-alpha)/d, length.out=2^13+1)
 ## => They all go further down to 0 if length.out is increased.
 ##    Smaller theta thus corresponds to a larger derivative in the root
@@ -196,7 +196,7 @@ qrmtools:::Wang_h_aux(interval[1], alpha=alpha, d=d, method=method, theta=th) # 
 
 ## Setup
 alpha <- 0.99 # confidence level
-d <- 8 # or d <- 100
+d <- 100 # or d <- 100
 n.th <- 64 # number of thetas
 th.low <- 0.05
 th.up <- 5
@@ -209,10 +209,12 @@ N <- 1e4 # number of discretization points for RA(); N=1e5 does not improve the 
 res <- matrix(, nrow=n.th, ncol=7)
 colnames(res) <- c("Wang", "Wang.Par", "Wang.Par.uniroot.tol",
                    "Wang.Par.trafo", "dual", "RA.low", "RA.up")
+pb <- txtProgressBar(max=n.th, style=if(isatty(stdout())) 3 else 1) # setup progress bar
+on.exit(close(pb)) # on exit, close progress bar
 for(i in seq_len(n.th)) {
     ## "Wang" (numerical integration with smaller uniroot() tolerance; numerically critical)
     Wang.num.res <- tryCatch(worst_VaR_hom(alpha, d=d, qF=qFs[[i]]), error=function(e) e)
-    if(is(Wang.num.res, "simpleError")) { # 13 warnings appeared
+    if(is(Wang.num.res, "simpleError")) { # warnings appeared
         warning("there was an error: ", conditionMessage(Wang.num.res), " (will use NA as result)")
         Wang.num.res <- NA
     }
@@ -233,28 +235,30 @@ for(i in seq_len(n.th)) {
     RA. <- RA(alpha, d=d, qF=qFs[[i]], N=N, abstol=0.001)
     res[i,"RA.low"] <- RA.$bounds[1]
     res[i,"RA.up"]  <- RA.$bounds[2]
+    ## Progress
+    setTxtProgressBar(pb, i) # update progress bar
 }
 
 ## Plot
-res <- res/res[,"RA.up"] # standardize
+res. <- res/res[,"Wang.Par.trafo"] # standardize
 if(doPDF) {
     file <- paste0("fig_worst_VaR_",alpha,"_hom_comparison_d=",d,"_N=",N,".pdf")
     pdf(file=(file), width=6, height=6)
 }
 par(pty="s")
-plot(th, res[,"Wang"], type="l", ylim=range(res, na.rm=TRUE),
+plot(th, res.[,"Wang"], type="l", ylim=range(res., na.rm=TRUE),
      xlab=expression(theta), ylab=substitute(bar(VaR)[0.99]*group("(",L^{"+"},")")~
      "comparison (standardized) for d ="~d.~"and F being Par("*theta*")", list(d.=d)),
-     col="gray80", lty=2, lwd=5)
-lines(th, res[,"Wang.Par"], col="gray50", lty=2, lwd=3)
-lines(th, res[,"Wang.Par.uniroot.tol"], col="maroon3", lty=1, lwd=1)
-lines(th, res[,"Wang.Par.trafo"], col="gray20", lty=2, lwd=1)
-lines(th, res[,"dual"], col="royalblue3", lty=2, lwd=2)
-lines(th, res[,"RA.low"], col="black", lty=3, lwd=1)
+     col="gray80", lty=2, lwd=5) # Wang (with numerical integration)
+lines(th, res.[,"Wang.Par"], col="gray50", lty=2, lwd=3) # Wang Pareto (wo num. integration)
+lines(th, res.[,"Wang.Par.uniroot.tol"], col="maroon3", lty=1, lwd=1) # not as bad as without initial interval [c_l,c_u], still...
+lines(th, res.[,"dual"], col="royalblue3", lty=2, lwd=2)
+lines(th, res.[,"RA.low"], col="black", lty=3, lwd=1)
+lines(th, res.[,"RA.up"], col="gray20", lty=2, lwd=1)
 legend("topright", bty="n",
-       col=c("gray80", "gray50", "maroon3", "gray20", "royalblue3", "black"),
-       lty=c(2,2,1,2,2,3), lwd=c(5,3,1,1,2,1),
+       col=c("gray80", "gray50", "maroon3", "royalblue3", "black", "gray20"),
+       lty=c(2,2,1,2,3,2), lwd=c(5,3,1,2,1,1),
        legend=c("Wang (num. int.)", "Wang Pareto (wo num. int.)",
-                "Wang Pareto (uniroot() tol.)", "Wang Pareto (transformed)", "Dual bound",
-                "lower RA bound"))
+                "Wang Pareto (uniroot() tol.)", "Dual bound",
+                "lower RA bound", "upper RA bound"))
 if(doPDF) dev.off.pdf(file=file)
