@@ -17,11 +17,11 @@ worst_VaR_hom(alpha, d, method=c("Wang", "Wang.Par", "Wang.Par.trafo", "dual"),
 dual_bound(s, d, pF, tol=.Machine$double.eps^0.25, ...)
 
 rearrange(X, tol, tol.type=c("relative", "absolute"), maxiter=Inf,
-          method=c("worst", "best"), impl=c("R", "C"))
+          method=c("worst", "best"))
 RA(alpha, d, qF, N, abstol=NULL, maxiter=Inf, method=c("worst", "best"),
-   sample=TRUE, impl=c("R", "C"))
+   sample=TRUE)
 ARA(alpha, d, qF, N=2^seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
-    method=c("worst", "best"), sample=TRUE, impl=c("R", "C"))
+    method=c("worst", "best"), sample=TRUE)
 }
 \arguments{
   \item{alpha}{Value-at-Risk confidence level (e.g., 0.99).}
@@ -92,8 +92,6 @@ ARA(alpha, d, qF, N=2^seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
     \eqn{N}-discretizations of the \eqn{d} quantiles to be rearranged.}
   \item{maxiter}{Maximal number of iterations over the columns of the
     underlying matrix of quantiles (can be set to \code{Inf}).}
-  \item{impl}{\code{\link{character}} string providing the type of
-    implementation used (C vs R).}
   \item{N}{Number of discretization points. For
     \describe{
       \item{\code{RA()}:}{A positive integer.}
@@ -410,19 +408,12 @@ legend("bottomright", bty="n", lty=rep(1,2),
        col=c("black", "blue"), legend=c("upper bound", "lower bound"))
 ## => One should use ARA() instead of RA()
 
-## "Reproducing" an example from Embrechts et al. (2013)
+## "Reproducing" an example from Embrechts et al. (2013; Table 1)
 ## (seed unknown, eps unknown)
 set.seed(271)
-(resRA <- RA(alpha, d=3, qF=qF, N=50))
-stopifnot(all.equal(resRA$bounds[1], 45.11593, tolerance=1e-7),
-          all.equal(resRA$bounds[2], 46.40413, tolerance=1e-7),
+resRA <- RA(alpha, d=3, qF=qF, N=50)
+stopifnot(all.equal(resRA$bounds[1], 44.84026, tolerance=1e-6),
+          all.equal(resRA$bounds[2], 46.40413, tolerance=1e-6),
           resRA$num.opp.ordered == c(3,3))
-
-## An example from Embrechts et al. (2013) with larger N
-## (first two decimals are equal)
-if(FALSE) {
-    resRA <- RA(alpha, d=3, qF=qF, N=1e5)
-    stopifnot(all.equal(resRA$bounds, rep(45.98, 2), tolerance=3e-4))
-}
 }
 \keyword{distribution}

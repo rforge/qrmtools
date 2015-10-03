@@ -1,4 +1,4 @@
-useDynLib(qrmtools, .registration = TRUE)
+## useDynLib(qrmtools, .registration = TRUE)
 
 
 ### Imports ####################################################################
@@ -8,7 +8,8 @@ import("xts")
 
 ### Exports ####################################################################
 
-export(## distributions
+export(
+    ## distributions
     "dGEV", "pGEV", "qGEV", "rGEV",
     "dGPD", "pGPD", "qGPD", "rGPD",
     "dPar", "pPar", "qPar", "rPar",
@@ -18,5 +19,6 @@ export(## distributions
     "VaR_t", "ES_t", "VaR_Par", "ES_Par",
     ## worst VaR
     "crude_VaR_bounds", "dual_bound", "worst_VaR_hom",
-    "rearrange", "RA", "ARA")
+    "rearrange", "RA", "ARA"
+)
 

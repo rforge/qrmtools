@@ -358,7 +358,6 @@ worst_VaR_hom <- function(alpha, d, method=c("Wang", "Wang.Par", "Wang.Par.trafo
 ##' @param method Character indicating which VaR is approximated (worst/best)
 ##'        determines optimizing function (min for worst VaR; max
 ##'        for best VaR)
-##' @param impl String indicating the implementation (either "C" or "R")
 ##' @return List containing the
 ##'         1) Computed (lower or upper [depending on X]) bound for (worst or
 ##'            best [depending on method]) VaR
@@ -367,65 +366,88 @@ worst_VaR_hom <- function(alpha, d, method=c("Wang", "Wang.Par", "Wang.Par.trafo
 ##'         4) Vector of minimal [for worst VaR] or maximal [for best VaR] row sums
 ##'         5) Number of oppositely ordered columns
 ##'         6) Number of iterations through the matrix columns used for the last N
-##' @author Marius Hofert
+##' @author Marius Hofert and Kurt Hornik
 ##' @note - We use "<= tol" to determine convergence instead of "< tol" as
 ##'         this then also nicely works with "= 0" (if tol=0) which stops in
 ##'         case the matrices are identical (no change at all).
 ##'       - No checking here due to speed
 rearrange <- function(X, tol, tol.type=c("relative", "absolute"), maxiter=Inf,
-                      method=c("worst", "best"), impl=c("R", "C"))
+                      method=c("worst", "best"))
 {
+    N <- nrow(X)
     d <- ncol(X)
-    if(impl=="C") {
 
-        stop("Still in the works... Not available yet.") # TODO
-        if(is.null(tol)) tol <- -1 # for C code
-        if(is.infinite(maxiter)) maxiter <- -1 # for C code
-        rearrange <- NULL # to avoid "RA_aux: no visible binding for global variable 'rearrange_'"
-        .Call("rearrange_", X, method, tol.type, maxiter, tol)
+    ## For former implementation in C
+    ## if(is.null(tol)) tol <- -1 # for C code
+    ## if(is.infinite(maxiter)) maxiter <- -1 # for C code
+    ## rearrange <- NULL # to avoid "RA_aux: no visible binding for global variable 'rearrange_'"
+    ## .Call("rearrange_", X, method, tol.type, maxiter, tol)
 
-    } else { # R implementation
+    ## Define helper functions
+    optim.fun <- if(method=="worst") min else max
+    tol.fun <- if(tol.type=="absolute") {
+        function(x, y) abs(x-y)
+    } else {
+        function(x, y) abs((x-y)/y)
+    }
 
-        ## Define helper functions
-        optim.fun <- if(method=="worst") min else max
-        tol.fun <- if(tol.type=="absolute") {
-            function(x, y) abs(x-y)
+    ## Setup before major loop
+    row.sums <- matrix(, nrow=nrow(X), ncol=0) # (N, 0)-matrix of row sums
+    mrs.old <- optim.fun(.rowSums(X, N, d)) # old minimal row sum (currently: the one of X)
+    ## Define lists
+    X.rs <- .rowSums(X, N, d) # faster than rowSums()
+    X.lst <- split(X, col(X)) # to avoid indexing the jth column all the time, we work with a list!
+    X.lst.sorted <- lapply(X.lst, sort.int, decreasing=TRUE) # sorting is only necessary once!
+
+    ## Loop through the columns
+    while (TRUE) {
+
+        ## Oppositely order X (=> Y)
+        Y.lst <- X.lst
+        Y.rs <- X.rs # row sum of Y
+        unchanged <- TRUE # defined even if tol is not NULL
+        for(j in 1:d) { # one iteration over all columns of the matrix
+            yj <- Y.lst[[j]]
+            rs <- Y.rs - yj # sum over all other columns (but the jth)
+            yj <- X.lst.sorted[[j]][rank(rs)]
+            if(unchanged && any(yj != Y.lst[[j]])) unchanged <- FALSE # check whether yj has changed
+            Y.rs <- rs + yj # update row sum of Y
+            Y.lst[[j]] <- yj # update list with rearranged jth column
+        }
+
+        ## Compute row sums and minimal/maximal row sums
+        row.sums <- cbind(row.sums, Y.rs) # append the new row sums
+        mrs.new <- optim.fun(Y.rs) # compute new minimal row sum
+
+        ## Check convergence (we use "<= tol" as it entails tol=0)
+        stp <- (ncol(row.sums) == maxiter) || if(is.null(tol)) unchanged else {
+            tol.fun(mrs.new, mrs.old) <= tol
+        }
+        if(stp) {
+            ## Count the number of columns oppositely ordered to the sum of all others
+            num.opp.ordered <-
+                sum(vapply(seq_len(d),
+                           function(j) {
+                               yj <- Y.lst[[j]]
+                               all(X.lst.sorted[[j]][rank(Y.rs - yj)]
+                                   == yj)
+                           }, NA))
+            tol <- tol.fun(mrs.new, mrs.old) # compute the (individual) tolerance
+            break
         } else {
-            function(x, y) abs((x-y)/y)
+            mrs.old <- mrs.new # update mrs.old
+            X.lst <- Y.lst
+            X.rs <- Y.rs
         }
-        ## Loop through the columns
-        row.sums <- matrix(, nrow=nrow(X), ncol=0) # (N, 0)-matrix of row sums
-        mrs.old <- optim.fun(rowSums(X)) # old minimal row sum (currently: the one of X)
-        while (TRUE) {
-            ## Oppositely order X (=> Y)
-            Y <- X
-            for(j in 1:d)
-                Y[,j] <- sort(Y[,j], decreasing=TRUE)[rank(rowSums(Y[,-j, drop=FALSE]))]
-            ## Compute row sums and minimal/maximal row sums
-            Y.rs <- rowSums(Y)
-            row.sums <- cbind(row.sums, Y.rs) # append the new row sums
-            mrs.new <- optim.fun(Y.rs) # compute new minimal row sum
-            ## Check convergence (we use "<= tol" as it entails tol=0)
-            stp <- (ncol(row.sums) == maxiter) || if(is.null(tol)) { all(Y == X) } else {
-                tol.fun(mrs.new, mrs.old) <= tol
-            }
-            if(stp) {
-                num.opp.ordered <- sum(sapply(seq_len(d), function(j)
-                    all(sort(Y[,j], decreasing=TRUE)[rank(rowSums(Y[,-j, drop=FALSE]))] == Y[,j]))) # count number of oppositely ordered columns
-                tol <- tol.fun(mrs.new, mrs.old) # compute the (individual) tolerance
-                break
-            } else {
-                mrs.old <- mrs.new # update mrs.old
-                X <- Y # update X
-            }
-        }
-        ## Return
-        colnames(row.sums) <- NULL # remove column names so that they don't appear in output
-        list(bound=mrs.new, tol=tol, num.iter=ncol(row.sums),
-             row.sums=row.sums, m.row.sums=apply(row.sums, 2, optim.fun),
-             num.opp.ordered=num.opp.ordered)
 
     }
+
+    ## Return
+    colnames(row.sums) <- NULL # remove column names so that they don't appear in output
+    list(bound=mrs.new, tol=tol, num.iter=ncol(row.sums),
+         row.sums=row.sums, m.row.sums=apply(row.sums, 2, optim.fun),
+         num.opp.ordered=num.opp.ordered)
+
 }
 
 ##' @title Computing Lower/Upper Bounds for the Worst VaR with the RA
@@ -442,7 +464,6 @@ rearrange <- function(X, tol, tol.type=c("relative", "absolute"), maxiter=Inf,
 ##' @param method character indicating which VaR is approximated (worst/best)
 ##' @param sample logical indicating whether each column of the two working
 ##'        matrices are sampled before the iteration begins
-##' @param impl string indicating the implementation (either "C" or "R")
 ##' @return List containing the
 ##'         1) Computed lower and upper bound for (worst or best) VaR
 ##'         2) The relative dependence uncertainty spread
@@ -458,13 +479,12 @@ rearrange <- function(X, tol, tol.type=c("relative", "absolute"), maxiter=Inf,
 ##' @note Notation is from p. 2757 in Embrechts, Puccetti, Rueschendorf (2013);
 ##'       variables are named according to the 'worst' VaR case.
 RA <- function(alpha, d, qF, N, abstol=NULL, maxiter=Inf,
-               method=c("worst", "best"), sample=TRUE, impl=c("R", "C"))
+               method=c("worst", "best"), sample=TRUE)
 {
     ## Checks and Step 1 (get N, abstol)
     stopifnot(0 < alpha, alpha < 1, is.null(abstol) || abstol >= 0,
               length(N) >= 1, N >= 2, maxiter >= 1, is.logical(sample))
     method <- match.arg(method)
-    impl <- match.arg(impl)
     ## Checking of d, qF
     if(missing(d))
         stopifnot(is.list(qF), sapply(qF, is.function), (d <- length(qF)) >= 2)
@@ -491,7 +511,7 @@ RA <- function(alpha, d, qF, N, abstol=NULL, maxiter=Inf,
     ## abstol change in the min (method="worst") or max (method="best") row sum
     ## or until we reached maxiter number of iterations
     res.low <- rearrange(X, tol=abstol, tol.type="absolute", maxiter=maxiter,
-                         method=method, impl=impl)
+                         method=method)
 
     ## Compute upper bound
 
@@ -511,7 +531,7 @@ RA <- function(alpha, d, qF, N, abstol=NULL, maxiter=Inf,
     ## abstol change in the min (method="worst") or max (method="best") row sum
     ## or until we reached maxiter number of iterations
     res.up <- rearrange(X, tol=abstol, tol.type="absolute", maxiter=maxiter,
-                        method=method, impl=impl)
+                        method=method)
 
     ## Step 7 (return \underline{s}_N, \overline{s}_N and other info)
     list(bounds=c(res.low$bound, res.up$bound),
@@ -541,7 +561,6 @@ RA <- function(alpha, d, qF, N, abstol=NULL, maxiter=Inf,
 ##' @param method character indicating which VaR is approximated (worst/best)
 ##' @param sample logical indicating whether each column of the two working
 ##'        matrices are sampled before the iteration begins
-##' @param impl string indicating the implementation (either "C" or "R")
 ##' @return List containing the
 ##'         1) Computed lower and upper bound for (worst or best) VaR
 ##'         2) The relative dependence uncertainty spread
@@ -555,15 +574,13 @@ RA <- function(alpha, d, qF, N, abstol=NULL, maxiter=Inf,
 ##'         7) Number of iterations through the matrix columns used
 ##' @author Marius Hofert
 ARA <- function(alpha, d, qF, N=2^seq(8, 20, by=1), reltol=c(0.001, 0.01),
-                maxiter=12, method=c("worst", "best"), sample=TRUE,
-                impl=c("R", "C"))
+                maxiter=12, method=c("worst", "best"), sample=TRUE)
 {
     ## Checks and Step 1 (get N, reltol)
     stopifnot(0 < alpha, alpha < 1, length(reltol) == 2,
               is.null(reltol[1]) || reltol[1] >=0, reltol[2] >= 0,
               length(N) >= 1, N >= 2, maxiter >= 1, is.logical(sample))
     method <- match.arg(method)
-    impl <- match.arg(impl)
     ## Checking of d, qF
     if(missing(d))
         stopifnot(is.list(qF), sapply(qF, is.function), (d <- length(qF)) >= 2)
@@ -593,7 +610,7 @@ ARA <- function(alpha, d, qF, N=2^seq(8, 20, by=1), reltol=c(0.001, 0.01),
         ## reltol[1] change in the min (method="worst") or max (method="best") row sum
         ## or until we reached maxiter number of iterations
         res.low <- rearrange(X, tol=reltol[1], tol.type="relative",
-                             maxiter=maxiter, method=method, impl=impl)
+                             maxiter=maxiter, method=method)
 
         ## Compute upper bound
 
@@ -613,7 +630,7 @@ ARA <- function(alpha, d, qF, N=2^seq(8, 20, by=1), reltol=c(0.001, 0.01),
         ## reltol[1] change in the min (method="worst") or max (method="best") row sum
         ## or until we reached maxiter number of iterations
         res.up <- rearrange(X, tol=reltol[1], tol.type="relative",
-                             maxiter=maxiter, method=method, impl=impl)
+                             maxiter=maxiter, method=method)
 
         ## Determine convergence (individual + joint)
         joint.tol <- abs((res.low$bound-res.up$bound)/res.up$bound)
@@ -632,4 +649,3 @@ ARA <- function(alpha, d, qF, N=2^seq(8, 20, by=1), reltol=c(0.001, 0.01),
          m.row.sums=list(res.low$m.row.sums, res.up$m.row.sums),
          num.opp.ordered=c(res.low$num.opp.ordered, res.up$num.opp.ordered))
 }
-
