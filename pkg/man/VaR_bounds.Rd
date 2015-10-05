@@ -5,10 +5,9 @@
 \alias{rearrange}
 \alias{RA}
 \alias{ARA}
-\title{Worst Value-at-Risk for Given Margins}
+\title{Best and Worst Value-at-Risk for Given Margins}
 \description{
-  Compute the worst Value-at-Risk for given marginal distributions under
-  various setups.
+  Compute the best and worst Value-at-Risk for given marginal distributions.
 }
 \usage{
 crude_VaR_bounds(alpha, d, qF, ...)
@@ -20,49 +19,54 @@ rearrange(X, tol, tol.type=c("relative", "absolute"), maxiter=Inf,
           method=c("worst", "best"))
 RA(alpha, d, qF, N, abstol=NULL, maxiter=Inf, method=c("worst", "best"),
    sample=TRUE)
-ARA(alpha, d, qF, N=2^seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
+ARA(alpha, d, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
     method=c("worst", "best"), sample=TRUE)
 }
 \arguments{
   \item{alpha}{Value-at-Risk confidence level (e.g., 0.99).}
   \item{d}{Dimension (number of risk factors; \eqn{\ge 2}{>=2}).}
   \item{qF}{The marginal quantile function in the homogeneous case or,
-    for \code{crude_VaR_bounds()} and \code{RA()}, a list (of length
-    \code{d}) with the marginal quantile functions.}
+    for \code{crude_VaR_bounds()}, \code{RA()} and \code{ARA()},
+    a list (of length \code{d}) with the marginal quantile functions.}
   \item{method}{A \code{\link{character}} string. For
     \describe{
       \item{\code{VaR_bounds_hom()}:}{\code{method="Wang"},
 	\code{method="Wang.Par"} and \code{method="Wang.Par.trafo"}
-	apply the approach of Embrechts et al. (2014,
-	Proposition 3.1). The latter two assume Pareto margins and thus do
-	not require numerical integration;
-          \code{method="Wang.Par.trafo"} first transforms the
-          root finding problem to a different scale.
-	\code{method="dual"} applies the
-	dual bound approach as in Embrechts et al. (2013, Proposition 4).}
+         apply the approaches of Embrechts et al. (2014,
+	 Proposition 3.1) for computing best (i.e., smallest) and
+	 worst (i.e., largest) Value-at-Risk. The
+         latter two methods assume Pareto margins and thus do
+	 not require numerical integration;
+         \code{method="Wang.Par.trafo"} first transforms the
+         root finding problem for computing worst Value-at-Risk to
+	 a different scale.
+	\code{method="dual"} applies the dual bound approach as
+	 in Embrechts et al. (2013, Proposition 4)
+         for computing worst Value-at-Risk (no value for the best
+         Value-at-Risk can be obtained with this approach and thus
+          \code{\link{NA}} is returned for the best Value-at-Risk).}
       \item{\code{rearrange()}, \code{RA()}, \code{ARA()}:}{
 	\code{method} indicates whether bounds
-	for the worst (i.e., largest) or the best (i.e., smallest)
-	Value-at-Risk should be computed.
+	for the best or for the worst Value-at-Risk should be computed.
 	These bounds are termed
           \eqn{\underline{s}_N} and \eqn{\overline{s}_N} in the
           literature (and below) and are theoretically not guaranteed
-          bounds of (worst or best) Value-at-Risk
+          bounds of (best or worst) Value-at-Risk
 	  (however treated as such in practice and typically in line
 	  with results from \code{VaR_bounds_hom()} in the homogeneous
 	  case, for example).}
   }}
-  \item{interval}{Initial interval (a \code{\link{numeric}(2)}).
-    provided, these are the defaults chosen:
+  \item{interval}{Initial interval (a \code{\link{numeric}(2)}) for
+    computing worst Value-at-Risk. If not provided, these are the defaults chosen:
     \describe{
       \item{\code{method="Wang"}:}{The initial
 	interval is \eqn{[0,(1-\alpha)/d]}{[0,(1-alpha)/d]}.}
       \item{\code{method="Wang.Par"}:}{The initial
-	interval is \eqn{[c_l,(1-\alpha)/d]}{[c_l,(1-alpha)/d]},
-	where \eqn{c_l} is chosen as in Hofert et al. (2015).}
+	interval is \eqn{[c_l,c_u]}, where \eqn{c_l} and \eqn{c_u}
+	are chosen as in Hofert et al. (2015).}
       \item{\code{method="Wang.Par.trafo"}:}{The initial
-	interval is \eqn{[1,x_u]},
-	where \eqn{x_u} is chosen as in Hofert et al. (2015).}
+	interval is \eqn{[x_l,x_u]},
+	where \eqn{x_l} and \eqn{x_u} are chosen as in Hofert et al. (2015).}
       \item{\code{method="dual"}:}{In this case, no good defaults are known.
 	Note that the lower endpoint of the initial interval has to be
 	sufficiently large in order for the the inner root-finding algorithm
@@ -70,8 +74,8 @@ ARA(alpha, d, qF, N=2^seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
   }}
   \item{tol}{
     \describe{
-      \item{\code{VaR_bounds_hom()}:}{The tolerance for the involved
-	root-finding algorithm as passed
+      \item{\code{VaR_bounds_hom()}:}{The tolerance for the
+	root-finding algorithm for computing worst Value-at-Risk as passed
 	to \code{\link{uniroot}()}. This defaults to
 	\eqn{2.2204*10^{-16}}{2.2204*10^{-16}}
 	for \code{method="Wang"} or \code{method="Wang.Par"} (where a
@@ -79,9 +83,9 @@ ARA(alpha, d, qF, N=2^seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
 	default \code{.Machine$double.eps^0.25} otherwise. Note that for
 	\code{method="dual"}, \code{tol} is used for both the outer
 	and the inner root-finding procedure.}
-      \item{\code{rearrange()}:}{Tolerance to determine the (individual)
-	convergence; if \code{NULL}, the iteration is done until the
-	matrix does not change anymore.}
+      \item{\code{rearrange()}:}{(Absolute or relative) tolerance to
+	determine the (individual) convergence; if \code{NULL},
+	the iteration is done until the matrix does not change anymore.}
   }}
   \item{tol.type}{\code{\link{character}} string indicating the
     type of convergence tolerance function to be used (\code{"relative"}
@@ -90,18 +94,16 @@ ARA(alpha, d, qF, N=2^seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
   \item{pF}{The marginal loss distribution function.}
   \item{X}{An (\code{N}, \code{d})-matrix containing
     \eqn{N}-discretizations of the \eqn{d} quantiles to be rearranged.}
-  \item{maxiter}{Maximal number of iterations over the columns of the
+  \item{maxiter}{Maximal number of iterations over all columns of the
     underlying matrix of quantiles (can be set to \code{Inf}).}
-  \item{N}{Number of discretization points. For
-    \describe{
-      \item{\code{RA()}:}{A positive integer.}
-      \item{\code{ARA()}:}{A vector of positive integers. For each
-	such number, at most \code{maxiter}-many iterations through the columns
-	of the underlying matrix of quantiles are conducted, checking after
-	each of these iterations whether the desired relative tolerances
-	(both individually and jointly; see below) has been
-	achieved.}
-  }}
+  \item{N}{The number of discretization points.}
+  \item{N.exp}{The exponents of the number of discretization points (a vector);
+    the iteration then takes place over all discretization points
+    \code{2^N.exp}. For each such number, at most \code{maxiter}-many
+    iterations through all columns of the underlying matrix of quantiles
+    are conducted, checking after each such iteration whether the
+    desired relative tolerances	(both individually and jointly; see below)
+    have been reached.}
   \item{abstol}{Absolute convergence tolerance \eqn{\epsilon}{epsilon}
     to determine the individual convergence, i.e., the change in the computed minimal
     (for worst Value-at-Risk) or maximal (for best Value-at-Risk)
@@ -153,7 +155,7 @@ ARA(alpha, d, qF, N=2^seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
   \eqn{d}-dimensional model with marginal quantile functions
   specified by \code{qF}.
 
-  \code{VaR_bounds_hom()} returns the worst (i.e., largest) Value-at-Risk at
+  \code{VaR_bounds_hom()} returns the best and worst Value-at-Risk at
   confidence level \eqn{\alpha}{alpha} for \eqn{d} risks with equal
   distribution function specified by the ellipsis \code{...}.
 
@@ -168,20 +170,14 @@ ARA(alpha, d, qF, N=2^seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
     \item{\code{tol}:}{The tolerance (i.e., the (absolute or
       relative) change of the minimal (for worst Value-at-Risk) or
       maximal (for best Value-at-Risk) row sum in the last iteration).}
-    \item{\code{num.iter}:}{The number of iterations over the
-      columns of the matrix of quantiles.}
+    \item{\code{X.rearranged}:}{A \code{link{matrix}} containing the
+      rearranged input matrix \code{X}.}
     \item{\code{row.sums}:}{A \code{\link{matrix}} with the same number of rows as
       \code{X}, giving the row sums after each iteration of
       rearrangements of \code{X}; one iteration corresponds to looping
       over all columns and oppositely reorder each of them with respect
       to the sum of all others. The number of columns of \code{row.sums}
       thus corresponds to \code{num.iter}.}
-    \item{\code{m.row.sums}:}{A \code{\link{numeric}} containing minimal
-      (for worst Value-at-Risk) or maximal (for best Value-at-Risk)
-      row sums for each iteration and computed
-      \eqn{\underline{s}_N} and \eqn{\overline{s}_N}.}
-    \item{\code{num.opp.ordered}:}{The number of oppositely ordered
-      columns.}
   }
 
   \code{RA()} returns a \code{\link{list}} containing
@@ -200,25 +196,24 @@ ARA(alpha, d, qF, N=2^seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
       row sums for computing \eqn{\underline{s}_N} and \eqn{\overline{s}_N}
       in the last iteration of \code{rearrange()}); see also
       \code{tol} returned by \code{rearrange()} above.}
+    \item{\code{X}:}{The constructed (\code{N}, \code{d})-matrices
+      for computing \eqn{\underline{s}_N} and \eqn{\overline{s}_N}.}
+    \item{\code{X.rearranged}:}{A \code{\link{list}} containing the rearranged
+      matrices \code{X} for the computed \eqn{\underline{s}_N} and
+      \eqn{\overline{s}_N}; see also \code{X.rearranged} returned by
+      \code{rearrange()} above.}
     \item{\code{num.iter}:}{A bivariate vector containing (for
       \eqn{\underline{s}_N} and \eqn{\overline{s}_N}), the number
-      of iterations over the columns of the underlying matrix
-      of quantiles; see also \code{num.iter} returned by
-      \code{rearrange()} above.}
+      of iterations over all columns of the underlying matrix \code{X}
+      of quantiles; see also \code{num.iter}.}
     \item{\code{row.sums}:}{A list of length two containing the computed
-      matrices of row sums (one column for each iteration over all columns) for
-      computing \eqn{\underline{s}_N} and \eqn{\overline{s}_N}; see also
-      \code{row.sums} returned by \code{rearrange()} above.}
-    \item{\code{m.row.sums}:}{A list of length two containing minimal
-      (for worst Value-at-Risk) or maximal (for best Value-at-Risk)
-      row sums for computing \eqn{\underline{s}_N} and \eqn{\overline{s}_N};
-      see also \code{m.row.sums}
-      returned by \code{rearrange()} above.}
-    \item{\code{num.opp.ordered}:}{A bivariate vector containing
-      the number of oppositely ordered columns for computing
-      \eqn{\underline{s}_N} and \eqn{\overline{s}_N};
-      see also \code{num.opp.ordered} returend by
+      matrices of row sums (one column for each iteration over all
+      columns of \code{X}) for computing \eqn{\underline{s}_N} and
+      \eqn{\overline{s}_N}; see also \code{row.sums} returned by
       \code{rearrange()} above.}
+    \item{\code{m.row.sums}:}{A list of length two containing minimal
+      (for the worst Value-at-Risk) or maximal (for the best Value-at-Risk)
+      row sums for computing \eqn{\underline{s}_N} and \eqn{\overline{s}_N}.}
   }
 
   \code{ARA()} returns a \code{\link{list}} containing
@@ -230,12 +225,13 @@ ARA(alpha, d, qF, N=2^seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
       the relative tolerance between
       \eqn{\underline{s}_N} and \eqn{\overline{s}_N}
       computed with respect to the upper bound).}
+    \item{\code{X}:}{See \code{RA()}.}
+    \item{\code{X.rearranged}:}{See \code{RA()}.}
     \item{\code{N.used}:}{The actual \code{N} used for computing
       the (final) \eqn{\underline{s}_N} and \eqn{\overline{s}_N}.}
     \item{\code{num.iter}:}{See \code{RA()}.}
     \item{\code{row.sums}:}{See \code{RA()}.}
     \item{\code{m.row.sums}:}{See \code{RA()}.}
-    \item{\code{num.opp.ordered}:}{See \code{RA()}.}
   }
 }
 \details{
@@ -251,35 +247,37 @@ ARA(alpha, d, qF, N=2^seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
   interval for \code{\link{uniroot}()}. If the (marginal)
   distribution function has finite first moment, this can be taken as
   0. However, if it has infinite first moment, the lower endpoint has to
-  be positive (below the unknown root and smaller than the upper
-  endpoint \eqn{(1-\alpha)/d}{(1-alpha)/d}) (which also happens to be a
-  root). In the case of Pareto margins, Hofert et al. (2015) have
-  derived such an initial lower endpoint (which is used by
-  \code{method="Wang.Par"} and \code{method="Wang.Par.trafo"}; for the
-  latter, due to the transformation of the objective function involved,
-  this is actually an initial upper endpoint, see Hofert et al. (2015)
-  for more details. Also note that the chosen smaller default tolerances for
+  be positive (but must lie below the unknown root). Note that the upper
+  endpoint \eqn{(1-\alpha)/d}{(1-alpha)/d} also happens to be a
+  root and thus one needs a proper initional interval containing the
+  root and being stricticly contained in
+  \eqn{(0,(1-\alpha)/d}{(1-alpha)/d)}.
+  In the case of Pareto margins, Hofert et al. (2015) have
+  derived such an initial (which is used by
+  \code{method="Wang.Par"} and \code{method="Wang.Par.trafo"};
+  see Hofert et al. (2015) for more details.
+  Also note that the chosen smaller default tolerances for
   \code{\link{uniroot}()} in case of \code{method="Wang"} and
   \code{method="Wang.Par"} are crucial for obtaining reliable
   Value-at-Risk values; see Hofert et al. (2015).
 
-  For \code{method="dual"}, the method presented of Embrechts et
-  al. (2013, Proposition 4) is implemented. This requires two (nested)
-  \code{\link{uniroot}()}, and an \code{\link{integrate}()}. For the
-  inner root-finding procedure to find a root, the lower endpoint of the
-  provided initial \code{interval} has to be \dQuote{sufficiently
-    large}.
+  For \code{method="dual"} for computing worst Value-at-Risk, the method
+  presented of Embrechts et al. (2013, Proposition 4) is implemented.
+  This requires two (nested) \code{\link{uniroot}()}, and an
+  \code{\link{integrate}()}. For the inner root-finding procedure to
+  find a root, the lower endpoint of the provided initial
+  \code{interval} has to be \dQuote{sufficiently large}.
 
-  Note that these approaches for computing the worst (i.e., largest)
-  Value-at-Risk in the homogeneous case are numerically non-trivial;
-  see the source code and \code{demo(VaR_range)} for more details. As a
+  Note that these approaches for computing the
+  Value-at-Risk bounds in the homogeneous case are numerically non-trivial;
+  see the source code and \code{demo(VaR_bounds)} for more details. As a
   rule of thumb, use \code{method="Wang"} if you have to (i.e., if the
   margins are not Pareto) and \code{method="Wang.Par"} if you can (i.e.,
   if the margins are Pareto); in the former case, it might be wise to
   follow along the lines of \code{method="Wang.Par.trafo"} to implement
-  one's own method (e.g., if \code{method="Wang"} turns out to be
+  one's own method (e.g., if our \code{method="Wang"} turns out to be
   numerically critical), see Hofert et al. (2015) for more details.
-  Furthermore, it is not recommended to use (the more challenging)
+  Furthermore, it is not recommended to use (the numerically more challenging)
   \code{method="dual"}.
 
 
@@ -318,16 +316,16 @@ ARA(alpha, d, qF, N=2^seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
   finite, no adjustment is made).
 
   As a rule of thumb (see the examples below,
-  \code{demo(VaR_range)} and Hofert et al. (2015) for the reasons),
+  \code{demo(VaR_bounds)} and Hofert et al. (2015) for the reasons),
   it is recommended to use \code{ARA()} instead of \code{RA()}.
 
   On the theoretical side, let us again stress the following.
   \code{rearrange()}, \code{RA()} and \code{ARA()} compute
   \eqn{\underline{s}_N} and \eqn{\overline{s}_N} which are, from a
-  practical point of view, treated as bounds of the worst
+  practical point of view, treated as bounds for the worst
   (i.e., largest) or the best (i.e., smallest) Value-at-Risk
   (whatever is chosen with \code{method}), but which are not
-  known to be such point from a theoretical point of view; see also
+  known to be such bounds from a theoretical point of view; see also
   above. Calling them \dQuote{bounds} for worst or best Value-at-Risk is
   thus theoretically not correct (unless proven) but \dQuote{practical}.
   The literature thus speaks of \eqn{(\underline{s}_N, \overline{s}_N)}
@@ -350,7 +348,7 @@ ARA(alpha, d, qF, N=2^seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
   See http://arxiv.org/abs/1505.02281.
 }
 \seealso{
-  \code{demo(VaR_range)} for more example calls, numerical challenges
+  \code{demo(VaR_bounds)} for more example calls, numerical challenges
   encoutered and a comparison of the different methods for computing
   the worst (i.e., largest) Value-at-Risk.
 }
@@ -363,55 +361,116 @@ th <- 2 # Pareto parameter theta
 qF <- function(p, theta=th) qPar(p, theta=theta) # Pareto quantile function
 pF <- function(q, theta=th) pPar(q, theta=theta) # Pareto distribution function
 
-## d=2: Compute worst VaR explicitly (homogeneous case, 'method' is ignored)
-resW <- VaR_bounds_hom(alpha, d=2, qF=qF)
+
+## d=2: Compute best/worst VaR explicitly (hom. case) and compare with (A)RA ###
+
+d <- 2 # dimension
+
+## Explicit
+VaRbounds <- VaR_bounds_hom(alpha, d=d, qF=qF) # (best VaR, worst VaR)
+
+## Adaptive Rearrangement Algorithm (ARA)
 set.seed(271) # set seed (for reproducibility)
-resARA <- ARA(alpha, d=2, qF=qF) # Adaptive Rearrangement Algorithm (ARA)
-resRA <- RA(alpha, d=2, qF=qF, N=256, abstol=0) # RA with N and abstol chosen to match ARA
-stopifnot(all.equal(resW, resARA$bounds[2], resRA$bounds[2], tolerance=0.005))
+ARAbest  <- ARA(alpha, d=d, qF=qF, method="best")
+ARAworst <- ARA(alpha, d=d, qF=qF)
 
-## d=8: Compare the various methods (in the homogeneous case)
+## Rearrangement Algorithm (RA) with N as in ARA and abstol (roughly) chosen as in ARA
+## Best VaR
+RAbest  <- RA(alpha, d=d, qF=qF, N=ARAbest$N.used,
+              abstol=mean(tail(abs(diff(ARAbest$m.row.sums$low)), n=1),
+                          tail(abs(diff(ARAbest$m.row.sums$up)), n=1)),
+              method="best")
+## Worst VaR
+RAworst <- RA(alpha, d=d, qF=qF, N=ARAworst$N.used,
+              abstol=mean(tail(abs(diff(ARAworst$m.row.sums$low)), n=1),
+                          tail(abs(diff(ARAworst$m.row.sums$up)), n=1)))
+
+## Compare (comparably large tolerances required to contain both (A)RA bounds)
+## Best VaR
+stopifnot(all.equal(c(ARAbest$bounds[1], ARAbest$bounds[2],
+                      RAbest$bounds[1],  RAbest$bounds[2]),
+                    rep(VaRbounds[1], 4), tolerance=0.004))
+## Worst VaR
+stopifnot(all.equal(c(ARAworst$bounds[1], ARAworst$bounds[2],
+                      RAworst$bounds[1],  RAworst$bounds[2]),
+                    rep(VaRbounds[2], 4), tolerance=0.003))
+
+
+## d=8: Compute best/worst VaR (hom. case) and compare with (A)RA ##############
+
 d <- 8 # dimension
+
+## Compute VaR bounds with various methods
 I <- crude_VaR_bounds(alpha, d=d, qF=qF) # crude bound
-(w.VaR.Wang           <- VaR_bounds_hom(alpha, d=d, method="Wang", qF=qF))
-(w.VaR.Wang.Par       <- VaR_bounds_hom(alpha, d=d, method="Wang.Par", theta=th))
-(w.VaR.Wang.Par.trafo <- VaR_bounds_hom(alpha, d=d, method="Wang.Par.trafo", theta=th))
-(w.VaR.dual           <- VaR_bounds_hom(alpha, d=d, method="dual", interval=I, pF=pF))
-stopifnot(all.equal(c(w.VaR.Wang, w.VaR.Wang.Par, w.VaR.Wang.Par.trafo),
-                    rep(w.VaR.dual, 3), tolerance=5e-6))
-## Note: The same check is passed for d <- 100
+VaR.Wang           <- VaR_bounds_hom(alpha, d=d, method="Wang", qF=qF)
+VaR.Wang.Par       <- VaR_bounds_hom(alpha, d=d, method="Wang.Par", theta=th)
+VaR.Wang.Par.trafo <- VaR_bounds_hom(alpha, d=d, method="Wang.Par.trafo", theta=th)
+VaR.dual           <- VaR_bounds_hom(alpha, d=d, method="dual", interval=I, pF=pF)
 
-## Compare with ARA (with defaults)
-set.seed(271)
-resARA <- ARA(alpha, d=d, qF=qF)
-resARA$bounds
-## Compare with RA
-## 1) Choose N and abstol chosen to match ARA results
-abstol <- tail(abs(diff(resARA$m.row.sums[[2]])), n=1)
-resRA <- RA(alpha, d=d, qF=qF, N=512, abstol=abstol)
-resRA$bounds
-## 2) Iterate until each column is opp. ordered to the sum of all others
-resRA. <- RA(alpha, d=d, qF=qF, N=512) # abstol=NULL
-resRA.$bounds
+## Adaptive Rearrangement Algorithm (ARA) (with defaults)
+set.seed(271) # set seed (for reproducibility)
+ARAbest  <- ARA(alpha, d=d, qF=qF, method="best")
+ARAworst <- ARA(alpha, d=d, qF=qF)
 
-## Using the additional results computed by RA(); for resRA.
-xlim <- c(1, max(sapply(resRA.$m.row.sums, length)))
-ylim <- range(resRA.$m.row.sums)
-plot(resRA.$m.row.sums[[2]], type="b", xlim=xlim, ylim=ylim, xlab="Iteration",
+## Rearrangement Algorithm (RA) with N as in ARA and abstol (roughly) chosen as in ARA
+## Best VaR
+RAbest  <- RA(alpha, d=d, qF=qF, N=ARAbest$N.used,
+              abstol=mean(tail(abs(diff(ARAbest$m.row.sums$low)), n=1),
+                          tail(abs(diff(ARAbest$m.row.sums$up)), n=1)),
+              method="best")
+## Worst VaR
+RAworst <- RA(alpha, d=d, qF=qF, N=ARAworst$N.used,
+              abstol=mean(tail(abs(diff(ARAworst$m.row.sums$low)), n=1),
+                          tail(abs(diff(ARAworst$m.row.sums$up)), n=1)))
+
+## Compare (comparably large tolerances required to contain both (A)RA bounds)
+## Best VaR
+stopifnot(all.equal(c(VaR.Wang[1], VaR.Wang.Par.trafo[1],
+                      ARAbest$bounds[1], ARAbest$bounds[2],
+                      RAbest$bounds[1],  RAbest$bounds[2]),
+                    rep(VaR.Wang.Par[1], 6), tolerance=0.004))
+## Worst VaR
+stopifnot(all.equal(c(VaR.Wang[2], VaR.Wang.Par.trafo[2], VaR.dual[2],
+                      ARAworst$bounds[1], ARAworst$bounds[2],
+                      RAworst$bounds[1],  RAworst$bounds[2]),
+                    rep(VaR.Wang.Par[2], 7), tolerance=0.003))
+
+
+## Using (some of) the additional results computed by (A)RA() ##################
+
+xlim <- c(1, max(sapply(RAworst$m.row.sums, length)))
+ylim <- range(RAworst$m.row.sums)
+plot(RAworst$m.row.sums[[2]], type="b", xlim=xlim, ylim=ylim, xlab="Iteration",
      ylab=paste0("Minimal row sum"),
-     main=substitute("Rearrangement Algorithm for"~alpha==a.*","~d==d.*" and Par("*
+     main=substitute("RA for worst VaR with"~alpha==a.*","~d==d.*" and Par("*
                      th.*")", list(a.=alpha, d.=d, th.=th)))
-lines(1:length(resRA.$m.row.sums[[1]]), resRA.$m.row.sums[[1]], type="b",
+lines(1:length(RAworst$m.row.sums[[1]]), RAworst$m.row.sums[[1]], type="b",
       col="blue")
 legend("bottomright", bty="n", lty=rep(1,2),
        col=c("black", "blue"), legend=c("upper bound", "lower bound"))
 ## => One should use ARA() instead of RA()
 
-## "Reproducing" an example from Embrechts et al. (2013; Table 1)
-## (seed unknown, eps unknown)
+
+## "Reproducing" examples from Embrechts et al. (2013) #########################
+
+## "Reproducing" Table 1 (but seed and eps unknown)
 set.seed(271)
-resRA <- RA(alpha, d=3, qF=qF, N=50)
-stopifnot(all.equal(resRA$bounds[1], 44.84026, tolerance=1e-6),
-          all.equal(resRA$bounds[2], 46.40413, tolerance=1e-6))
+RAworst <- RA(alpha, d=3, qF=qF, N=50)
+stopifnot(all.equal(RAworst$bounds[1], 44.84026, tolerance=1e-6),
+          all.equal(RAworst$bounds[2], 46.40413, tolerance=1e-6))
+
+## "Reproducing" Table 3 for alpha=0.99 (but seed unknown)
+N <- 1e5 # we use a smaller N here to save run time
+eps <- 0.1 # absolute tolerance
+xi <- c(1.19, 1.17, 1.01, 1.39, 1.23, 1.22, 0.85, 0.98)
+beta <- c(774, 254, 233, 412, 107, 243, 314, 124)
+qF.lst <- lapply(1:8, function(j) { function(p) qGPD(p, xi=xi[j], beta=beta[j]) })
+set.seed(271)
+RAbest  <- RA(0.99, qF=qF.lst, N=N, abstol=eps, method="best")
+RAworst <- RA(0.99, qF=qF.lst, N=N, abstol=eps)
+stopifnot(all.equal(RAbest$bounds[1], 1.780585e5,  tolerance=1e-7),
+          all.equal(RAbest$bounds[2], 1.78304e5,   tolerance=1e-7),
+          all.equal(RAworst$bounds[1], 2.556191e6, tolerance=1e-7),
+          all.equal(RAworst$bounds[2], 2.556441e6, tolerance=1e-7))
 }
 \keyword{distribution}

@@ -233,14 +233,14 @@ VaR_bounds_hom <- function(alpha, d, method=c("Wang", "Wang.Par",
                    qF <- NULL # make CRAN check happy
                    if(!hasArg(qF))
                        stop("Method 'Wang' requires the quantile function qF of F")
-                   max((d-1)*qF(alpha)+qF(0),
+                   max((d-1)*qF(0)+qF(alpha), # Note: Typo in Wang, Peng, Yang (2013)
                        d*Wang_Ibar(a=0, b=alpha, alpha=alpha, d=d, ...))
                },
                "Wang.Par" =, "Wang.Par.trafo" = {
                    theta <- NULL # make CRAN check happy
                    if(!hasArg(theta))
                        stop("Method 'Wang.Par' and 'Wang.Par.trafo' require the parameter theta")
-                   max((d-1)*qF(alpha)+qF(0),
+                   max((d-1)*qF(0)+qF(alpha), # Note: Typo in Wang, Peng, Yang (2013)
                        d*Wang_Ibar(a=0, b=alpha, alpha=alpha, d=d, method="Wang.Par", ...))
                },
                "dual" = { # "dual" only provides worst VaR
@@ -581,7 +581,7 @@ RA <- function(alpha, d, qF, N, abstol=NULL, maxiter=Inf,
 ##' @param d dimension
 ##' @param qF a marginal quantile function (homogeneous case) or a d-list of such;
 ##'        note that each marginal quantile function has to be vectorized in p
-##' @param N vector of numbers of discretization points
+##' @param N.exp vector of exponents of 2 used as discretization points
 ##' @param reltol 2-vector of relative convergence tolerances
 ##'        for determining the individual relative tolerance (i.e., the relative
 ##'        tolerance in the minimal/maximal row sum for each of the bounds) and
@@ -609,13 +609,13 @@ RA <- function(alpha, d, qF, N, abstol=NULL, maxiter=Inf,
 ##'         10) Vectors of minimal [for worst VaR] or maximal [for best VaR] row sums
 ##'             (for each bound)
 ##' @author Marius Hofert
-ARA <- function(alpha, d, qF, N=2^seq(8, 20, by=1), reltol=c(0.001, 0.01),
+ARA <- function(alpha, d, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01),
                 maxiter=12, method=c("worst", "best"), sample=TRUE)
 {
     ## Checks and Step 1 (get N, reltol)
     stopifnot(0 < alpha, alpha < 1, length(reltol) == 2,
               is.null(reltol[1]) || reltol[1] >=0, reltol[2] >= 0,
-              length(N) >= 1, N >= 2, maxiter >= 1, is.logical(sample))
+              length(N.exp) >= 1, N.exp >= 1, maxiter >= 1, is.logical(sample))
     method <- match.arg(method)
     ## Checking of d, qF
     if(missing(d))
@@ -626,7 +626,7 @@ ARA <- function(alpha, d, qF, N=2^seq(8, 20, by=1), reltol=c(0.001, 0.01),
     }
 
     ## Loop over N
-    for(N. in N) {
+    for(N. in 2^N.exp) {
 
         ## Compute lower bound
 
