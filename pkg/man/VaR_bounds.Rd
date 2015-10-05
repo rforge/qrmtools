@@ -1,6 +1,6 @@
-\name{worst_VaR}
+\name{VaR_bounds}
 \alias{crude_VaR_bounds}
-\alias{worst_VaR_hom}
+\alias{VaR_bounds_hom}
 \alias{dual_bound}
 \alias{rearrange}
 \alias{RA}
@@ -12,8 +12,8 @@
 }
 \usage{
 crude_VaR_bounds(alpha, d, qF, ...)
-worst_VaR_hom(alpha, d, method=c("Wang", "Wang.Par", "Wang.Par.trafo", "dual"),
-              interval=NULL, tol=NULL, ...)
+VaR_bounds_hom(alpha, d, method=c("Wang", "Wang.Par", "Wang.Par.trafo", "dual"),
+               interval=NULL, tol=NULL, ...)
 dual_bound(s, d, pF, tol=.Machine$double.eps^0.25, ...)
 
 rearrange(X, tol, tol.type=c("relative", "absolute"), maxiter=Inf,
@@ -31,7 +31,7 @@ ARA(alpha, d, qF, N=2^seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
     \code{d}) with the marginal quantile functions.}
   \item{method}{A \code{\link{character}} string. For
     \describe{
-      \item{\code{worst_VaR_hom()}:}{\code{method="Wang"},
+      \item{\code{VaR_bounds_hom()}:}{\code{method="Wang"},
 	\code{method="Wang.Par"} and \code{method="Wang.Par.trafo"}
 	apply the approach of Embrechts et al. (2014,
 	Proposition 3.1). The latter two assume Pareto margins and thus do
@@ -49,7 +49,7 @@ ARA(alpha, d, qF, N=2^seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
           literature (and below) and are theoretically not guaranteed
           bounds of (worst or best) Value-at-Risk
 	  (however treated as such in practice and typically in line
-	  with results from \code{worst_VaR_hom()} in the homogeneous
+	  with results from \code{VaR_bounds_hom()} in the homogeneous
 	  case, for example).}
   }}
   \item{interval}{Initial interval (a \code{\link{numeric}(2)}).
@@ -70,7 +70,7 @@ ARA(alpha, d, qF, N=2^seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
   }}
   \item{tol}{
     \describe{
-      \item{\code{worst_VaR_hom()}:}{The tolerance for the involved
+      \item{\code{VaR_bounds_hom()}:}{The tolerance for the involved
 	root-finding algorithm as passed
 	to \code{\link{uniroot}()}. This defaults to
 	\eqn{2.2204*10^{-16}}{2.2204*10^{-16}}
@@ -127,7 +127,7 @@ ARA(alpha, d, qF, N=2^seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
     are sampled before the iteration begins.}
   \item{\dots}{
     \describe{
-      \item{\code{worst_VaR_hom()}:}{For \code{d=2} \dots must contain the quantile
+      \item{\code{VaR_bounds_hom()}:}{For \code{d=2} \dots must contain the quantile
         function \code{qF()}. The same holds for \code{method="Wang"},
         but additional arguments passed via \dots are passed on to
 	% the underlying objective function Wang_h() from which they
@@ -153,7 +153,7 @@ ARA(alpha, d, qF, N=2^seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
   \eqn{d}-dimensional model with marginal quantile functions
   specified by \code{qF}.
 
-  \code{worst_VaR_hom()} returns the worst (i.e., largest) Value-at-Risk at
+  \code{VaR_bounds_hom()} returns the worst (i.e., largest) Value-at-Risk at
   confidence level \eqn{\alpha}{alpha} for \eqn{d} risks with equal
   distribution function specified by the ellipsis \code{...}.
 
@@ -239,7 +239,7 @@ ARA(alpha, d, qF, N=2^seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
   }
 }
 \details{
-  For \code{d=2}, \code{worst_VaR_hom()} uses the method of
+  For \code{d=2}, \code{VaR_bounds_hom()} uses the method of
   Embrechts et al. (2013,
   Proposition 2). For \code{method="Wang"}, \code{method="Wang.Par"} and
   \code{method="Wang.Par.trafo"},
@@ -272,7 +272,7 @@ ARA(alpha, d, qF, N=2^seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
 
   Note that these approaches for computing the worst (i.e., largest)
   Value-at-Risk in the homogeneous case are numerically non-trivial;
-  see the source code and \code{demo(worst_VaR)} for more details. As a
+  see the source code and \code{demo(VaR_range)} for more details. As a
   rule of thumb, use \code{method="Wang"} if you have to (i.e., if the
   margins are not Pareto) and \code{method="Wang.Par"} if you can (i.e.,
   if the margins are Pareto); in the former case, it might be wise to
@@ -318,7 +318,7 @@ ARA(alpha, d, qF, N=2^seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
   finite, no adjustment is made).
 
   As a rule of thumb (see the examples below,
-  \code{demo(worst_VaR)} and Hofert et al. (2015) for the reasons),
+  \code{demo(VaR_range)} and Hofert et al. (2015) for the reasons),
   it is recommended to use \code{ARA()} instead of \code{RA()}.
 
   On the theoretical side, let us again stress the following.
@@ -350,12 +350,13 @@ ARA(alpha, d, qF, N=2^seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
   See http://arxiv.org/abs/1505.02281.
 }
 \seealso{
-  \code{demo(worst_VaR)} for more example calls, numerical challenges
+  \code{demo(VaR_range)} for more example calls, numerical challenges
   encoutered and a comparison of the different methods for computing
   the worst (i.e., largest) Value-at-Risk.
 }
 \examples{
 require(qrmtools)
+
 ## Pareto setup
 alpha <- 0.99 # VaR confidence level
 th <- 2 # Pareto parameter theta
@@ -363,7 +364,7 @@ qF <- function(p, theta=th) qPar(p, theta=theta) # Pareto quantile function
 pF <- function(q, theta=th) pPar(q, theta=theta) # Pareto distribution function
 
 ## d=2: Compute worst VaR explicitly (homogeneous case, 'method' is ignored)
-resW <- worst_VaR_hom(alpha, d=2, qF=qF)
+resW <- VaR_bounds_hom(alpha, d=2, qF=qF)
 set.seed(271) # set seed (for reproducibility)
 resARA <- ARA(alpha, d=2, qF=qF) # Adaptive Rearrangement Algorithm (ARA)
 resRA <- RA(alpha, d=2, qF=qF, N=256, abstol=0) # RA with N and abstol chosen to match ARA
@@ -372,10 +373,10 @@ stopifnot(all.equal(resW, resARA$bounds[2], resRA$bounds[2], tolerance=0.005))
 ## d=8: Compare the various methods (in the homogeneous case)
 d <- 8 # dimension
 I <- crude_VaR_bounds(alpha, d=d, qF=qF) # crude bound
-(w.VaR.Wang           <- worst_VaR_hom(alpha, d=d, method="Wang", qF=qF))
-(w.VaR.Wang.Par       <- worst_VaR_hom(alpha, d=d, method="Wang.Par", theta=th))
-(w.VaR.Wang.Par.trafo <- worst_VaR_hom(alpha, d=d, method="Wang.Par.trafo", theta=th))
-(w.VaR.dual           <- worst_VaR_hom(alpha, d=d, method="dual", interval=I, pF=pF))
+(w.VaR.Wang           <- VaR_bounds_hom(alpha, d=d, method="Wang", qF=qF))
+(w.VaR.Wang.Par       <- VaR_bounds_hom(alpha, d=d, method="Wang.Par", theta=th))
+(w.VaR.Wang.Par.trafo <- VaR_bounds_hom(alpha, d=d, method="Wang.Par.trafo", theta=th))
+(w.VaR.dual           <- VaR_bounds_hom(alpha, d=d, method="dual", interval=I, pF=pF))
 stopifnot(all.equal(c(w.VaR.Wang, w.VaR.Wang.Par, w.VaR.Wang.Par.trafo),
                     rep(w.VaR.dual, 3), tolerance=5e-6))
 ## Note: The same check is passed for d <- 100
@@ -397,9 +398,7 @@ resRA.$bounds
 xlim <- c(1, max(sapply(resRA.$m.row.sums, length)))
 ylim <- range(resRA.$m.row.sums)
 plot(resRA.$m.row.sums[[2]], type="b", xlim=xlim, ylim=ylim, xlab="Iteration",
-     ylab=paste0("Minimal row sum (# of oppositely ordered columns: lower = ",
-     resRA.$num.opp.ordered[1],", upper = ",
-     resRA.$num.opp.ordered[2],")"),
+     ylab=paste0("Minimal row sum"),
      main=substitute("Rearrangement Algorithm for"~alpha==a.*","~d==d.*" and Par("*
                      th.*")", list(a.=alpha, d.=d, th.=th)))
 lines(1:length(resRA.$m.row.sums[[1]]), resRA.$m.row.sums[[1]], type="b",
@@ -413,7 +412,6 @@ legend("bottomright", bty="n", lty=rep(1,2),
 set.seed(271)
 resRA <- RA(alpha, d=3, qF=qF, N=50)
 stopifnot(all.equal(resRA$bounds[1], 44.84026, tolerance=1e-6),
-          all.equal(resRA$bounds[2], 46.40413, tolerance=1e-6),
-          resRA$num.opp.ordered == c(3,3))
+          all.equal(resRA$bounds[2], 46.40413, tolerance=1e-6))
 }
 \keyword{distribution}

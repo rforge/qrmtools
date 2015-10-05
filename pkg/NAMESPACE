@@ -18,7 +18,7 @@ export(
     ## risk measures
     "VaR_t", "ES_t", "VaR_Par", "ES_Par",
     ## worst VaR
-    "crude_VaR_bounds", "dual_bound", "worst_VaR_hom",
+    "crude_VaR_bounds", "dual_bound", "VaR_bounds_hom",
     "rearrange", "RA", "ARA"
 )
 
