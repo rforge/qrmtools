@@ -163,6 +163,7 @@ Wang_h_aux <- function(c, alpha, d, method=c("generic", "Wang.Par"), ...)
 Wang_h <- function(c, alpha, d, method=c("generic", "Wang.Par"), ...)
 {
     stopifnot(0 <= c, c <= (1-alpha)/d) # sanity check (otherwise b > a)
+    method <- match.arg(method)
     ddd <- list(...)
     ## Properly deal with limit c=(1-alpha)/d
     Ib <- if(c == (1-alpha)/d) {
@@ -421,11 +422,13 @@ num_of_opp_ordered_cols <- function(x) {
 ##'       - No checking here due to speed!
 ##'       - Basic idea: For efficiency reasons, work with list containing the
 ##'         columns of the matrix X
-rearrange <- function(X, tol, tol.type=c("relative", "absolute"), maxiter=Inf,
+rearrange <- function(X, tol=0, tol.type=c("relative", "absolute"), maxiter=Inf,
                       method=c("worst", "best"), sample=TRUE)
 {
     d <- length(X)
     N <- length(X[[1]]) # assumed to be equal to length(X[[j]]) for j in {1,..,d}
+    tol.type <- match.arg(tol.type)
+    method <- match.arg(method)
 
     ## Define helper functions
     optim.fun <- if(method=="worst") min else max
@@ -541,7 +544,7 @@ RA <- function(alpha, d, qF, N, abstol=0, maxiter=Inf,
     if(method == "best")
         for(j in 1:d) if(is.infinite(X.low[[j]][N])) X.low[[j]][N] <- qF[[j]](alpha/(2*N))
 
-    ## Steps 3--6 (determine \underline{X}^*)
+    ## Steps 3--7 (determine \underline{X}^*)
     ## randomly permute each column of \underline{X}^\alpha and
     ## repeat oppositely ordering \underline{X}^\alpha until there is only an
     ## abstol change in the min (method="worst") or max (method="best") row sum
@@ -559,7 +562,7 @@ RA <- function(alpha, d, qF, N, abstol=0, maxiter=Inf,
     if(method == "worst")
         for(j in 1:d) if(is.infinite(X.up[[j]][1])) X.up[[j]][1] <- qF[[j]](alpha+(1-alpha)*(1-1/(2*N)))
 
-    ## Step 3--6 (determine \overline{X}^*)
+    ## Step 3--7 (determine \overline{X}^*)
     ## randomly permute each column of \overline{X}^\alpha and
     ## repeat oppositely ordering \overline{X}^\alpha until there is only an
     ## abstol change in the min (method="worst") or max (method="best") row sum
@@ -567,7 +570,7 @@ RA <- function(alpha, d, qF, N, abstol=0, maxiter=Inf,
     res.up <- rearrange(X.up, tol=abstol, tol.type="absolute", maxiter=maxiter,
                         method=method, sample=sample)
 
-    ## Step 7 (return \underline{s}_N, \overline{s}_N and other non-time critical info)
+    ## Return
     optim.fun <- if(method=="worst") min else max
     list(bounds=c(low=res.low$bound, up=res.up$bound), # (\underline{s}_N, \overline{s}_N)
          rel.ra.gap=abs((res.up$bound-res.low$bound)/res.up$bound), # relative RA gap
@@ -643,7 +646,7 @@ ARA <- function(alpha, d, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01),
         if(method == "best")
             for(j in 1:d) if(is.infinite(X.low[[j]][N.])) X.low[[j]][N.] <- qF[[j]](alpha/(2*N.))
 
-        ## Steps 3--6 (determine \underline{X}^*)
+        ## Steps 3--7 (determine \underline{X}^*)
         ## randomly permute each column of \underline{X}^\alpha and
         ## repeat oppositely ordering \underline{X}^\alpha until there is only an
         ## reltol[1] change in the min (method="worst") or max (method="best") row sum
@@ -661,7 +664,7 @@ ARA <- function(alpha, d, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01),
         if(method == "worst")
             for(j in 1:d) if(is.infinite(X.up[[j]][1])) X.up[[j]][1] <- qF[[j]](alpha+(1-alpha)*(1-1/(2*N.)))
 
-        ## Step 3--6 (determine \overline{X}^*)
+        ## Step 3--7 (determine \overline{X}^*)
         ## randomly permute each column of \overline{X}^\alpha and
         ## repeat oppositely ordering \overline{X}^\alpha until there is only an
         ## reltol[1] change in the min (method="worst") or max (method="best") row sum
@@ -669,7 +672,7 @@ ARA <- function(alpha, d, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01),
         res.up <- rearrange(X.up, tol=reltol[1], tol.type="relative",
                             maxiter=maxiter, method=method, sample=sample)
 
-        ## Step 7 (determine individual and joint convergence)
+        ## Determine (individual and joint) convergence
         ind.tol.reached.low <- res.low$tol <= reltol[1] # individual tol for lower bound reached?
         ind.tol.reached.up <- res.up$tol <= reltol[1] # individual tol for upper bound reached?
         joint.tol <- abs((res.low$bound-res.up$bound)/res.up$bound)
@@ -678,7 +681,7 @@ ARA <- function(alpha, d, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01),
 
     }
 
-    ## Step 7 (return \underline{s}_N, \overline{s}_N and other non-time critical info)
+    ## Return
     optim.fun <- if(method=="worst") min else max
     list(bounds=c(low=res.low$bound, up=res.up$bound), # (\underline{s}_N, \overline{s}_N)
          rel.ra.gap=abs((res.up$bound-res.low$bound)/res.up$bound), # relative RA gap

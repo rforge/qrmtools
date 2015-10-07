@@ -15,7 +15,7 @@ VaR_bounds_hom(alpha, d, method=c("Wang", "Wang.Par", "Wang.Par.trafo", "dual"),
                interval=NULL, tol=NULL, ...)
 dual_bound(s, d, pF, tol=.Machine$double.eps^0.25, ...)
 
-rearrange(X, tol, tol.type=c("relative", "absolute"), maxiter=Inf,
+rearrange(X, tol=0, tol.type=c("relative", "absolute"), maxiter=Inf,
           method=c("worst", "best"), sample=TRUE)
 RA(alpha, d, qF, N, abstol=0, maxiter=Inf, method=c("worst", "best"),
    sample=TRUE)
