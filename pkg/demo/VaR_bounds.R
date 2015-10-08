@@ -199,7 +199,7 @@ qrmtools:::Wang_h_aux(interval[1], alpha=alpha, d=d, method=method, theta=th) # 
 
 ## Setup
 alpha <- 0.99 # confidence level
-d <- 100 # or d <- 100
+d <- 8 # or d <- 100
 n.th <- 64 # number of thetas
 th.low <- 0.2
 th.up <- 5

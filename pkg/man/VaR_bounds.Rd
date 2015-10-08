@@ -10,16 +10,16 @@
   Compute the best and worst Value-at-Risk for given marginal distributions.
 }
 \usage{
-crude_VaR_bounds(alpha, d, qF, ...)
+crude_VaR_bounds(alpha, qF, ...)
 VaR_bounds_hom(alpha, d, method=c("Wang", "Wang.Par", "Wang.Par.trafo", "dual"),
                interval=NULL, tol=NULL, ...)
 dual_bound(s, d, pF, tol=.Machine$double.eps^0.25, ...)
 
 rearrange(X, tol=0, tol.type=c("relative", "absolute"), maxiter=Inf,
           method=c("worst", "best"), sample=TRUE)
-RA(alpha, d, qF, N, abstol=0, maxiter=Inf, method=c("worst", "best"),
+RA(alpha, qF, N, abstol=0, maxiter=Inf, method=c("worst", "best"),
    sample=TRUE)
-ARA(alpha, d, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
+ARA(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
     method=c("worst", "best"), sample=TRUE)
 }
 \arguments{
@@ -91,9 +91,12 @@ ARA(alpha, d, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
     for relative tolerance and \code{"absolute"} for absolute tolerance).}
   \item{s}{Dual bound evaluation point.}
   \item{pF}{The marginal loss distribution function.}
-  \item{X}{A \code{d-\link{list}} containing the \code{d} columns of the
-    underlying (\code{N}, \code{d})-matrix of quantiles (to be
+  \item{X}{An (\code{N}, \code{d})-matrix of quantiles (to be
     rearranged) in decreasing order. Note that for performance reasons,
+    no checks are done
+
+    TODO
+
     the decreasing order of each of the \code{d} vectors of \code{X} has
     to be guaranteed by the user, otherwise \code{rearrange()}
     can not work properly.}
@@ -373,17 +376,17 @@ VaRbounds <- VaR_bounds_hom(alpha, d=d, qF=qF) # (best VaR, worst VaR)
 
 ## Adaptive Rearrangement Algorithm (ARA)
 set.seed(271) # set seed (for reproducibility)
-ARAbest  <- ARA(alpha, d=d, qF=qF, method="best")
-ARAworst <- ARA(alpha, d=d, qF=qF)
+ARAbest  <- ARA(alpha, qF=rep(list(qF), d), method="best")
+ARAworst <- ARA(alpha, qF=rep(list(qF), d))
 
 ## Rearrangement Algorithm (RA) with N as in ARA and abstol (roughly) chosen as in ARA
 ## Best VaR
-RAbest  <- RA(alpha, d=d, qF=qF, N=ARAbest$N.used,
+RAbest  <- RA(alpha, qF=rep(list(qF), d), N=ARAbest$N.used,
               abstol=mean(tail(abs(diff(ARAbest$m.row.sums$low)), n=1),
                           tail(abs(diff(ARAbest$m.row.sums$up)), n=1)),
               method="best")
 ## Worst VaR
-RAworst <- RA(alpha, d=d, qF=qF, N=ARAworst$N.used,
+RAworst <- RA(alpha, qF=rep(list(qF), d), N=ARAworst$N.used,
               abstol=mean(tail(abs(diff(ARAworst$m.row.sums$low)), n=1),
                           tail(abs(diff(ARAworst$m.row.sums$up)), n=1)))
 
@@ -403,7 +406,7 @@ stopifnot(all.equal(c(ARAworst$bounds[1], ARAworst$bounds[2],
 d <- 8 # dimension
 
 ## Compute VaR bounds with various methods
-I <- crude_VaR_bounds(alpha, d=d, qF=qF) # crude bound
+I <- crude_VaR_bounds(alpha, qF=rep(list(qF), d)) # crude bound
 VaR.W           <- VaR_bounds_hom(alpha, d=d, method="Wang", qF=qF)
 VaR.W.Par       <- VaR_bounds_hom(alpha, d=d, method="Wang.Par", theta=th)
 VaR.W.Par.trafo <- VaR_bounds_hom(alpha, d=d, method="Wang.Par.trafo", theta=th)
@@ -411,17 +414,17 @@ VaR.d           <- VaR_bounds_hom(alpha, d=d, method="dual", interval=I, pF=pF)
 
 ## Adaptive Rearrangement Algorithm (ARA) (with defaults)
 set.seed(271) # set seed (for reproducibility)
-ARAbest  <- ARA(alpha, d=d, qF=qF, method="best")
-ARAworst <- ARA(alpha, d=d, qF=qF)
+ARAbest  <- ARA(alpha, qF=rep(list(qF), d), method="best")
+ARAworst <- ARA(alpha, qF=rep(list(qF), d))
 
 ## Rearrangement Algorithm (RA) with N as in ARA and abstol (roughly) chosen as in ARA
 ## Best VaR
-RAbest  <- RA(alpha, d=d, qF=qF, N=ARAbest$N.used,
+RAbest  <- RA(alpha, qF=rep(list(qF), d), N=ARAbest$N.used,
               abstol=mean(tail(abs(diff(ARAbest$m.row.sums$low)), n=1),
                           tail(abs(diff(ARAbest$m.row.sums$up)), n=1)),
               method="best")
 ## Worst VaR
-RAworst <- RA(alpha, d=d, qF=qF, N=ARAworst$N.used,
+RAworst <- RA(alpha, qF=rep(list(qF), d), N=ARAworst$N.used,
               abstol=mean(tail(abs(diff(ARAworst$m.row.sums$low)), n=1),
                           tail(abs(diff(ARAworst$m.row.sums$up)), n=1)))
 
@@ -457,7 +460,7 @@ legend("bottomright", bty="n", lty=rep(1,2),
 
 ## "Reproducing" Table 1 (but seed and eps unknown)
 set.seed(271)
-RAworst <- RA(alpha, d=3, qF=qF, N=50)
+RAworst <- RA(alpha, qF=rep(list(qF), 3), N=50)
 stopifnot(all.equal(RAworst$bounds[1], 44.84262,
                     tolerance=5e-7, check.names=FALSE),
           all.equal(RAworst$bounds[2], 46.43240,

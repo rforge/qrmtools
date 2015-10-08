@@ -4,23 +4,19 @@
 
 ##' @title Crude bounds for any VaR_alpha
 ##' @param alpha confidence level
-##' @param d dimension
 ##' @param qF (list of) marginal quantile functions
 ##' @param ... ellipsis argument passed to qF()
 ##' @return 2-vector containing crude VaR_alpha bounds
 ##' @author Marius Hofert
-crude_VaR_bounds <- function(alpha, d, qF, ...)
+crude_VaR_bounds <- function(alpha, qF, ...)
 {
-    if(is.function(qF))
-        d * c(qF(alpha/d, ...), qF((d-1+alpha)/d, ...))
-    else { # ... are passed to *all* qF()
-        if(!is.list(qF))
-            stop("qF has to be a (quantile) function or list of such")
-        stopifnot(length(qF) == d)
-        qF.low <- sapply(qF, function(qF.) qF.(alpha/d, ...))
-        qF.up  <- sapply(qF, function(qF.) qF.((d-1+alpha)/d, ...))
-        d * c(min(qF.low), max(qF.up))
-    }
+    ## ... are passed to *all* qF()
+    if(!is.list(qF))
+        stop("qF has to be a list of (quantile) functions")
+    d <- length(qF)
+    qF.low <- sapply(qF, function(qF.) qF.(alpha/d, ...))
+    qF.up  <- sapply(qF, function(qF.) qF.((d-1+alpha)/d, ...))
+    d * c(min(qF.low), max(qF.up))
 }
 
 
@@ -426,6 +422,10 @@ rearrange <- function(X, tol=0, tol.type=c("relative", "absolute"), maxiter=Inf,
     tol.type <- match.arg(tol.type)
     method <- match.arg(method)
 
+    ## TODO
+    ## myorder <- function(x) .Internal(order(TRUE, FALSE, x))
+    ## myrank <- function(x) myorder(myorder(x)) # myrank(rs)
+
     ## Define helper functions
     optim.fun <- if(method=="worst") min else max
     tol.fun <- if(tol.type=="absolute") {
@@ -434,18 +434,20 @@ rearrange <- function(X, tol=0, tol.type=c("relative", "absolute"), maxiter=Inf,
         function(x, y) abs((x-y)/y)
     }
 
-    ## Setup before major loop
-    ## Keep the (already) sorted X (as we redefine X below)
-    ## Note: Each component (vector representing a column) is already sorted in
-    ##       *decreasing* order (needed for the correctness of the following)
-    X.lst.sorted <- split(X, col(X)) # assumed to be sorted in decreasing order
-    ## Now sample the columns, compute the initial row sum and the
-    ## corresponding min/max row sum
-    if(sample) X <- apply(X, 2, sample)
-    X.rs <- .rowSums(X, m=N, n=d) # initial row sum
+    ## Setup steps before major loop
+    ## Keep the (already) sorted X
+    X.lst.sorted <- split(X, rep.int(seq_len(d), rep.int(N, d)))
+
+    ## Sample the columns (if chosen), compute the initial row sum
+    ## and the corresponding min/max row sum
+    if(sample) {
+        X.lst <- lapply(X.lst.sorted, sample) # list of (resampled) columns of X
+        X.rs <- .rowSums(do.call(cbind, X.lst), N, d) # row sums of X
+    } else {
+        X.lst <- X.lst.sorted # list of columns of X
+        X.rs <- .rowSums(X, m=N, n=d) # initial row sum
+    }
     m.rs.old <- optim.fun(X.rs) # initial minimal row sum
-    ## Split X into a list of its columns (more efficient to work with)
-    X.lst <- split(X, col(X))
 
     ## Loop through the columns
     row.sums <- matrix(, nrow=N, ncol=0) # (N, 0)-matrix of computed row sums
@@ -457,7 +459,7 @@ rearrange <- function(X, tol=0, tol.type=c("relative", "absolute"), maxiter=Inf,
         for(j in 1:d) { # one iteration over all columns of the matrix
             yj <- Y.lst[[j]] # jth column of Y
             rs <- Y.rs - yj # sum over all other columns (but the jth)
-            yj <- X.lst.sorted[[j]][rank(rs, ties.method="first")] # oppositely reorder
+            yj <- X.lst.sorted[[j]][.Call("rank_", rs)] # oppositely reorder
             Y.rs <- rs + yj # update row sum of Y
             Y.lst[[j]] <- yj # update list with rearranged jth column
         }
@@ -485,13 +487,12 @@ rearrange <- function(X, tol=0, tol.type=c("relative", "absolute"), maxiter=Inf,
     list(bound=m.rs.new, # computed bound (\underline{s}_N or \overline{s}_N)
          tol=tol., # tolerance for the computed bound
          converged=tol.reached, # indicating whether converged
-         X.rearranged=matrix(unlist(Y.lst), ncol=2), # the rearranged matrix X
+         X.rearranged = do.call(cbind, Y.lst), # the rearranged matrix X
          row.sums=row.sums) # the computed row sums after each iteration through all cols
 }
 
 ##' @title Computing lower/upper bounds for the worst VaR with the RA
 ##' @param alpha confidence level
-##' @param d dimension
 ##' @param qF a marginal quantile function (homogeneous case) or a d-list of such;
 ##'        note that each marginal quantile function has to be vectorized in p
 ##' @param N number of discretization points
@@ -517,20 +518,14 @@ rearrange <- function(X, tol=0, tol.type=c("relative", "absolute"), maxiter=Inf,
 ##' @author Marius Hofert
 ##' @note Notation is from p. 2757 in Embrechts, Puccetti, Rueschendorf (2013);
 ##'       variables are named according to the 'worst' VaR case.
-RA <- function(alpha, d, qF, N, abstol=0, maxiter=Inf,
+RA <- function(alpha, qF, N, abstol=0, maxiter=Inf,
                method=c("worst", "best"), sample=TRUE)
 {
     ## Checks and Step 1 (get N, abstol)
     stopifnot(0 < alpha, alpha < 1, abstol >= 0,
               length(N) >= 1, N >= 2, maxiter >= 1, is.logical(sample))
     method <- match.arg(method)
-    ## Checking of d, qF
-    if(missing(d))
-        stopifnot(is.list(qF), sapply(qF, is.function), (d <- length(qF)) >= 2)
-    else { # extend the given quantile function to a list of functions
-        stopifnot(d >= 2, is.function(qF))
-        qF <- rep(list(qF), d)
-    }
+    stopifnot(is.list(qF), sapply(qF, is.function), (d <- length(qF)) >= 2)
 
     ## Compute lower bound
 
@@ -586,7 +581,6 @@ RA <- function(alpha, d, qF, N, abstol=0, maxiter=Inf,
 
 ##' @title Computing lower/upper bounds for the worst VaR with the ARA
 ##' @param alpha confidence level
-##' @param d dimension
 ##' @param qF a marginal quantile function (homogeneous case) or a d-list of such;
 ##'        note that each marginal quantile function has to be vectorized in p
 ##' @param N.exp vector of exponents of 2 used as discretization points
@@ -616,7 +610,7 @@ RA <- function(alpha, d, qF, N, abstol=0, maxiter=Inf,
 ##'         10) Vectors of minimal [for worst VaR] or maximal [for best VaR] row sums
 ##'             (for each bound)
 ##' @author Marius Hofert
-ARA <- function(alpha, d, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01),
+ARA <- function(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01),
                 maxiter=12, method=c("worst", "best"), sample=TRUE)
 {
     ## Checks and Step 1 (get N, reltol)
@@ -624,13 +618,7 @@ ARA <- function(alpha, d, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01),
               reltol >=0, length(N.exp) >= 1, N.exp >= 1,
               maxiter >= 1, is.logical(sample))
     method <- match.arg(method)
-    ## Checking of d, qF
-    if(missing(d))
-        stopifnot(is.list(qF), sapply(qF, is.function), (d <- length(qF)) >= 2)
-    else { # extend the given quantile function to a list of functions
-        stopifnot(d >= 2, is.function(qF))
-        qF <- rep(list(qF), d)
-    }
+    stopifnot(is.list(qF), sapply(qF, is.function), (d <- length(qF)) >= 2)
 
     ## Loop over N
     for(N in 2^N.exp) {

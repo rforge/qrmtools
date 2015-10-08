@@ -3,7 +3,7 @@
 
 ### Imports ####################################################################
 
-import("xts")
+import("xts") # for xts namespace to be loaded (e.g., for working with data sets)
 
 
 ### Exports ####################################################################
