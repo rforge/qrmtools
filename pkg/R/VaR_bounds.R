@@ -395,8 +395,7 @@ num_of_opp_ordered_cols <- function(x) {
 }
 
 ##' @title Basic rearrangement function for (A)RA
-##' @param X d-list containing vectors of length N representing the columns of
-##'        the (N, d)-matrix \underline{X}^\alpha or \overline{X}^\alpha
+##' @param X (N, d)-matrix \underline{X}^\alpha or \overline{X}^\alpha
 ##' @param tol Tolerance to determine (the individual) convergence;
 ##'        if NULL, the iteration is done until the matrix doesn't change
 ##' @param tol.type Character string indicating the tolerance function used
@@ -412,21 +411,18 @@ num_of_opp_ordered_cols <- function(x) {
 ##'            best [depending on method]) VaR
 ##'         2) (Individual) tolerance reached
 ##'         3) Logicial indicating whether the algorithm has converged
-##'         4) The (optimally) rearranged d-list (containing the columsn of
-##'            the (optimally) rearranged (N, d)-matrix X)
+##'         4) The (optimally) rearranged (N, d)-matrix
 ##'         5) (N, .)-matrix of row sums (one column for each iteration)
 ##' @author Marius Hofert and Kurt Hornik
 ##' @note - We use "<= tol" to determine convergence instead of "< tol" as
 ##'         this then also nicely works with "= 0" (if tol=0) which stops in
 ##'         case the matrices are identical (no change at all).
 ##'       - No checking here due to speed!
-##'       - Basic idea: For efficiency reasons, work with list containing the
-##'         columns of the matrix X
 rearrange <- function(X, tol=0, tol.type=c("relative", "absolute"), maxiter=Inf,
                       method=c("worst", "best"), sample=TRUE)
 {
-    d <- length(X)
-    N <- length(X[[1]]) # assumed to be equal to length(X[[j]]) for j in {1,..,d}
+    N <- nrow(X)
+    d <- ncol(X)
     tol.type <- match.arg(tol.type)
     method <- match.arg(method)
 
@@ -442,26 +438,28 @@ rearrange <- function(X, tol=0, tol.type=c("relative", "absolute"), maxiter=Inf,
     ## Keep the (already) sorted X (as we redefine X below)
     ## Note: Each component (vector representing a column) is already sorted in
     ##       *decreasing* order (needed for the correctness of the following)
-    X.sorted <- X
-    row.sums <- matrix(, nrow=N, ncol=0) # (N, 0)-matrix of computed row sums
-    ## Now sample (if chosen) the columns, compute the initial row sum and the
+    X.lst.sorted <- split(X, col(X)) # assumed to be sorted in decreasing order
+    ## Now sample the columns, compute the initial row sum and the
     ## corresponding min/max row sum
-    if(sample) X <- lapply(X, sample)
-    X.rs <- vapply(1:N, function(i) sum(unlist(lapply(X, `[[`, i))), NA_real_)
-    m.rs.old <- optim.fun(X.rs)
+    if(sample) X <- apply(X, 2, sample)
+    X.rs <- .rowSums(X, m=N, n=d) # initial row sum
+    m.rs.old <- optim.fun(X.rs) # initial minimal row sum
+    ## Split X into a list of its columns (more efficient to work with)
+    X.lst <- split(X, col(X))
 
     ## Loop through the columns
+    row.sums <- matrix(, nrow=N, ncol=0) # (N, 0)-matrix of computed row sums
     while (TRUE) {
 
         ## Oppositely order X (=> Y)
-        Y <- X
+        Y.lst <- X.lst
         Y.rs <- X.rs # row sum of Y
         for(j in 1:d) { # one iteration over all columns of the matrix
-            yj <- Y[[j]] # jth column of Y
+            yj <- Y.lst[[j]] # jth column of Y
             rs <- Y.rs - yj # sum over all other columns (but the jth)
-            yj <- X.sorted[[j]][rank(rs, ties.method="first")] # recall: X.sorted is sorted in *decreasing* order
+            yj <- X.lst.sorted[[j]][rank(rs, ties.method="first")] # oppositely reorder
             Y.rs <- rs + yj # update row sum of Y
-            Y[[j]] <- yj # update list with rearranged jth column
+            Y.lst[[j]] <- yj # update list with rearranged jth column
         }
 
         ## Compute row sums and minimal/maximal row sums
@@ -477,7 +475,7 @@ rearrange <- function(X, tol=0, tol.type=c("relative", "absolute"), maxiter=Inf,
         } else {
             m.rs.old <- m.rs.new # update m.rs.old
             X.rs <- Y.rs
-            X <- Y
+            X.lst <- Y.lst
         }
 
     }
@@ -487,7 +485,7 @@ rearrange <- function(X, tol=0, tol.type=c("relative", "absolute"), maxiter=Inf,
     list(bound=m.rs.new, # computed bound (\underline{s}_N or \overline{s}_N)
          tol=tol., # tolerance for the computed bound
          converged=tol.reached, # indicating whether converged
-         X.rearranged=Y, # the rearranged (d-list) X
+         X.rearranged=matrix(unlist(Y.lst), ncol=2), # the rearranged matrix X
          row.sums=row.sums) # the computed row sums after each iteration through all cols
 }
 
@@ -538,11 +536,12 @@ RA <- function(alpha, d, qF, N, abstol=0, maxiter=Inf,
 
     ## Step 2 (build \underline{X}^\alpha)
     p <- if(method=="worst") alpha + (1-alpha)*(N-1):0/N else alpha*(N-1):0/N # N-vector of prob. in *decreasing* order as required by rearrange()
-    X.low <- lapply(qF, function(qF) qF(p))
+    X.low <- sapply(qF, function(qF) qF(p))
     ## adjust those that are -Inf (for method="best")
     ## use alpha*((0+1)/2 / N) = alpha/(2N) instead of 0 quantile
     if(method == "best")
-        for(j in 1:d) if(is.infinite(X.low[[j]][N])) X.low[[j]][N] <- qF[[j]](alpha/(2*N))
+        X.low[N,] <- sapply(1:d, function(j)
+            if(is.infinite(X.low[N,j])) qF[[j]](alpha/(2*N)) else X.low[N,j])
 
     ## Steps 3--7 (determine \underline{X}^*)
     ## randomly permute each column of \underline{X}^\alpha and
@@ -556,11 +555,12 @@ RA <- function(alpha, d, qF, N, abstol=0, maxiter=Inf,
 
     ## Step 2 (build \overline{X}^\alpha)
     p <- if(method=="worst") alpha + (1-alpha)*N:1/N else alpha*N:1/N # N-vector of prob. in *decreasing* order as required by rearrange()
-    X.up <- lapply(qF, function(qF) qF(p))
+    X.up <- sapply(qF, function(qF) qF(p))
     ## adjust those that are Inf (for method="worst")
     ## use alpha+(1-alpha)*(N-1+N)/(2*N) = alpha+(1-alpha)*(1-1/(2*N)) instead of 1 quantile
     if(method == "worst")
-        for(j in 1:d) if(is.infinite(X.up[[j]][1])) X.up[[j]][1] <- qF[[j]](alpha+(1-alpha)*(1-1/(2*N)))
+        X.up[1,] <- sapply(1:d, function(j)
+            if(is.infinite(X.up[1,j])) qF[[j]](alpha+(1-alpha)*(1-1/(2*N))) else X.up[1,j])
 
     ## Step 3--7 (determine \overline{X}^*)
     ## randomly permute each column of \overline{X}^\alpha and
@@ -576,9 +576,8 @@ RA <- function(alpha, d, qF, N, abstol=0, maxiter=Inf,
          rel.ra.gap=abs((res.up$bound-res.low$bound)/res.up$bound), # relative RA gap
          ind.abs.tol=c(low=res.low$tol, up=res.up$tol), # individual absolute tolerances
          converged=c(low=res.low$converged, up=res.up$converged), # converged?
-         X=list(low=matrix(unlist(X.low), ncol=d), up=matrix(unlist(X.up), ncol=d)), # input matrices X (low, up)
-         X.rearranged=list(low=matrix(unlist(res.low$X.rearranged), ncol=d),
-                            up=matrix(unlist(res.up$X.rearranged),  ncol=d)), # rearranged Xs (low, up)
+         X=list(low=X.low, up=X.up), # input matrices X (low, up)
+         X.rearranged=list(low=res.low$X.rearranged, up=res.up$X.rearranged), # rearranged Xs (low, up)
          num.iter=c(low=ncol(res.low$row.sums), up=ncol(res.up$row.sums)), # number of iterations (low, up)
          row.sums=list(low=res.low$row.sums, up=res.up$row.sums), # row sums (low, up)
          m.row.sums=list(low=apply(res.low$row.sums, 2, optim.fun),
@@ -634,17 +633,18 @@ ARA <- function(alpha, d, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01),
     }
 
     ## Loop over N
-    for(N. in 2^N.exp) {
+    for(N in 2^N.exp) {
 
         ## Compute lower bound
 
         ## Step 2 (build \underline{X}^\alpha)
-        p <- if(method=="worst") alpha + (1-alpha)*(N.-1):0/N. else alpha*(N.-1):0/N. # N.-vector of prob. in *decreasing* order as required by rearrange()
-        X.low <- lapply(qF, function(qF) qF(p))
+        p <- if(method=="worst") alpha + (1-alpha)*(N-1):0/N else alpha*(N-1):0/N # N-vector of prob. in *decreasing* order as required by rearrange()
+        X.low <- sapply(qF, function(qF) qF(p))
         ## adjust those that are -Inf (for method="best")
-        ## use alpha*((0+1)/2 / N.) = alpha/(2N.) instead of 0 quantile
+        ## use alpha*((0+1)/2 / N) = alpha/(2N) instead of 0 quantile
         if(method == "best")
-            for(j in 1:d) if(is.infinite(X.low[[j]][N.])) X.low[[j]][N.] <- qF[[j]](alpha/(2*N.))
+            X.low[N,] <- sapply(1:d, function(j)
+                if(is.infinite(X.low[N,j])) qF[[j]](alpha/(2*N)) else X.low[N,j])
 
         ## Steps 3--7 (determine \underline{X}^*)
         ## randomly permute each column of \underline{X}^\alpha and
@@ -657,12 +657,13 @@ ARA <- function(alpha, d, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01),
         ## Compute upper bound
 
         ## Step 2 (build \overline{X}^\alpha)
-        p <- if(method=="worst") alpha + (1-alpha)*N.:1/N. else alpha*N.:1/N. # N.-vector of prob. in *decreasing* order as required by rearrange()
-        X.up <- lapply(qF, function(qF) qF(p))
+        p <- if(method=="worst") alpha + (1-alpha)*N:1/N else alpha*N:1/N # N-vector of prob. in *decreasing* order as required by rearrange()
+        X.up <- sapply(qF, function(qF) qF(p))
         ## adjust those that are Inf (for method="worst")
-        ## use alpha+(1-alpha)*(N.-1+N.)/(2*N.) = alpha+(1-alpha)*(1-1/(2*N.)) instead of 1 quantile
+        ## use alpha+(1-alpha)*(N-1+N)/(2*N) = alpha+(1-alpha)*(1-1/(2*N)) instead of 1 quantile
         if(method == "worst")
-            for(j in 1:d) if(is.infinite(X.up[[j]][1])) X.up[[j]][1] <- qF[[j]](alpha+(1-alpha)*(1-1/(2*N.)))
+            X.up[1,] <- sapply(1:d, function(j)
+                if(is.infinite(X.up[1,j])) qF[[j]](alpha+(1-alpha)*(1-1/(2*N))) else X.up[1,j])
 
         ## Step 3--7 (determine \overline{X}^*)
         ## randomly permute each column of \overline{X}^\alpha and
@@ -688,9 +689,9 @@ ARA <- function(alpha, d, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01),
          rel.tol=c(low=res.low$tol, up=res.up$tol, joint=joint.tol), # individual and joint relative tolerances
          converged=c(low=ind.tol.reached.low, up=ind.tol.reached.up,
                      joint=joint.tol.reached), # converged?
-         X=list(low=matrix(unlist(X.low), ncol=d), up=matrix(unlist(X.up), ncol=d)), # input matrices X (low, up)
+         X=list(low=X.low, up=X.up), # input matrices X (low, up)
          X.rearranged=list(low=res.low$X.rearranged, up=res.up$X.rearranged), # rearranged Xs (low, up)
-         N.used=N., # number of discretization points used
+         N.used=N, # number of discretization points used
          num.iter=c(low=ncol(res.low$row.sums), up=ncol(res.up$row.sums)), # # of iterations (low, up) over all cols
          row.sums=list(low=res.low$row.sums, up=res.up$row.sums), # row sums (low, up) after each iteration over all cols
          m.row.sums=list(low=apply(res.low$row.sums, 2, optim.fun),
