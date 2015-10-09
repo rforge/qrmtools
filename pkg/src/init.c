@@ -4,11 +4,11 @@
 #include <Rinternals.h>
 #include <R_ext/Rdynload.h>
 
-#include "rank.h"
+#include "VaR_bounds.h"
 
 
 static const R_CallMethodDef callMethods[] = {
-	{"rank_aux_", (DL_FUNC) &rank_aux_, 5},
+	{"rank_", (DL_FUNC) &rank_, 5},
 	{NULL, NULL, 0}
 };
 
