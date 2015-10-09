@@ -27,7 +27,7 @@ ARA(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
   \item{d}{Dimension (number of risk factors; \eqn{\ge 2}{>=2}).}
   \item{qF}{The marginal quantile function in the homogeneous case or,
     for \code{crude_VaR_bounds()}, \code{RA()} and \code{ARA()},
-    a list (of length \code{d}) with the marginal quantile functions.}
+    a \code{d}-list containing the marginal quantile functions.}
   \item{method}{A \code{\link{character}} string. For
     \describe{
       \item{\code{VaR_bounds_hom()}:}{\code{method="Wang"},
@@ -92,17 +92,10 @@ ARA(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
   \item{s}{Dual bound evaluation point.}
   \item{pF}{The marginal loss distribution function.}
   \item{X}{An (\code{N}, \code{d})-matrix of quantiles (to be
-    rearranged) in decreasing order. Note that for performance reasons,
-    no checks are done
-
-    TODO
-
-    the decreasing order of each of the \code{d} vectors of \code{X} has
-    to be guaranteed by the user, otherwise \code{rearrange()}
-    can not work properly.}
+    rearranged) in columnwise \emph{increasing} order. Note that for
+    performance reasons, no checks are done.}
   \item{maxiter}{Maximal number of iterations over all columns of the
-    underlying matrix % (in fact a list in our implementation)
-    of quantiles (can be set to \code{Inf}).}
+    underlying matrix of quantiles (can be set to \code{Inf}).}
   \item{N}{The number of discretization points.}
   \item{N.exp}{The exponents of the number of discretization points (a vector);
     the iteration then takes place over all discretization points
@@ -113,13 +106,13 @@ ARA(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
     have been reached.}
   \item{abstol}{Absolute convergence tolerance \eqn{\epsilon}{epsilon}
     to determine the individual convergence, i.e., the change in the computed minimal
-    (for worst Value-at-Risk) or maximal (for best Value-at-Risk)
+    (for \code{method="worst"}) or maximal (for \code{method="best"})
     row sums for the lower bound \eqn{\underline{s}_N} and the upper
     bound \eqn{\overline{s}_N}.}
   \item{reltol}{A vector containing two relative convergence tolerances,
     the individual relative tolerance (first component; used to determine
-    convergence of the minimal (for worst Value-at-Risk) or maximal
-    (for best Value-at-Risk) row sums for
+    convergence of the minimal (for \code{method="worst"}) or maximal
+    (for \code{method="best"}) row sums for
     \eqn{\underline{s}_N} and \eqn{\overline{s}_N})
     and the joint relative tolerance (second component; relative tolerance
     between the computed \eqn{\underline{s}_N} and
@@ -169,14 +162,15 @@ ARA(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
     \item{\code{bound}:}{The computed \eqn{\underline{s}_N}
       or \eqn{\overline{s}_N}.}
     \item{\code{tol}:}{The tolerance (i.e., the (absolute or
-      relative) change of the minimal (for worst Value-at-Risk) or
-      maximal (for best Value-at-Risk) row sum in the last iteration).}
+      relative) change of the minimal (for \code{method="worst"}) or
+      maximal (for \code{method="best"}) row sum in the last iteration).}
     \item{\code{converged}:}{A \code{\link{logical}} indicating whether
       the desired (absolute or relative) tolerance \code{tol} has been reached.}
-    \item{\code{X.rearranged}:}{A \code{d-\link{list}} containing the
-      rearranged \code{d-\link{list}} \code{X}.}
+    \item{\code{X.rearranged}:}{An (\code{N},
+      \code{d})-\code{\link{matrix}}
+      containing the rearranged \code{X}.}
     \item{\code{row.sums}:}{A \code{\link{matrix}} with the same number of
-      rows as each element of \code{X}, giving the row sums after
+      rows as \code{X}, giving the row sums after
       each iteration of rearrangements of \code{X}; one iteration
       corresponds to looping over all columns and oppositely reorder
       each of them with respect to the sum of all others.}
@@ -194,7 +188,7 @@ ARA(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
       respect to \eqn{\overline{s}_N}.}
     \item{\code{ind.abs.tol}:}{A bivariate vector containing the
       individual absolute tolerances (i.e., the absolute change of the minimal
-      (for worst Value-at-Risk) or maximal (for best Value-at-Risk)
+      (for \code{method="worst"}) or maximal (for \code{method="best"})
       row sums for computing \eqn{\underline{s}_N} and \eqn{\overline{s}_N}
       in the last iteration of \code{rearrange()}); see also
       \code{tol} returned by \code{rearrange()} above.}
@@ -202,7 +196,7 @@ ARA(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
       indicating convergence (i.e., whether the desired tolerances were
       reached) of the computed \eqn{\underline{s}_N} and \eqn{\overline{s}_N}.}
     \item{\code{X}:}{The constructed (\code{N}, \code{d})-matrices
-      of quantiles (each column in decreasing order) for computing
+      of quantiles (each column in increasing order) for computing
       \eqn{\underline{s}_N} and \eqn{\overline{s}_N}.}
     \item{\code{X.rearranged}:}{The rearranged \code{X}.}
     \item{\code{num.iter}:}{A bivariate vector containing (for
@@ -215,7 +209,7 @@ ARA(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
       \eqn{\overline{s}_N}; see also \code{row.sums} returned by
       \code{rearrange()} above.}
     \item{\code{m.row.sums}:}{A list of length two containing minimal
-      (for the worst Value-at-Risk) or maximal (for the best Value-at-Risk)
+      (for \code{method="worst"}) or maximal (for \code{method="best"})
       row sums for the computed \eqn{\underline{s}_N} and \eqn{\overline{s}_N}.}
   }
 
@@ -461,9 +455,9 @@ legend("bottomright", bty="n", lty=rep(1,2),
 ## "Reproducing" Table 1 (but seed and eps unknown)
 set.seed(271)
 RAworst <- RA(alpha, qF=rep(list(qF), 3), N=50)
-stopifnot(all.equal(RAworst$bounds[1], 44.84262,
+stopifnot(all.equal(RAworst$bounds[1], 44.84026,
                     tolerance=5e-7, check.names=FALSE),
-          all.equal(RAworst$bounds[2], 46.43240,
+          all.equal(RAworst$bounds[2], 46.40413,
                     tolerance=5e-7, check.names=FALSE))
 
 ## "Reproducing" Table 3 for alpha=0.99 (but seed unknown)
@@ -479,9 +473,9 @@ stopifnot(all.equal(RAbest$bounds[1], 1.770824e5,
                     tolerance=5e-7, check.names=FALSE),
           all.equal(RAbest$bounds[2], 1.783041e5,
                     tolerance=5e-7, check.names=FALSE),
-          all.equal(RAworst$bounds[1], 2.555664e6,
+          all.equal(RAworst$bounds[1], 2.555670e6,
                     tolerance=5e-7, check.names=FALSE),
-          all.equal(RAworst$bounds[2], 2.556904e6,
+          all.equal(RAworst$bounds[2], 2.556882e6,
                     tolerance=5e-7, check.names=FALSE))
 }
 \keyword{distribution}

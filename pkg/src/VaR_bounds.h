@@ -7,10 +7,8 @@
 #include <Rinternals.h>
 #include <Rmath.h>
 
-/* For faster rank() in rearrange() */
-SEXP rank_(SEXP x);
-
-SEXP colsplit_(SEXP x);
+SEXP indices_opp_ordered_to(SEXP x);
+SEXP col_split(SEXP x);
 
 #endif
 
