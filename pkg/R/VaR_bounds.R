@@ -423,8 +423,10 @@ rearrange <- function(X, tol=0, tol.type=c("relative", "absolute"), maxiter=Inf,
     method <- match.arg(method)
 
     ## TODO
-    ## myorder <- function(x) .Internal(order(TRUE, FALSE, x))
-    ## myrank <- function(x) myorder(myorder(x)) # myrank(rs)
+    myorder <- function(x) .Internal(order(TRUE, FALSE, x))
+    myrank <- function(x) myorder(myorder(x)) # myrank(rs)
+    myrank <- function(x) .Call(C_rank, x)
+    ## myrank <- function(x) order(order(x))
 
     ## Define helper functions
     optim.fun <- if(method=="worst") min else max
@@ -436,7 +438,8 @@ rearrange <- function(X, tol=0, tol.type=c("relative", "absolute"), maxiter=Inf,
 
     ## Setup steps before major loop
     ## Keep the (already) sorted X
-    X.lst.sorted <- split(X, rep.int(seq_len(d), rep.int(N, d)))
+    ##   X.lst.sorted <- split(X, rep.int(seq_len(d), rep.int(N, d)))
+    X.lst.sorted <- .Call(C_colsplit, X)
 
     ## Sample the columns (if chosen), compute the initial row sum
     ## and the corresponding min/max row sum
@@ -459,7 +462,7 @@ rearrange <- function(X, tol=0, tol.type=c("relative", "absolute"), maxiter=Inf,
         for(j in 1:d) { # one iteration over all columns of the matrix
             yj <- Y.lst[[j]] # jth column of Y
             rs <- Y.rs - yj # sum over all other columns (but the jth)
-            yj <- X.lst.sorted[[j]][.Call("rank_", rs)] # oppositely reorder
+            yj <- X.lst.sorted[[j]][myrank(rs)] # oppositely reorder
             Y.rs <- rs + yj # update row sum of Y
             Y.lst[[j]] <- yj # update list with rearranged jth column
         }

@@ -8,11 +8,12 @@
 
 
 static const R_CallMethodDef callMethods[] = {
-	{"rank_", (DL_FUNC) &rank_, 5},
+	{"rank", (DL_FUNC) &rank_, 1},
+	{"colsplit", (DL_FUNC) &colsplit_, 1},
 	{NULL, NULL, 0}
 };
 
-void R_init_qrng(DllInfo *dll)
+void R_init_qrmtools(DllInfo *dll)
 {
     R_useDynamicSymbols(dll, FALSE);
     R_registerRoutines(dll, NULL, callMethods, NULL, NULL); /* s. WRE (2015, Section 5.4) */

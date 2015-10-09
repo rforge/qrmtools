@@ -10,5 +10,7 @@
 /* For faster rank() in rearrange() */
 SEXP rank_(SEXP x);
 
+SEXP colsplit_(SEXP x);
+
 #endif
 
