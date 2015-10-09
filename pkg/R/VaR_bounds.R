@@ -460,7 +460,12 @@ rearrange <- function(X, tol=0, tol.type=c("relative", "absolute"), maxiter=Inf,
     while (TRUE) {
 
         ## Oppositely order X (=> Y)
-        ## Recall: The elements of X.lst.sorted are in increasing order
+        ## Note: - The elements of X.lst.sorted are in increasing order
+        ##       - One could check whether d consecutive column-rearrangements
+        ##         did not lead to a change and then stop (as all columns are
+        ##         oppositely ordered to the sum of all others in this case).
+        ##         This is doable for smaller matrices, but typically neither
+        ##         the case nor efficient to do for larger matrices.
         Y.lst <- X.lst
         Y.rs <- X.rs # row sum of Y
         for(j in 1:d) { # one iteration over all columns of the matrix
