@@ -422,11 +422,10 @@ rearrange <- function(X, tol=0, tol.type=c("relative", "absolute"), maxiter=Inf,
     tol.type <- match.arg(tol.type)
     method <- match.arg(method)
 
-    ## TODO
-    myorder <- function(x) .Internal(order(TRUE, FALSE, x))
-    myrank <- function(x) myorder(myorder(x)) # myrank(rs)
-    myrank <- function(x) .Call(C_rank, x)
-    ## myrank <- function(x) order(order(x))
+    ## User faster C function if available
+    myrank <- if(getRversion() <= "3.2.2") {
+        function(x) order(order(x))
+    } else function(x) .Call(C_rank, x)
 
     ## Define helper functions
     optim.fun <- if(method=="worst") min else max
@@ -438,8 +437,7 @@ rearrange <- function(X, tol=0, tol.type=c("relative", "absolute"), maxiter=Inf,
 
     ## Setup steps before major loop
     ## Keep the (already) sorted X
-    ##   X.lst.sorted <- split(X, rep.int(seq_len(d), rep.int(N, d)))
-    X.lst.sorted <- .Call(C_colsplit, X)
+    X.lst.sorted <- .Call(C_colsplit, X) # user faster C function
 
     ## Sample the columns (if chosen), compute the initial row sum
     ## and the corresponding min/max row sum
