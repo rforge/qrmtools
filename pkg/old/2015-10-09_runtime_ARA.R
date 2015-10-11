@@ -24,3 +24,5 @@ res <- ARA(alpha, qF=qF)
 Rprof(NULL)
 summaryRprof(profiling)
 
+
+
