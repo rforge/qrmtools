@@ -13,8 +13,6 @@ export(
     "dGEV", "pGEV", "qGEV", "rGEV",
     "dGPD", "pGPD", "qGPD", "rGPD",
     "dPar", "pPar", "qPar", "rPar",
-    ## device
-    "dev.off.pdf",
     ## risk measures
     "VaR_t", "ES_t", "VaR_Par", "ES_Par",
     ## worst VaR

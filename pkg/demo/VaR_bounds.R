@@ -44,7 +44,7 @@ abline(h=0, lty=2)
 legend("topright", lty=rep(1,6), col=cols,
        bty="n", legend=as.expression(lapply(1:6,
            function(i) substitute(s==s., list(s.=s[i])))))
-if(doPDF) dev.off.pdf(file=file)
+if(doPDF) dev.off()
 ## Conclusion: As we know, h(s, s/d) = 0. We also see that s has to be
 ##             sufficiently large in order to find a root h(s, t) = 0 for t < s/d
 
@@ -68,7 +68,7 @@ legend("topright", lty=rep(1,4),
        col=c("maroon3", "darkorange2", "royalblue3", "black"),
        bty="n", legend=as.expression(lapply(1:4,
            function(j) substitute(theta==j, list(j=theta[j])))))
-if(doPDF) dev.off.pdf(file=file)
+if(doPDF) dev.off()
 
 
 ### 1.2) Checks for method="Wang"/"Wang.Par" ###################################
@@ -98,7 +98,7 @@ par(pty="s")
 plot(c, h, type="l", xlab="c (in initial interval)",
      ylab=expression("h(c) for"~~alpha~"= 0.99, d = 8 and F being Par(2)"))
 abline(h=0, lty=2)
-if(doPDF) dev.off.pdf(file=file)
+if(doPDF) dev.off()
 
 ## Check endpoints of objective function for root-finding
 sapply(c(0, (1-alpha)/d), function(c.)
@@ -140,7 +140,7 @@ legend("topleft", lty=rep(1,4),
        col=c("maroon3", "darkorange2", "royalblue3", "black"),
        bty="n", legend=as.expression(lapply(1:4,
            function(j) substitute(theta==j, list(j=theta[j])))))
-if(doPDF) dev.off.pdf(file=file)
+if(doPDF) dev.off()
 
 
 ### 1.2.3) Compute corresponding (via Wang.Par) worst VaR_alpha ################
@@ -173,7 +173,7 @@ legend("topright", lty=rep(1,4),
        col=c("maroon3", "darkorange2", "royalblue3", "black"),
        bty="n", legend=as.expression(lapply(1:4,
            function(j) substitute(theta==j, list(j=theta[j])))))
-if(doPDF) dev.off.pdf(file=file)
+if(doPDF) dev.off()
 
 
 ### 2) Compare 'crude', "Wang" (numerical), "Wang.Par", "dual", 'RA' ###########
@@ -264,4 +264,4 @@ legend("topright", bty="n",
        legend=c("Wang (num. int.)", "Wang Pareto (wo num. int.)",
                 "Wang Pareto (uniroot() tol.)", "Dual bound",
                 "lower RA bound", "upper RA bound"))
-if(doPDF) dev.off.pdf(file=file)
+if(doPDF) dev.off()
