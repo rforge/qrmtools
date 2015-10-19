@@ -483,7 +483,10 @@ rearrange <- function(X, tol=0, tol.type=c("relative", "absolute"), maxiter=Inf,
         ## Check convergence (we use "<= tol" as it entails tol=0)
         maxiter.reached <- ncol(row.sums) == maxiter # reached maxiter?
         tol. <- tol.fun(m.rs.new, m.rs.old) # actual attained tolerance
-        tol.reached <- tol. <= tol # reached tol?
+        tol.reached <- if(is.null(tol)) { # reached tol?
+            ## Note that tol=NULL can lead to non-convergence!
+            identical(Y.lst, X.lst)
+        } else { tol. <= tol }
         if(maxiter.reached || tol.reached) {
             break
         } else {

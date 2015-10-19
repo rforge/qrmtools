@@ -84,7 +84,11 @@ ARA(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
 	\code{method="dual"}, \code{tol} is used for both the outer
 	and the inner root-finding procedure.}
       \item{\code{rearrange()}:}{(Absolute or relative) tolerance to
-	determine (the individual) convergence.}
+	determine (the individual) convergence. This should normally be
+        a number greater than or equal to 0, but we also allow \code{tol=NULL}
+        here which iterates over all columns until all columns are oppositely
+        ordered to the sum of all other columns; note that this might lead to
+        non-convergence and is not recommended to be used.}
   }}
   \item{tol.type}{\code{\link{character}} string indicating the
     type of convergence tolerance function to be used (\code{"relative"}
@@ -104,12 +108,13 @@ ARA(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
     are conducted, checking after each such iteration whether the
     desired relative tolerances	(both individually and jointly; see below)
     have been reached.}
-  \item{abstol}{Absolute convergence tolerance \eqn{\epsilon}{epsilon}
+  \item{abstol}{Absolute convergence tolerance \eqn{\epsilon\ge0}{epsilon>=0}
     to determine the individual convergence, i.e., the change in the computed minimal
     (for \code{method="worst"}) or maximal (for \code{method="best"})
     row sums for the lower bound \eqn{\underline{s}_N} and the upper
     bound \eqn{\overline{s}_N}.}
-  \item{reltol}{A vector containing two relative convergence tolerances,
+  \item{reltol}{A vector containing two relative convergence tolerances
+    (greater than or equal to 0),
     the individual relative tolerance (first component; used to determine
     convergence of the minimal (for \code{method="worst"}) or maximal
     (for \code{method="best"}) row sums for
