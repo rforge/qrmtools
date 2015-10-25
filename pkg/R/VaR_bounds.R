@@ -536,7 +536,7 @@ RA <- function(alpha, qF, N, abstol=0, maxiter=Inf,
                method=c("worst", "best"), sample=TRUE)
 {
     ## Checks and Step 1 (get N, abstol)
-    stopifnot(0 < alpha, alpha < 1, abstol >= 0,
+    stopifnot(0 < alpha, alpha < 1, is.null(abstol) || abstol >= 0,
               length(N) >= 1, N >= 2, maxiter >= 1, is.logical(sample))
     method <- match.arg(method)
     stopifnot(is.list(qF), sapply(qF, is.function), (d <- length(qF)) >= 2)
@@ -628,8 +628,8 @@ ARA <- function(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01),
 {
     ## Checks and Step 1 (get N, reltol)
     stopifnot(0 < alpha, alpha < 1, length(reltol) == 2,
-              reltol >=0, length(N.exp) >= 1, N.exp >= 1,
-              maxiter >= 1, is.logical(sample))
+              is.null(reltol[1]) || reltol[1] >= 0, reltol[2] >= 0,
+              length(N.exp) >= 1, N.exp >= 1, maxiter >= 1, is.logical(sample))
     method <- match.arg(method)
     stopifnot(is.list(qF), sapply(qF, is.function), (d <- length(qF)) >= 2)
 
@@ -675,11 +675,9 @@ ARA <- function(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01),
                             maxiter=maxiter, method=method, sample=sample)
 
         ## Determine (individual and joint) convergence
-        ind.tol.reached.low <- res.low$tol <= reltol[1] # individual tol for lower bound reached?
-        ind.tol.reached.up <- res.up$tol <= reltol[1] # individual tol for upper bound reached?
         joint.tol <- abs((res.low$bound-res.up$bound)/res.up$bound)
-        joint.tol.reached <- joint.tol <= reltol[2] # joint tol reached?
-        if(ind.tol.reached.low && ind.tol.reached.up && joint.tol.reached) break
+        joint.tol.reached <- joint.tol <= reltol[2]
+        if(res.low$converged && res.up$converged && joint.tol.reached) break
 
     }
 
@@ -688,8 +686,7 @@ ARA <- function(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01),
     list(bounds=c(low=res.low$bound, up=res.up$bound), # (\underline{s}_N, \overline{s}_N)
          rel.ra.gap=abs((res.up$bound-res.low$bound)/res.up$bound), # relative RA gap
          rel.tol=c(low=res.low$tol, up=res.up$tol, joint=joint.tol), # individual and joint relative tolerances
-         converged=c(low=ind.tol.reached.low, up=ind.tol.reached.up,
-                     joint=joint.tol.reached), # converged?
+         converged=c(low=res.low$converged, up=res.up$converged, joint=joint.tol.reached), # converged?
          X=list(low=X.low, up=X.up), # input matrices X (low, up)
          X.rearranged=list(low=res.low$X.rearranged, up=res.up$X.rearranged), # rearranged Xs (low, up)
          N.used=N, # number of discretization points used
