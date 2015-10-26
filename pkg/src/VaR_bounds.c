@@ -23,12 +23,14 @@ SEXP indices_opp_ordered_to(SEXP x)
 	/* Compute rank() */
 	y = INTEGER(ind);
 	R_orderVector(y, /* result */
-		      N,
+		      N, /* length */
 		      Rf_lang1(x), /* argument */
 		      TRUE, /* nalast (use same default as order()) */
 		      TRUE); /* decreasing TRUE */
 	y = INTEGER(res);
-	R_orderVector(y, N, Rf_lang1(ind),
+	R_orderVector(y, /* result */
+		      N, /* length */
+		      Rf_lang1(ind), /* argument */
 		      TRUE, /* nalast (use same default as order()) */
 		      FALSE); /* decreasing FALSE */
 	for(i = 0; i < N; i++) y[i] += 1; /* increase all by 1 */
