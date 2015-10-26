@@ -14,9 +14,10 @@ Author: Marius Hofert [aut, cre], Kurt Hornik [aut]
 Maintainer: Marius Hofert <marius.hofert@uwaterloo.ca>
 Depends: R (>= 3.0.0)
 Imports: xts
-Suggests:
+Suggests: knitr, mvtnorm, QRM, rugarch
 Enhances:
 License: GPL-2 | GPL-3
+VignetteBuilder: knitr
 NeedsCompilation: yes
 Repository: CRAN
 Date/Publication: 2014-03-25 15:26:50

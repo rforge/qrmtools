@@ -1,22 +1,33 @@
-### Worst Value-at-Risk under known margins ####################################
-
+---
+title: Worst Value-at-Risk under Known Margins
+author: Marius Hofert
+date: '`r Sys.Date()`'
+vignette: >
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteIndexEntry{Worst Value-at-Risk under Known Margins}
+---
+```{r, message=FALSE}
 require(qrmtools)
-doPDF <- !dev.interactive(orNone=TRUE)
+doPDF <- FALSE
+```
 
+## 1) Homogeneous case
 
-### 1) Homogeneous case (all margins equal) ####################################
-
-## Setup
+We start by considering the following setup in the homogeneous case, i.e., when
+all marginal distributions are equal.
+```{r}
 alpha <- 0.99 # confidence level
 d <- 8 # dimension
 qF <- function(p, th=2) qPar(p, theta=th) # Pareto quantile function
 pF <- function(q, th=2) pPar(q, theta=th) # Pareto distribution function
+```
 
 
-### 1.1) Checks for method="dual" ##############################################
+### 1.1) Checks for method="dual"
 
-## Investigating h(s,t) = D(s,t) - ..., the function for the inner
-## root-finding to compute D(s); see dual_bound()
+Investigate helper function $h(s,t)$ (the function for the inner
+root-finding to compute $D(s)$; see `dual_bound()`.
+```{r}
 s <- c(1, 5, 10, 100, 500, 1000)
 t <- sapply(seq_along(s), function(i) {
     res <- exp(seq(log(1e-3), log(s[i]/d), length.out=257))
@@ -32,7 +43,6 @@ cols <- palette(6)
 if(doPDF)
     pdf(file=(file <- paste0("fig_worst_VaR_",alpha,"_hom_dual_h_Par=2_d=",d,".pdf")),
         width=6, height=6)
-par(pty="s")
 plot(t[,1], f[,1], type="l", log="x", xlim=range(t), ylim=range(f), col=cols[1],
      xlab="t", ylab=expression("h(s,t) for d = 8 and F being Par(2)"))
 lines(t[,2], f[,2], col=cols[2])
@@ -45,10 +55,13 @@ legend("topright", lty=rep(1,6), col=cols,
        bty="n", legend=as.expression(lapply(1:6,
            function(i) substitute(s==s., list(s.=s[i])))))
 if(doPDF) dev.off()
-## Conclusion: As we know, h(s, s/d) = 0. We also see that s has to be
-##             sufficiently large in order to find a root h(s, t) = 0 for t < s/d
+```
+As we know, $h(s,s/d)=0$. We also see that $s$ has to be
+sufficiently large in order to find a root $h(s,t)=0$ for $t < s/d$.
 
-## Plot dual bound D(s) for various theta (concerns the outer root-finding)
+Now let's plot the dual bound $D(s)$ for various $\theta$ (this checks the outer
+root-finding).
+```{r}
 theta <- c(0.5, 1, 2, 4) # theta values
 s <- seq(48, 2000, length.out=257) # s values
 D <- sapply(theta, function(th)
@@ -58,7 +71,6 @@ if(doPDF)
     pdf(file=(file <- paste0("fig_worst_VaR_",alpha,"_hom_dual_D_s_Par=",
                              paste0(theta, collapse="_"),"_d=",d,".pdf")),
         width=6, height=6)
-par(pty="s")
 plot(s, D[,1], type="l", ylim=range(D), col="maroon3",
      ylab=expression("Dual bound D(s) for d = 8 and F being Par("*theta*")"))
 lines(s, D[,2], col="darkorange2")
@@ -69,48 +81,58 @@ legend("topright", lty=rep(1,4),
        bty="n", legend=as.expression(lapply(1:4,
            function(j) substitute(theta==j, list(j=theta[j])))))
 if(doPDF) dev.off()
+```
 
+### 1.2) Checks for method="Wang"/"Wang.Par"
 
-### 1.2) Checks for method="Wang"/"Wang.Par" ###################################
+#### 1.2.1) Check of auxiliary functions *with* numerical integration (for $\theta=2$)
 
-### 1.2.1) Check of auxiliary functions *with* numerical integration (for theta=2)
-
-## Check Wang_Ibar()
+Check `Wang_Ibar()`.
+```{r}
 c <- seq(0, (1-alpha)/d-1e-8, length.out=129) # initial interval for root finding
 Ib <- sapply(c, function(c.)
     qrmtools:::Wang_Ibar(a=alpha+(d-1)*c., b=1-c., alpha=alpha, d=d, qF=qF))
-par(mar=c(5.1, 6.1, 4.1, 2.1)) # more space for the y-axis label
+par(mar=c(5, 4+1, 4, 2) + 0.1) # increase space (for y axis label)
 plot(c, Ib, type="l", xlab="c (in initial interval)",
      ylab=expression(bar(I)(c)))
+```
 
-## Check Wang_h_aux()
+Check `Wang_h_aux()`.
+```{r}
 h.aux <- qrmtools:::Wang_h_aux(c=c, alpha=alpha, d=d, qF=qF)
+par(mar=c(5, 4+1, 4, 2) + 0.1) # increase space (for y axis label)
 plot(c, h.aux, type="l", xlab="c (in initial interval)",
      ylab=expression(frac(d-1,d)~{F^{-1}}(a[c])+frac(1,d)~{F^{-1}}(b[c])))
+```
 
-## Check objective function h(c) (Wang_h() with numerical integration) for
-## the default theta
+Check the objective function $h(c)$ (i.e., `Wang_h()` with numerical integration) for
+the default $\theta$.
+```{r}
 h <- sapply(c, function(c.) qrmtools:::Wang_h(c., alpha=alpha, d=d, qF=qF))
 if(doPDF)
     pdf(file=(file <- paste0("fig_worst_VaR_",alpha,"_hom_Wang_h_Par=2_d=",d,"_num.pdf")),
         width=6, height=6)
-par(pty="s")
 plot(c, h, type="l", xlab="c (in initial interval)",
      ylab=expression("h(c) for"~~alpha~"= 0.99, d = 8 and F being Par(2)"))
 abline(h=0, lty=2)
 if(doPDF) dev.off()
+```
 
-## Check endpoints of objective function for root-finding
+Check the endpoints of the objective function (for the root-finding).
+```{r}
 sapply(c(0, (1-alpha)/d), function(c.)
        qrmtools:::Wang_h(c., alpha=alpha, d=d, qF=qF)) # -Inf, 0
-## -Inf is not a problem for root finding (for theta > 1; for theta <= 1 it is NaN),
-## but the 0 at the right endpoint is => A proper initial interval [c_l,u_l]
-## with 0<c_l<=c_u<(1-alpha)/d is required (containing the root).
+```
+$-\infty$ is not a problem for root finding (for $\theta > 1$; for $\theta <= 1$ it is `NaN`!),
+but the $0$ at the right endpoint is a problem. A proper initial interval $[c_l,u_l]$
+with $0<c_l<=c_u<(1-\alpha)/d$ (containing the root) is thus required.
 
 
-### 1.2.2) Check of h(c) *without* numerical integration (for a range of thetas)
 
-## Check objective function h(c) (Wang_h() without numerical integration)
+#### 1.2.2) Check of $h(c)$ without numerical integration (for a range of $\theta$)
+
+Check the objective function $h(c)$ (`Wang_h()` without numerical integration)
+```{r}
 d <- 8 # or d <- 100
 c <- seq(0, (1-alpha)/d, length.out=2^13+1)
 ## => They all go further down to 0 if length.out is increased.
@@ -122,12 +144,12 @@ for(j in 1:length(theta))
         qrmtools:::Wang_h(c., alpha=alpha, d=d, method="Wang.Par", theta=theta[j]))
 z <- h
 z[z <= 0] <- NA # > 0 => makes log-scale possible
+```
 
-## Plot
+```{r}
 if(doPDF)
     pdf(file=(file <- paste0("fig_worst_VaR_",alpha,"_hom_Wang_h_Par_d=",d,".pdf")),
         width=6, height=6)
-par(pty="s")
 plot(c, z[,1], type="l", log="y", ylim=c(1e-4, 2e7), # works for d = 8 or 100; range(z, na.rm=TRUE)
      xlab="c", col="maroon3",
      ylab=substitute("h(c) for"~~alpha~"= 0.99, d ="~d.~"and F being Par("*theta*")",
@@ -141,10 +163,12 @@ legend("topleft", lty=rep(1,4),
        bty="n", legend=as.expression(lapply(1:4,
            function(j) substitute(theta==j, list(j=theta[j])))))
 if(doPDF) dev.off()
+```
 
 
-### 1.2.3) Compute corresponding (via Wang.Par) worst VaR_alpha ################
+#### 1.2.3) Compute corresponding (via "Wang.Par") worst VaR_alpha
 
+```{r}
 ## Note: - for theta in (0, 1], c_l has to be > 0
 ##       - we focus on worst VaR only
 alpha. <- 1-2^seq(-0.001, -10, length.out=128) # alpha values (in (0,1); concentrated near 1)
@@ -155,12 +179,12 @@ w.VaR.Wang  <- sapply(theta, function(th)
                               method="Wang.Par", # or Wang.Par.trafo
                               theta=th)[2] # worst VaR
            })) # (alpha, theta) matrix
+```
 
-## Plot
+```{r}
 if(doPDF)
     pdf(file=(file <- paste0("fig_worst_VaR_hom_Wang_Par_d=",d,".pdf")),
         width=6, height=6)
-par(pty="s")
 plot(1-alpha., w.VaR.Wang[,1], type="l", log="xy", col="maroon3",
      ylim=c(4, 6e10), # works for d = 8 or 100; range(w.VaR.Wang)
      xlab=expression(1-alpha),
@@ -174,17 +198,20 @@ legend("topright", lty=rep(1,4),
        bty="n", legend=as.expression(lapply(1:4,
            function(j) substitute(theta==j, list(j=theta[j])))))
 if(doPDF) dev.off()
+```
 
 
-### 2) Compare 'crude', "Wang" (numerical), "Wang.Par", "dual", 'RA' ###########
+## 2) Compare 'crude', "Wang" (numerical), "Wang.Par", "dual", 'RA'
 
-## Setup (as before)
+Consider the setup as before.
+```{r}
 alpha <- 0.99 # confidence level
 d <- 8 # dimension
+```
 
-
-### 2.1) Why we need (at least) a lower endpoint for the root-finding procedure
-###      if theta in (0,1] in the Pareto case (infinite mean)
+The following explains why we need (at least) a lower endpoint for the root-finding procedure
+if $\theta\in(0,1]$ in the Pareto case (infinite mean).
+```{r}
 interval <- c(0, (1-alpha)/d) # endpoints
 method <- "Wang.Par" # note: this also holds for (the numerical) method="Wang"
 th <- 0.99
@@ -193,11 +220,11 @@ qrmtools:::Wang_h(interval[1], alpha=alpha, d=d, method=method, theta=th) # NaN 
 qrmtools:::Wang_Ibar(a=alpha+(d-1)*interval[1], b=1-interval[1], alpha=alpha,
                      d=d, method=method, theta=th) # Inf
 qrmtools:::Wang_h_aux(interval[1], alpha=alpha, d=d, method=method, theta=th) # Inf
+```
 
-
-### 2.2) Graphical comparison ##################################################
-
-## Setup
+Now consider a graphical comparison between the various methods. Our setup is
+as follows.
+```{r}
 alpha <- 0.99 # confidence level
 d <- 8 # or d <- 100
 n.th <- 64 # number of thetas
@@ -207,8 +234,11 @@ th <- seq(th.low, th.up, length.out=n.th) # thetas
 qFs <- lapply(th, function(th.) {th.; function(p) qPar(p, theta=th.)}) # n.th-vector of Pareto quantile functions
 pFs <- lapply(th, function(th.) {th.; function(q) pPar(q, theta=th.)}) # n.th-vector of Pareto dfs
 N <- 1e4 # number of discretization points for RA(); N=1e5 does not improve the situation
+```
 
-## Compute values (~30s (d=8; d=100: ~15min); all with default tol, see implementation)
+Compute the values; all with default tolerance (see implementation). Note that
+this takes some time.
+```{r, results="hide", warning=FALSE}
 res <- matrix(, nrow=n.th, ncol=7)
 colnames(res) <- c("Wang", "Wang.Par", "Wang.Par.uniroot.tol",
                    "Wang.Par.trafo", "dual", "RA.low", "RA.up")
@@ -231,24 +261,24 @@ for(i in seq_len(n.th)) {
     res[i,"Wang.Par.trafo"] <- VaR_bounds_hom(alpha, d=d, method="Wang.Par.trafo", theta=th[i])[2]
     ## "dual" (with uniroot()'s default tolerance)
     res[i,"dual"] <- VaR_bounds_hom(alpha, d=d, method="dual",
-                                    interval=crude_VaR_bounds(alpha, d=d, qF=qFs[[i]]),
+                                    interval=crude_VaR_bounds(alpha, qF=rep(qFs[i], d)),
                                     pF=pFs[[i]])[2]
     ## Rearrangement Algorithm
     set.seed(271) # use the same random permutation for each theta
-    RA. <- RA(alpha, d=d, qF=qFs[[i]], N=N, abstol=0.0001)
+    RA. <- RA(alpha, qF=rep(qFs[i], d), N=N, abstol=0.0001)
     res[i,"RA.low"] <- RA.$bounds[1]
     res[i,"RA.up"]  <- RA.$bounds[2]
     ## Progress
     setTxtProgressBar(pb, i) # update progress bar
 }
+```
 
-## Plot
+```{r, fig.width=10, fig.height=7}
 res. <- res/res[,"Wang.Par.trafo"] # standardize
 if(doPDF) {
     file <- paste0("fig_worst_VaR_",alpha,"_hom_comparison_d=",d,"_N=",N,".pdf")
     pdf(file=(file), width=6, height=6)
 }
-par(pty="s")
 plot(th, res.[,"Wang"], type="l", ylim=range(res., na.rm=TRUE),
      xlab=expression(theta), ylab=substitute(bar(VaR)[0.99]*group("(",L^{"+"},")")~
      "comparison (standardized) for d ="~d.~"and F being Par("*theta*")", list(d.=d)),
@@ -265,3 +295,4 @@ legend("topright", bty="n",
                 "Wang Pareto (uniroot() tol.)", "Dual bound",
                 "lower RA bound", "upper RA bound"))
 if(doPDF) dev.off()
+```
