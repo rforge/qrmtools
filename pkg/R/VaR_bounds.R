@@ -372,6 +372,26 @@ VaR_bounds_hom <- function(alpha, d, method=c("Wang", "Wang.Par",
 
 ### 3) Worst VaR in the inhomogeneous case #####################################
 
+##' @title Determine the indices which order any increasing (!) y oppositely to x
+##' @param x A vector
+##' @return order(order(x, decreasing=TRUE)) (= N+1-rank(x))
+##' @author Marius Hofert
+##' @note Another option would be to use R_orderVector1() [if MM implements it]
+indices_opp_ordered_to <- function(x, method="C")
+{
+    switch(method,
+    "C" = { # fastest
+        .Call(C_indices_opp_ordered_to, x)
+    },
+    "rank" = { # marginally slower for d=100, ca. 10% slower for d=1000
+        length(x)+1-rank(x)
+    },
+    "order" = { # ca. 30% slower for d=100 and d=1000
+        order(order(x, decreasing=TRUE))
+    },
+    stop("Wrong method"))
+}
+
 ##' @title Compute the number of columns oppositely ordered to the sum of all others
 ##' @param x (N, d)-matrix
 ##' @return Number of columns oppositely ordered to the sum of all others
@@ -382,9 +402,6 @@ num_of_opp_ordered_cols <- function(x) {
     x.rs <- .rowSums(x, nrow(x), ncol(x)) # faster than rowSums()
     x.lst <- .Call(C_col_split, x) # to avoid indexing the jth column, we work with a list!
     x.lst.sorted <- lapply(x.lst, sort.int) # sorting is only necessary once!
-    indices_opp_ordered_to <- if(getRversion() <= "3.2.2") { # use faster C function if available
-        function(x) order(order(x, decreasing=TRUE))
-    } else function(x) .Call(C_indices_opp_ordered_to, x)
     sum(vapply(seq_len(ncol(x)),
                function(j) {
                    xj <- x.lst[[j]]
@@ -426,11 +443,6 @@ rearrange <- function(X, tol=0, tol.type=c("relative", "absolute"), maxiter=Inf,
     d <- ncol(X)
     tol.type <- match.arg(tol.type)
     method <- match.arg(method)
-
-    ## Use faster C function if available
-    indices_opp_ordered_to <- if(getRversion() <= "3.2.2") {
-        function(x) order(order(x, decreasing=TRUE))
-    } else function(x) .Call(C_indices_opp_ordered_to, x)
 
     ## Define helper functions
     optim.fun <- if(method=="worst") min else max
