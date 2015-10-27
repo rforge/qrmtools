@@ -279,7 +279,9 @@ ARA(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
 
   Note that these approaches for computing the
   Value-at-Risk bounds in the homogeneous case are numerically non-trivial;
-  see the source code and \code{demo(VaR_bounds)} for more details. As a
+  see the source code and \code{vignette("VaR_bounds",
+    package="qrmtools")}
+  for more details. As a
   rule of thumb, use \code{method="Wang"} if you have to (i.e., if the
   margins are not Pareto) and \code{method="Wang.Par"} if you can (i.e.,
   if the margins are Pareto); in the former case, it might be wise to
@@ -326,7 +328,8 @@ ARA(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
   finite, no adjustment is made).
 
   As a rule of thumb (see the examples below,
-  \code{demo(VaR_bounds)} and Hofert et al. (2015) for the reasons),
+  \code{vignette("VaR_bounds", package="qrmtools")}
+  and Hofert et al. (2015) for the reasons),
   it is recommended to use \code{ARA()} instead of \code{RA()}.
 
   On the theoretical side, let us again stress the following.
@@ -358,7 +361,8 @@ ARA(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
   See http://arxiv.org/abs/1505.02281.
 }
 \seealso{
-  \code{demo(VaR_bounds)} for more example calls, numerical challenges
+  \code{vignette("VaR_bounds", package="qrmtools")}
+  for more example calls, numerical challenges
   encoutered and a comparison of the different methods for computing
   the worst (i.e., largest) Value-at-Risk.
 }

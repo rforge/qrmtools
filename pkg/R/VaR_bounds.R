@@ -247,7 +247,7 @@ VaR_bounds_hom <- function(alpha, d, method=c("Wang", "Wang.Par",
 
     ## Worst VaR for d >= 3  ###################################################
 
-    if(is.null(tol)) # use smaller tolerance if required (matters; see also demo)
+    if(is.null(tol)) # use smaller tol (matters; see vignette("VaR_bounds", package="qrmtools"))
         tol <- if(method=="Wang" || method=="Wang.Par")
                    2.2204e-16 # MATLAB default
                else .Machine$double.eps^0.25 # uniroot() default
