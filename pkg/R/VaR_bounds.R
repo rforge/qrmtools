@@ -421,15 +421,15 @@ num_of_opp_ordered_cols <- function(x) {
 ##' @param method Character indicating which VaR is approximated (worst/best)
 ##'        determines optimizing function (min for worst VaR; max
 ##'        for best VaR)
-##' @param sample logical indicating whether each column of the working
+##' @param sample A logical indicating whether each column of the working
 ##'        matrix is sampled before the iteration begins
 ##' @return List containing the
 ##'         1) Computed (lower or upper [depending on X]) bound for (worst or
 ##'            best [depending on method]) VaR
 ##'         2) (Individual) tolerance reached
-##'         3) Logicial indicating whether the algorithm has converged
-##'         4) The (optimally) rearranged (N, d)-matrix
-##'         5) (N, .)-matrix of row sums (one column for each iteration)
+##'         3) Logical indicating whether the algorithm has converged
+##'         4) (N, .)-matrix of row sums (one column for each iteration)
+##'         5) The (optimally) rearranged (N, d)-matrix
 ##' @author Marius Hofert and Kurt Hornik
 ##' @note - We use "<= tol" to determine convergence instead of "< tol" as
 ##'         this then also nicely works with "= 0" (if tol=0) which stops in
@@ -514,8 +514,8 @@ rearrange <- function(X, tol=0, tol.type=c("relative", "absolute"), maxiter=Inf,
     list(bound=m.rs.new, # computed bound (\underline{s}_N or \overline{s}_N)
          tol=tol., # tolerance for the computed bound
          converged=tol.reached, # indicating whether converged
-         X.rearranged=do.call(cbind, Y.lst), # the rearranged matrix X
-         row.sums=row.sums) # the computed row sums after each iteration through all cols
+         row.sums=row.sums, # the computed row sums after each iteration through all cols
+         X.rearranged=do.call(cbind, Y.lst)) # the rearranged matrix X
 }
 
 ##' @title Computing lower/upper bounds for the worst VaR with the RA
@@ -534,13 +534,13 @@ rearrange <- function(X, tol=0, tol.type=c("relative", "absolute"), maxiter=Inf,
 ##'         3) Individual absolute tolerances reached (for each bound)
 ##'         4) 2-vector of logicals indicating whether the individual bounds reached
 ##'            the desired tolerances (=> convergence)
-##'         5) List of (N, d) input matrices X (for each bound)
-##'         6) List of rearranged Xs (for each bound)
-##'         7) Number of iterations through the matrix columns used
-##'         8) List of (N, .)-matrices of row sums (one column for each iteration;
-##'            for each bound)
-##'         9) Vectors of minimal [for worst VaR] or maximal [for best VaR] row sums
+##'         5) Number of iterations through the matrix columns used
+##'         6) Vectors of minimal [for worst VaR] or maximal [for best VaR] row sums
 ##'            (for each bound)
+##'         7) List of (N, .)-matrices of row sums (one column for each iteration;
+##'            for each bound)
+##'         8) List of (N, d) input matrices X (for each bound)
+##'         9) List of rearranged Xs (for each bound)
 ##' @author Marius Hofert
 ##' @note Notation is from p. 2757 in Embrechts, Puccetti, Rueschendorf (2013);
 ##'       variables are named according to the 'worst' VaR case.
@@ -597,12 +597,12 @@ RA <- function(alpha, qF, N, abstol=0, maxiter=Inf,
          rel.ra.gap=abs((res.up$bound-res.low$bound)/res.up$bound), # relative RA gap
          ind.abs.tol=c(low=res.low$tol, up=res.up$tol), # individual absolute tolerances
          converged=c(low=res.low$converged, up=res.up$converged), # converged?
-         X=list(low=X.low, up=X.up), # input matrices X (low, up)
-         X.rearranged=list(low=res.low$X.rearranged, up=res.up$X.rearranged), # rearranged Xs (low, up)
          num.iter=c(low=ncol(res.low$row.sums), up=ncol(res.up$row.sums)), # number of iterations (low, up)
-         row.sums=list(low=res.low$row.sums, up=res.up$row.sums), # row sums (low, up)
          m.row.sums=list(low=apply(res.low$row.sums, 2, optim.fun),
-                         up=apply(res.up$row.sums, 2, optim.fun))) # optimal row sums (low, up)
+                         up=apply(res.up$row.sums, 2, optim.fun)), # optimal row sums (low, up)
+         row.sums=list(low=res.low$row.sums, up=res.up$row.sums), # row sums (low, up)
+         X=list(low=X.low, up=X.up), # input matrices X (low, up)
+         X.rearranged=list(low=res.low$X.rearranged, up=res.up$X.rearranged)) # rearranged Xs (low, up)
 }
 
 ##' @title Computing lower/upper bounds for the worst VaR with the ARA
@@ -626,14 +626,14 @@ RA <- function(alpha, qF, N, abstol=0, maxiter=Inf,
 ##'             between the bounds)
 ##'          4) 3-vector of logicals indicating whether the individual bounds and
 ##'             the two bounds jointly reached the desired tolerances (=> convergence)
-##'          5) List of (N, d) input matrices X (for each bound)
-##'          6) List of rearranged Xs (for each bound)
-##'          7) The number of discretization points used
-##'          8) Number of iterations through the matrix columns used
-##'          9) List of (N, .)-matrices of row sums (one column for each iteration;
-##'             for each bound)
-##'         10) Vectors of minimal [for worst VaR] or maximal [for best VaR] row sums
+##'          5) The number of discretization points used
+##'          6) Number of iterations through the matrix columns used
+##'          7) Vectors of minimal [for worst VaR] or maximal [for best VaR] row sums
 ##'             (for each bound)
+##'          8) List of (N, .)-matrices of row sums (one column for each iteration;
+##'             for each bound)
+##'          9) List of (N, d) input matrices X (for each bound)
+##'         10) List of rearranged Xs (for each bound)
 ##' @author Marius Hofert
 ARA <- function(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01),
                 maxiter=12, method=c("worst", "best"), sample=TRUE)
@@ -699,11 +699,11 @@ ARA <- function(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01),
          rel.ra.gap=abs((res.up$bound-res.low$bound)/res.up$bound), # relative RA gap
          rel.tol=c(low=res.low$tol, up=res.up$tol, joint=joint.tol), # individual and joint relative tolerances
          converged=c(low=res.low$converged, up=res.up$converged, joint=joint.tol.reached), # converged?
-         X=list(low=X.low, up=X.up), # input matrices X (low, up)
-         X.rearranged=list(low=res.low$X.rearranged, up=res.up$X.rearranged), # rearranged Xs (low, up)
          N.used=N, # number of discretization points used
          num.iter=c(low=ncol(res.low$row.sums), up=ncol(res.up$row.sums)), # # of iterations (low, up) over all cols
-         row.sums=list(low=res.low$row.sums, up=res.up$row.sums), # row sums (low, up) after each iteration over all cols
          m.row.sums=list(low=apply(res.low$row.sums, 2, optim.fun),
-                         up=apply(res.up$row.sums, 2, optim.fun))) # optimal row sums (low, up)
+                         up=apply(res.up$row.sums, 2, optim.fun)), # optimal row sums (low, up) after each iteration over all cols (for the N used)
+         row.sums=list(low=res.low$row.sums, up=res.up$row.sums), # row sums (low, up) after each iteration over all cols (for the N used)
+         X=list(low=X.low, up=X.up), # input matrices X (low, up)
+         X.rearranged=list(low=res.low$X.rearranged, up=res.up$X.rearranged)) # rearranged Xs (low, up)
 }

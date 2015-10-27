@@ -17,6 +17,7 @@ system.time(res <- rearrange(X))
 ## with rank(): 1.18s (14.7s for d=1280)
 ## with order(order()): 1.48s (19.5s for d=1280)
 ## with R_orderVector(): 3.47s (34.13s for d=1280)
+## with code from revision 55 (summer '15): 30s (4061s for d=1280) => C improvement factor: 95% (for d=1280: 99.7%)
 
 ## ARA()
 set.seed(271)

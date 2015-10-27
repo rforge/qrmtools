@@ -125,7 +125,7 @@ ARA(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
           \eqn{\overline{s}_N}). \code{reltol} is typically
           \eqn{\ge0}{>=0}; \code{reltol[1]} can also be
           \code{\link{NULL}}, see \code{tol} above.}
-  \item{sample}{\code{\link{logical}} indicating whether each column of
+  \item{sample}{A \code{\link{logical}} indicating whether each column of
     the two internal matrices of quantiles (see Step 3 of the Rearrangement
     Algorithm in Embrechts et al. (2013))
     are sampled before the iteration over all columns begins.}
