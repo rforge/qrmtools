@@ -16,7 +16,7 @@ VaR_bounds_hom(alpha, d, method=c("Wang", "Wang.Par", "Wang.Par.trafo", "dual"),
 dual_bound(s, d, pF, tol=.Machine$double.eps^0.25, ...)
 
 rearrange(X, tol=0, tol.type=c("relative", "absolute"), maxiter=Inf,
-          method=c("worst", "best"), sample=TRUE)
+          method=c("worst", "best"), sample=TRUE, trace=FALSE)
 RA(alpha, qF, N, abstol=0, maxiter=Inf, method=c("worst", "best"),
    sample=TRUE)
 ARA(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
@@ -129,6 +129,8 @@ ARA(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
     the two internal matrices of quantiles (see Step 3 of the Rearrangement
     Algorithm in Embrechts et al. (2013))
     are sampled before the iteration over all columns begins.}
+  \item{trace}{A \code{\link{logical}} indicating whether the underlying matrix is
+    printed after each rearrangement step.}
   \item{\dots}{
     \describe{
       \item{\code{crude_VaR_bounds()}:}{Ellipsis argument passed

@@ -423,6 +423,8 @@ num_of_opp_ordered_cols <- function(x) {
 ##'        for best VaR)
 ##' @param sample A logical indicating whether each column of the working
 ##'        matrix is sampled before the iteration begins
+##' @param trace A logical indicating whether the underlying matrix is
+##'        printed after each rearrangement step
 ##' @return List containing the
 ##'         1) Computed (lower or upper [depending on X]) bound for (worst or
 ##'            best [depending on method]) VaR
@@ -437,7 +439,7 @@ num_of_opp_ordered_cols <- function(x) {
 ##'       - No checking here due to speed!
 ##'       - The columns of X have to be given in increasing order!
 rearrange <- function(X, tol=0, tol.type=c("relative", "absolute"), maxiter=Inf,
-                      method=c("worst", "best"), sample=TRUE)
+                      method=c("worst", "best"), sample=TRUE, trace=FALSE)
 {
     N <- nrow(X)
     d <- ncol(X)
@@ -452,7 +454,9 @@ rearrange <- function(X, tol=0, tol.type=c("relative", "absolute"), maxiter=Inf,
         function(x, y) abs((x-y)/y)
     }
 
-    ## Setup steps before major loop
+    ## Output initial matrix
+    if(trace) print(X)
+
     ## Keep the (already) sorted X
     X.lst.sorted <- .Call(C_col_split, X) # use faster C function
 
@@ -473,6 +477,7 @@ rearrange <- function(X, tol=0, tol.type=c("relative", "absolute"), maxiter=Inf,
 
         ## Oppositely order X (=> Y)
         ## Note: - The elements of X.lst.sorted are in increasing order
+        ##         => required for oppositely reordering them
         ##       - One could check whether d consecutive column-rearrangements
         ##         did not lead to a change and then stop (as all columns are
         ##         oppositely ordered to the sum of all others in this case).
@@ -486,6 +491,11 @@ rearrange <- function(X, tol=0, tol.type=c("relative", "absolute"), maxiter=Inf,
             yj <- X.lst.sorted[[j]][indices_opp_ordered_to(rs)] # oppositely reorder
             Y.rs <- rs + yj # update row sum of Y
             Y.lst[[j]] <- yj # update list with rearranged jth column
+            if(trace) { # for debugging
+                Y <- do.call(cbind, Y.lst)
+                colnames(Y) <- NULL
+                print(Y)
+            }
         }
 
         ## Compute row sums and minimal/maximal row sums
