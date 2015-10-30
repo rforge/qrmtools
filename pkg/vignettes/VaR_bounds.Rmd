@@ -8,6 +8,8 @@ vignette: >
 ---
 ```{r, message=FALSE}
 require(qrmtools)
+require(QRM)
+require(copula)
 doPDF <- FALSE
 ```
 
@@ -300,21 +302,25 @@ if(doPDF) dev.off()
 
 ## 3) Run-time comparison between a straightforward implementation and the actual efficient implementation
 
-A straightforward implementation of `rearrange(, sample=FALSE)` is:
+A straightforward (but inefficient) implementation of a basic
+`rearrange(, sample=FALSE, is.sorted=TRUE)` is:
 ```{r}
-rearrange_slow <- function(X)
+rearrange_ <- function(X, tol=0)
 {
+    N <- nrow(X)
     d <- ncol(X)
     m.rs.old <- min(rowSums(X))
     while (TRUE) {
         Y <- X
         for(j in 1:d)
-            Y[,j] <- sort(Y[,j], decreasing=TRUE)[rank(rowSums(Y[,-j, drop=FALSE]), ties.method="first")]
+            Y[,j] <- sort(Y[,j])[N+1-rank(rowSums(Y[,-j, drop=FALSE]), ties.method="first")]
         Y.rs <- rowSums(Y)
         m.rs.new <- min(Y.rs)
-        tol <- abs((m.rs.new - m.rs.old)/m.rs.old)
-        stp <- tol == 0
-        if(stp) {
+        tol. <- abs((m.rs.new - m.rs.old)/m.rs.old)
+        tol.reached <- if(is.null(tol)) {
+            identical(Y, X)
+        } else { tol. <= tol }
+        if(tol.reached) {
             break
         } else {
             m.rs.old <- m.rs.new
@@ -325,7 +331,7 @@ rearrange_slow <- function(X)
 ```
 
 We now compare this to the actual implementation (`rearrange(,
-sample=FALSE)`). To this end, we consider the following setup.
+sample=FALSE, is.sorted=TRUE)`). To this end, we consider the following setup.
 ```{r}
 alpha <- 0.99 # confidence level
 
@@ -341,8 +347,8 @@ qF <- function(p, theta=2) (1-p)^(-1/theta)-1
 for(i in seq_along(d)) {
     cat("Working on d =",d[i],"\n")
     X <- sapply(rep(list(qF), d[i]), function(qF.) qF.(p))
-    res[i,] <- c(system.time(rearrange_slow(X))[["elapsed"]],
-                 system.time(rearrange(X, sample=FALSE))[["elapsed"]])
+    res[i,] <- c(system.time(rearrange_(X))[["elapsed"]],
+                 system.time(rearrange(X, sample=FALSE, is.sorted=TRUE))[["elapsed"]])
 }
 ```
 
@@ -353,17 +359,91 @@ plot(d, (1-res[,2]/res[,1])*100, type="b", log="x", ylim=c(0,100),
      xlab=expression(italic(d)), ylab="Improvement (in %)")
 ```
 
+
 ## 4) How `rearrange()` acts on specific matrices
 
 To see how `rearrange()` actually proceeds, consider the following example.
 ```{r}
 A <- matrix(c(1:4, 2*(1:4)-1, 2^(0:3)), ncol=3)
-rearrange(A, tol=NULL, sample=FALSE)
+rearrange(A, tol=NULL, sample=FALSE, is.sorted=TRUE)
 ## => Highest-possible/optimal solution
 
 B <- matrix(rep(1:3, 3), ncol=3)
-rearrange(B, tol=NULL, sample=FALSE)
+rearrange(B, tol=NULL, sample=FALSE, is.sorted=TRUE)
 ## => Non-optimal solution (6 would be better and possible
 ##    via the rearrangement matrix(c(1,2,3, 2,3,1, 3,1,2), ncol=3))
 ```
-To see the rearrangement steps for each column, consider using `rearrange(, trace=TRUE)`.
+To see the rearrangement steps for each column, consider using `rearrange(,
+trace=TRUE)`.
+
+
+## 5) A real data application
+
+We now consider the task of computing best and worst Value-at-Risk (VaR) at
+confidence level 99.9% for a real data set. To illustrate the ideas, we simply
+consider the negative log-returns of the constituents of the SMI from 2011-09-12
+to 2012-03-28. In a more realistic example (where the marginal loss
+distributions typically come from different business lines (in an Operational
+Risk context) and there is less information about the dependence (or no hope to
+estimate it)), one would consider real Operational Risk losses.
+
+First, let's compute the losses.
+```{r}
+data(SMI.12)
+L <- -apply(log(SMI.12), 2, diff) # more sophisticated methods are available
+n <- nrow(L)
+d <- ncol(L)
+```
+
+Now let's fit GPDs to *each* margin, i.e., each SMI constituent. As threshold,
+we simply choose the 80% quantile for each of margins (more sophisticated
+methods are available).
+```{r}
+res <- vector("list", length=d)
+names(res) <- colnames(L)
+for(k in seq_len(d)) {
+
+    ## Determine the threshold for company k
+    L. <- L[,k]
+    u <- quantile(L., probs=0.8, names=FALSE) # threshold
+
+    ## Fit a GPD to the excesses
+    fit <- fit.GPD(L., threshold=u)
+    stopifnot(fit$converged)
+    xi <- fit$par.ests[["xi"]] # fitted xi
+    beta <- fit$par.ests[["beta"]] # fitted beta
+    stopifnot(is.numeric(xi), is.numeric(beta))
+
+    ## Graphical goodness-of-fit check for the GPD fit
+    excess <- L.[L.>u]-u # excesses
+    if(FALSE) {
+        excess. <- sort(excess) # sorted data
+        qF <- function(p) qGPD(p, xi=xi, beta=beta)
+        qF. <- qF(ppoints(length(excess.))) # theoretical quantiles
+        stock <- names(res)[k]
+        plot(qF., excess., xlab="Theoretical quantiles",
+             ylab="Sample quantiles", main=paste0("Q-Q plot for the fitted GPD(",
+                                                  round(xi, 2),", ",round(beta, 2),") distribution for ", stock))
+        qqline(y=as.numeric(excess.), distribution=qF)
+    }
+
+    ## Update res
+    res[[k]] <- list(loss=L., excess=excess, u=u, xi=xi, beta=beta)
+
+}
+```
+
+We can now apply the (Adaptive) Rearrangement Algorithm.
+```{r}
+xi. <- sapply(res, function(x) x$xi) # all fitted xi's
+beta. <- sapply(res, function(x) x$beta) # all fitted beta's
+alpha <- 0.999 # confidence level
+qF <- lapply(res, function(r) { function(p) qGPD(p, xi=r$xi, beta=r$beta) }) # list of fitted marginal quantile functions
+set.seed(271) # set a seed (for reproducibility)
+system.time(res.ARA <- ARA(alpha, qF=qF)) # apply ARA()
+stopifnot(res.ARA$converged) # check convergence
+res.ARA$bounds # ARA bounds on worst VaR
+system.time(res.RA <- RA(alpha, qF=qF, N=1024, abstol=0.005)) # apply RA()
+stopifnot(res.RA$converged) # check convergence
+res.RA$bounds # RA bounds on worst VaR
+```

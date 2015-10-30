@@ -22,11 +22,7 @@ db <- read.table(file, header=TRUE, row.names="Positions", # read the *d*ata *b*
                  encoding="UTF-8") # for 'didactical' reasons
 str(db) # check the *str*ucture of 'db', what is it... ahh, a data frame!
 str(rn <- rownames(db)) # row names contain dates
-```
-
-Convert the dates to *proper* date objects.
-```{r}
-date <- as.Date(rn, format="%m/%d/%Y")
+date <- as.Date(rn, format="%m/%d/%Y") # convert the dates to *proper* date objects
 str(date)
 rownames(db) <- date # use the newly formatted dates as row names
 ```

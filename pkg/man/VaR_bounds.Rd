@@ -16,7 +16,7 @@ VaR_bounds_hom(alpha, d, method=c("Wang", "Wang.Par", "Wang.Par.trafo", "dual"),
 dual_bound(s, d, pF, tol=.Machine$double.eps^0.25, ...)
 
 rearrange(X, tol=0, tol.type=c("relative", "absolute"), maxiter=Inf,
-          method=c("worst", "best"), sample=TRUE, trace=FALSE)
+          method=c("worst", "best"), sample=TRUE, is.sorted=FALSE, trace=FALSE)
 RA(alpha, qF, N, abstol=0, maxiter=Inf, method=c("worst", "best"),
    sample=TRUE)
 ARA(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
@@ -96,8 +96,8 @@ ARA(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
   \item{s}{Dual bound evaluation point.}
   \item{pF}{The marginal loss distribution function.}
   \item{X}{An (\code{N}, \code{d})-matrix of quantiles (to be
-    rearranged) which is columnwise sorted in \emph{increasing} order. Note that for
-    performance reasons, no checks are done.}
+    rearranged). If \code{is.sorted} it is assumed that the columns of
+    \code{X} are sorted in \emph{increasing} order.}
   \item{maxiter}{Maximal number of iterations over all columns of the
     underlying matrix of quantiles (can be set to \code{Inf}).}
   \item{N}{The number of discretization points.}
@@ -129,6 +129,8 @@ ARA(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
     the two internal matrices of quantiles (see Step 3 of the Rearrangement
     Algorithm in Embrechts et al. (2013))
     are sampled before the iteration over all columns begins.}
+  \item{is.sorted}{A \code{\link{logical}} indicating whether the columns of \code{X}
+    are sorted in increasing order.}
   \item{trace}{A \code{\link{logical}} indicating whether the underlying matrix is
     printed after each rearrangement step.}
   \item{\dots}{
@@ -471,11 +473,7 @@ legend("bottomright", bty="n", lty=rep(1,2),
 
 ## "Reproducing" Table 1 (but seed and eps unknown)
 set.seed(271)
-RAworst <- RA(alpha, qF=rep(list(qF), 3), N=50)
-stopifnot(all.equal(RAworst$bounds[1], 44.84026,
-                    tolerance=5e-7, check.names=FALSE),
-          all.equal(RAworst$bounds[2], 46.40413,
-                    tolerance=5e-7, check.names=FALSE))
+RA(alpha, qF=rep(list(qF), 3), N=50)
 
 ## "Reproducing" Table 3 for alpha=0.99 (but seed unknown)
 N <- 2e4 # we use a smaller N here to save run time
@@ -484,15 +482,7 @@ xi <- c(1.19, 1.17, 1.01, 1.39, 1.23, 1.22, 0.85, 0.98)
 beta <- c(774, 254, 233, 412, 107, 243, 314, 124)
 qF.lst <- lapply(1:8, function(j){ function(p) qGPD(p, xi=xi[j], beta=beta[j])})
 set.seed(271)
-RAbest  <- RA(0.99, qF=qF.lst, N=N, abstol=eps, method="best")
-RAworst <- RA(0.99, qF=qF.lst, N=N, abstol=eps)
-stopifnot(all.equal(RAbest$bounds[1], 1.770824e5,
-                    tolerance=5e-7, check.names=FALSE),
-          all.equal(RAbest$bounds[2], 1.783041e5,
-                    tolerance=5e-7, check.names=FALSE),
-          all.equal(RAworst$bounds[1], 2.555670e6,
-                    tolerance=5e-7, check.names=FALSE),
-          all.equal(RAworst$bounds[2], 2.556882e6,
-                    tolerance=5e-7, check.names=FALSE))
+RA(0.99, qF=qF.lst, N=N, abstol=eps, method="best")
+RA(0.99, qF=qF.lst, N=N, abstol=eps)
 }
 \keyword{distribution}

@@ -372,22 +372,29 @@ VaR_bounds_hom <- function(alpha, d, method=c("Wang", "Wang.Par",
 
 ### 3) Worst VaR in the inhomogeneous case #####################################
 
-##' @title Determine the indices which order any increasing (!) y oppositely to x
+##' @title Determine the indices which order any increasing (!) vector y
+##'        oppositely to x
 ##' @param x A vector
 ##' @return order(order(x, decreasing=TRUE)) (= N+1-rank(x))
 ##' @author Marius Hofert
-##' @note Another option would be to use R_orderVector1() [if MM implements it]
-indices_opp_ordered_to <- function(x, method="C")
+##' @note - For convergence of rearrange() it is crucial to have a stable sorting
+##'         procedure underlying (as then no swaps on ties back and forth until
+##'         eternity take place which decreases the probability of non-convergence).
+##'         The various methods like qsort() in C or rsort_with_index() are *not*
+##'         stable. In the way we need it here, rank(, ties.method="last") would
+##'         be as well, but internally uses order() and thus is not faster.
+##'         However, we can make order() faster by calling orderVector1()
+##'         instead of orderVector() in R_orderVector().
+##'       - The above has currently not been implemented, hence we stick to the
+##'         R version (still faster than C_indices_opp_ordered_to)
+indices_opp_ordered_to <- function(x, method="R")
 {
     switch(method,
-    "C" = { # fastest
-        .Call(C_indices_opp_ordered_to, x)
-    },
-    "rank" = { # marginally slower for d=100, ca. 10% slower for d=1000
-        length(x)+1-rank(x)
-    },
-    "order" = { # ca. 30% slower for d=100 and d=1000
+    "R" = { # stable
         order(order(x, decreasing=TRUE))
+    },
+    "C" = { # stable
+        .Call(C_indices_opp_ordered_to, x)
     },
     stop("Wrong method"))
 }
@@ -412,7 +419,6 @@ num_of_opp_ordered_cols <- function(x) {
 
 ##' @title Basic rearrangement function for (A)RA
 ##' @param X (N, d)-matrix \underline{X}^\alpha or \overline{X}^\alpha
-##'        in increasing order (columnwise)
 ##' @param tol Tolerance to determine (the individual) convergence;
 ##'        if NULL, the iteration is done until the matrix doesn't change
 ##' @param tol.type Character string indicating the tolerance function used
@@ -423,6 +429,8 @@ num_of_opp_ordered_cols <- function(x) {
 ##'        for best VaR)
 ##' @param sample A logical indicating whether each column of the working
 ##'        matrix is sampled before the iteration begins
+##' @param is.sorted A logical indicating whether X is columnwise sorted in
+##'        increasing order
 ##' @param trace A logical indicating whether the underlying matrix is
 ##'        printed after each rearrangement step
 ##' @return List containing the
@@ -437,9 +445,10 @@ num_of_opp_ordered_cols <- function(x) {
 ##'         this then also nicely works with "= 0" (if tol=0) which stops in
 ##'         case the matrices are identical (no change at all).
 ##'       - No checking here due to speed!
-##'       - The columns of X have to be given in increasing order!
+##'       - The columns of X have to be given in increasing order if !is.sorted!
 rearrange <- function(X, tol=0, tol.type=c("relative", "absolute"), maxiter=Inf,
-                      method=c("worst", "best"), sample=TRUE, trace=FALSE)
+                      method=c("worst", "best"), sample=TRUE, is.sorted=FALSE,
+                      trace=FALSE)
 {
     N <- nrow(X)
     d <- ncol(X)
@@ -457,8 +466,12 @@ rearrange <- function(X, tol=0, tol.type=c("relative", "absolute"), maxiter=Inf,
     ## Output initial matrix
     if(trace) print(X)
 
-    ## Keep the (already) sorted X
-    X.lst.sorted <- .Call(C_col_split, X) # use faster C function
+    ## Keep the sorted X
+    X.lst.sorted <- if(is.sorted) {
+        .Call(C_col_split, X)
+    } else {
+        .Call(C_col_split, apply(X, 2, sort)) # need to sort first
+    }
 
     ## Sample the columns (if chosen), compute the initial row sum
     ## and the corresponding min/max row sum
@@ -489,8 +502,8 @@ rearrange <- function(X, tol=0, tol.type=c("relative", "absolute"), maxiter=Inf,
             yj <- Y.lst[[j]] # jth column of Y
             rs <- Y.rs - yj # sum over all other columns (but the jth)
             yj <- X.lst.sorted[[j]][indices_opp_ordered_to(rs)] # oppositely reorder
-            Y.rs <- rs + yj # update row sum of Y
             Y.lst[[j]] <- yj # update list with rearranged jth column
+            Y.rs <- rs + yj # update row sum of Y
             if(trace) { # for debugging
                 Y <- do.call(cbind, Y.lst)
                 colnames(Y) <- NULL
@@ -504,8 +517,8 @@ rearrange <- function(X, tol=0, tol.type=c("relative", "absolute"), maxiter=Inf,
 
         ## Check convergence (we use "<= tol" as it entails tol=0)
         maxiter.reached <- ncol(row.sums) == maxiter # reached maxiter?
-        tol. <- tol.fun(m.rs.new, m.rs.old) # actual attained tolerance
-        tol.reached <- if(is.null(tol)) { # reached tol?
+        tol. <- tol.fun(m.rs.new, m.rs.old) # attained tolerance
+        tol.reached <- if(is.null(tol)) {
             ## Note that tol=NULL can lead to non-convergence!
             identical(Y.lst, X.lst)
         } else { tol. <= tol }
@@ -566,7 +579,7 @@ RA <- function(alpha, qF, N, abstol=0, maxiter=Inf,
     ## Compute lower bound
 
     ## Step 2 (build \underline{X}^\alpha)
-    p <- if(method=="worst") alpha + (1-alpha)*0:(N-1)/N else alpha*0:(N-1)/N # N-vector of prob. in *increasing* order as required by rearrange()
+    p <- if(method=="worst") alpha + (1-alpha)*0:(N-1)/N else alpha*0:(N-1)/N # N-vector of prob. in *increasing* order
     X.low <- sapply(qF, function(qF) qF(p))
     ## adjust those that are -Inf (for method="best")
     ## use alpha*((0+1)/2 / N) = alpha/(2N) instead of 0 quantile
@@ -580,12 +593,12 @@ RA <- function(alpha, qF, N, abstol=0, maxiter=Inf,
     ## abstol change in the min (method="worst") or max (method="best") row sum
     ## or until we reached maxiter number of iterations
     res.low <- rearrange(X.low, tol=abstol, tol.type="absolute", maxiter=maxiter,
-                         method=method, sample=sample)
+                         method=method, sample=sample, is.sorted=TRUE)
 
     ## Compute upper bound
 
     ## Step 2 (build \overline{X}^\alpha)
-    p <- if(method=="worst") alpha + (1-alpha)*1:N/N else alpha*1:N/N # N-vector of prob. in *increasing* order as required by rearrange()
+    p <- if(method=="worst") alpha + (1-alpha)*1:N/N else alpha*1:N/N # N-vector of prob. in *increasing* order
     X.up <- sapply(qF, function(qF) qF(p))
     ## adjust those that are Inf (for method="worst")
     ## use alpha+(1-alpha)*(N-1+N)/(2*N) = alpha+(1-alpha)*(1-1/(2*N)) instead of 1 quantile
@@ -599,7 +612,7 @@ RA <- function(alpha, qF, N, abstol=0, maxiter=Inf,
     ## abstol change in the min (method="worst") or max (method="best") row sum
     ## or until we reached maxiter number of iterations
     res.up <- rearrange(X.up, tol=abstol, tol.type="absolute", maxiter=maxiter,
-                        method=method, sample=sample)
+                        method=method, sample=sample, is.sorted=TRUE)
 
     ## Return
     optim.fun <- if(method=="worst") min else max
@@ -661,7 +674,7 @@ ARA <- function(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01),
         ## Compute lower bound
 
         ## Step 2 (build \underline{X}^\alpha)
-        p <- if(method=="worst") alpha + (1-alpha)*0:(N-1)/N else alpha*0:(N-1)/N # N-vector of prob. in *increasing* order as required by rearrange()
+        p <- if(method=="worst") alpha + (1-alpha)*0:(N-1)/N else alpha*0:(N-1)/N # N-vector of prob. in *increasing* order
         X.low <- sapply(qF, function(qF) qF(p))
         ## adjust those that are -Inf (for method="best")
         ## use alpha*((0+1)/2 / N) = alpha/(2N) instead of 0 quantile
@@ -675,12 +688,12 @@ ARA <- function(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01),
         ## reltol[1] change in the min (method="worst") or max (method="best") row sum
         ## or until we reached maxiter number of iterations
         res.low <- rearrange(X.low, tol=reltol[1], tol.type="relative",
-                             maxiter=maxiter, method=method, sample=sample)
+                             maxiter=maxiter, method=method, sample=sample, is.sorted=TRUE)
 
         ## Compute upper bound
 
         ## Step 2 (build \overline{X}^\alpha)
-        p <- if(method=="worst") alpha + (1-alpha)*1:N/N else alpha*1:N/N # N-vector of prob. in *increasing* order as required by rearrange()
+        p <- if(method=="worst") alpha + (1-alpha)*1:N/N else alpha*1:N/N # N-vector of prob. in *increasing* order
         X.up <- sapply(qF, function(qF) qF(p))
         ## adjust those that are Inf (for method="worst")
         ## use alpha+(1-alpha)*(N-1+N)/(2*N) = alpha+(1-alpha)*(1-1/(2*N)) instead of 1 quantile
@@ -694,7 +707,7 @@ ARA <- function(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01),
         ## reltol[1] change in the min (method="worst") or max (method="best") row sum
         ## or until we reached maxiter number of iterations
         res.up <- rearrange(X.up, tol=reltol[1], tol.type="relative",
-                            maxiter=maxiter, method=method, sample=sample)
+                            maxiter=maxiter, method=method, sample=sample, is.sorted=TRUE)
 
         ## Determine (individual and joint) convergence
         joint.tol <- abs((res.low$bound-res.up$bound)/res.up$bound)
