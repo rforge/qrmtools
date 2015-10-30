@@ -377,26 +377,23 @@ VaR_bounds_hom <- function(alpha, d, method=c("Wang", "Wang.Par",
 ##' @param x A vector
 ##' @return order(order(x, decreasing=TRUE)) (= N+1-rank(x))
 ##' @author Marius Hofert
-##' @note - For convergence of rearrange() it is crucial to have a stable sorting
-##'         procedure underlying (as then no swaps on ties back and forth until
-##'         eternity take place which decreases the probability of non-convergence).
-##'         The various methods like qsort() in C or rsort_with_index() are *not*
-##'         stable. In the way we need it here, rank(, ties.method="last") would
-##'         be as well, but internally uses order() and thus is not faster.
-##'         However, we can make order() faster by calling orderVector1()
-##'         instead of orderVector() in R_orderVector().
-##'       - The above has currently not been implemented, hence we stick to the
-##'         R version (still faster than C_indices_opp_ordered_to)
-indices_opp_ordered_to <- function(x, method="R")
+##' @note For convergence of rearrange() it is crucial to have a stable sorting
+##'       procedure underlying (as then no swaps on ties back and forth until
+##'       eternity take place which decreases the probability of non-convergence).
+##'       The various methods like qsort() in C or rsort_with_index() are *not*
+##'       stable. In the way we need it here, rank(, ties.method="last") would
+##'       be as well, but internally uses order() and thus is not faster.
+##'       However, we can make order() faster by using R_orderVector1() instead
+##'       of R_orderVector() (available from 3.2.3 onwards)
+##'       => For d=1000 and N=16384, this only brought an improvement of 1.3%
+indices_opp_ordered_to <- function(x)
 {
-    switch(method,
-    "R" = { # stable
-        order(order(x, decreasing=TRUE))
-    },
-    "C" = { # stable
-        .Call(C_indices_opp_ordered_to, x)
-    },
-    stop("Wrong method"))
+    ## Note: The following test is expensive... and the call to C even
+    ##       only very slightly faster...
+    ## if(getRversion() >= "3.2.3")
+    ##     .Call(C_indices_opp_ordered_to, x)
+    ## else
+    order(order(x, decreasing=TRUE))
 }
 
 ##' @title Compute the number of columns oppositely ordered to the sum of all others
@@ -464,7 +461,11 @@ rearrange <- function(X, tol=0, tol.type=c("relative", "absolute"), maxiter=Inf,
     }
 
     ## Output initial matrix
-    if(trace) print(X)
+    if(trace) {
+        B <- X
+        colnames(B) <- rep("", d)
+        print(B)
+    }
 
     ## Keep the sorted X
     X.lst.sorted <- if(is.sorted) {
@@ -505,9 +506,12 @@ rearrange <- function(X, tol=0, tol.type=c("relative", "absolute"), maxiter=Inf,
             Y.lst[[j]] <- yj # update list with rearranged jth column
             Y.rs <- rs + yj # update row sum of Y
             if(trace) { # for debugging
-                Y <- do.call(cbind, Y.lst)
-                colnames(Y) <- NULL
-                print(Y)
+                B <- do.call(cbind, Y.lst)
+                colnames(B) <- rep("", d)
+                colnames(B)[j] <- "|"
+                B <- cbind(B, rs)
+                colnames(B)[d+1] <- paste0("-",j)
+                print(B)
             }
         }
 

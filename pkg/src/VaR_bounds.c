@@ -8,9 +8,6 @@
  * @param x N-vector (one column in the (A)RA()/rearrange() input matrix X)
  * @return order(order(x, decreasing=TRUE))
  * @author Marius Hofert, Kurt Hornik
- * @note This is currently slower than R's order(order(x, decreasing=TRUE))
- *       as the more time-consuming orderVector() [instead of orderVector1()]
- *       is used internally.
  */
 SEXP indices_opp_ordered_to(SEXP x)
 {
@@ -25,16 +22,16 @@ SEXP indices_opp_ordered_to(SEXP x)
     res_ = INTEGER(res); /* set pointer to res */
 
     /* Compute order(order(x, decreasing=TRUE)) */
-    R_orderVector(ind_, /* result */
-                  N, /* length */
-    	          Rf_lang1(x), /* argument */
-    	          TRUE, /* nalast as in order() */
-    	          TRUE); /* decreasing TRUE */
-    R_orderVector(res_, /* result */
-    	          N, /* length */
-    	          Rf_lang1(ind), /* argument */
-    	          TRUE, /* nalast as in order() */
-    	          FALSE); /* decreasing FALSE */
+    R_orderVector1(ind_, /* result */
+                   N, /* length */
+    	           x, /* argument */
+    	           TRUE, /* nalast as in order() */
+    	           TRUE); /* decreasing TRUE */
+    R_orderVector1(res_, /* result */
+    	           N, /* length */
+    	           ind, /* argument */
+    	           TRUE, /* nalast as in order() */
+    	           FALSE); /* decreasing FALSE */
     for(i=0; i<N; i++) res_[i] += 1; /* increase all by 1 */
 
     /* Return */
