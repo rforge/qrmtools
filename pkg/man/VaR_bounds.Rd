@@ -15,12 +15,12 @@ VaR_bounds_hom(alpha, d, method=c("Wang", "Wang.Par", "Wang.Par.trafo", "dual"),
                interval=NULL, tol=NULL, ...)
 dual_bound(s, d, pF, tol=.Machine$double.eps^0.25, ...)
 
-rearrange(X, tol=0, tol.type=c("relative", "absolute"), maxiter=Inf,
+rearrange(X, tol=0, tol.type=c("relative", "absolute"), max.num.col.ra=Inf,
           method=c("worst", "best"), sample=TRUE, is.sorted=FALSE, trace=FALSE)
-RA(alpha, qF, N, abstol=0, maxiter=Inf, method=c("worst", "best"),
+RA(alpha, qF, N, abstol=0, max.num.col.ra=Inf, method=c("worst", "best"),
    sample=TRUE)
-ARA(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
-    method=c("worst", "best"), sample=TRUE)
+ARA(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01),
+    max.num.col.ra=12*length(qF), method=c("worst", "best"), sample=TRUE)
 }
 \arguments{
   \item{alpha}{Value-at-Risk confidence level (e.g., 0.99).}
@@ -85,9 +85,8 @@ ARA(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
       \item{\code{rearrange()}:}{(Absolute or relative) tolerance to
 	determine (the individual) convergence. This should normally be
         a number greater than or equal to 0, but we also allow \code{tol=NULL}
-        which iterates over all columns until all columns are oppositely
-        ordered to the sum of all other columns (note that this might lead to
-        non-convergence of the algorithm and should thus only be used by
+        which rearranges the columns until all columns are oppositely
+        ordered to the sum of all other columns (this should only be used by
         experts).}
   }}
   \item{tol.type}{\code{\link{character}} string indicating the
@@ -98,24 +97,25 @@ ARA(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
   \item{X}{An (\code{N}, \code{d})-matrix of quantiles (to be
     rearranged). If \code{is.sorted} it is assumed that the columns of
     \code{X} are sorted in \emph{increasing} order.}
-  \item{maxiter}{Maximal number of iterations over all columns of the
-    underlying matrix of quantiles (can be set to \code{Inf}).}
+  \item{max.num.col.ra}{Maximal number of (considered) column rearrangements
+    of the underlying matrix of quantiles (can be set to \code{Inf}).}
   \item{N}{The number of discretization points.}
-  \item{N.exp}{The exponents of the number of discretization points (a \code{\link{vector}});
-    the iteration then takes place over all discretization points
-    \code{2^N.exp}. For each such number, at most \code{maxiter}-many
-    iterations through all columns of the underlying matrix of quantiles
-    are conducted, checking after each such iteration over all columns whether the
-    desired relative tolerances	(both the individual and the joint
-          relative tolerance; see below) have been reached.}
+  \item{N.exp}{The exponents of the number of discretization points
+    (a \code{\link{vector}}) over which the algorithm iterates to find
+    the smallest number of discretization points for which the desired
+    accuracy (specified by \code{reltol}) is attained; for each number
+    of discretization points, at most \code{max.num.col.ra}-many
+    column rearrangements are of the underlying matrix of quantiles
+    are considered.}
   \item{abstol}{Absolute convergence tolerance \eqn{\epsilon}{epsilon}
     to determine the individual convergence, i.e., the change in the computed minimal
     (for \code{method="worst"}) or maximal (for \code{method="best"})
     row sums for the lower bound \eqn{\underline{s}_N} and the upper
     bound \eqn{\overline{s}_N}. \code{abstol} is typically
-          \eqn{\ge0}{>=0}; it can also be \code{\link{NULL}}, see \code{tol} above.}
-  \item{reltol}{A \code{\link{vector}} containing two relative convergence tolerances,
-    the individual relative tolerance (first component; used to determine
+    \eqn{\ge0}{>=0}; it can also be \code{\link{NULL}}, see \code{tol} above.}
+  \item{reltol}{A \code{\link{vector}} containing two relative
+    convergence tolerances, the individual relative tolerance
+    (first component; used to determine
     convergence of the minimal (for \code{method="worst"}) or maximal
     (for \code{method="best"}) row sums for
     \eqn{\underline{s}_N} and \eqn{\overline{s}_N})
@@ -126,13 +126,14 @@ ARA(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
           \eqn{\ge0}{>=0}; \code{reltol[1]} can also be
           \code{\link{NULL}}, see \code{tol} above.}
   \item{sample}{A \code{\link{logical}} indicating whether each column of
-    the two internal matrices of quantiles (see Step 3 of the Rearrangement
+    the two underlying matrices of quantiles (see Step 3 of the Rearrangement
     Algorithm in Embrechts et al. (2013))
-    are sampled before the iteration over all columns begins.}
+    are randomly permuted before the rearrangements begin.}
   \item{is.sorted}{A \code{\link{logical}} indicating whether the columns of \code{X}
     are sorted in increasing order.}
   \item{trace}{A \code{\link{logical}} indicating whether the underlying matrix is
-    printed after each rearrangement step.}
+    printed after each rearrangement step. See \code{vignette("VaR_bounds",
+    package="qrmtools")} for how to interpret the output.}
   \item{\dots}{
     \describe{
       \item{\code{crude_VaR_bounds()}:}{Ellipsis argument passed
@@ -175,17 +176,16 @@ ARA(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
       or \eqn{\overline{s}_N}.}
     \item{\code{tol}:}{The reached tolerance (i.e., the (absolute or
       relative) change of the minimal (for \code{method="worst"}) or
-      maximal (for \code{method="best"}) row sum in the last iteration).}
+      maximal (for \code{method="best"}) row sum after the last rearrangement).}
     \item{\code{converged}:}{A \code{\link{logical}} indicating whether
       the desired (absolute or relative) tolerance \code{tol} has been reached.}
+    \item{\code{m.row.sums}:}{A \code{\link{vector}} containing the
+      computed minimal (for \code{method="worst"}) or maximal
+      (for \code{method="best"}) row sums after each (considered)
+      column rearrangement.}
     \item{\code{X.rearranged}:}{An (\code{N},
       \code{d})-\code{\link{matrix}}
       containing the rearranged \code{X}.}
-    \item{\code{row.sums}:}{A \code{\link{matrix}} with the same number of
-      rows as \code{X}, giving the row sums after
-      each iteration of rearrangements of \code{X}; one iteration
-      corresponds to looping over all columns and oppositely reorder
-      each of them with respect to the sum of all others.}
   }
 
   \code{RA()} returns a \code{\link{list}} containing
@@ -199,31 +199,28 @@ ARA(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
       \eqn{\underline{s}_N} and \eqn{\overline{s}_N} computed with
       respect to \eqn{\overline{s}_N}.}
     \item{\code{ind.abs.tol}:}{A bivariate vector containing the
-      reached individual absolute tolerances (i.e., the absolute change of the minimal
+      reached individual absolute tolerances (i.e., the absolute change
+      of the minimal
       (for \code{method="worst"}) or maximal (for \code{method="best"})
-      row sums for computing \eqn{\underline{s}_N} and \eqn{\overline{s}_N}
-      in the last iteration of \code{rearrange()}); see also
-      \code{tol} returned by \code{rearrange()} above.}
+      row sums for computing \eqn{\underline{s}_N} and \eqn{\overline{s}_N};
+      see also \code{tol} returned by \code{rearrange()} above.}
     \item{\code{converged}:}{A \code{\link{logical}} vector of length two
       indicating convergence of the computed \eqn{\underline{s}_N} and
       \eqn{\overline{s}_N} (i.e., whether the desired tolerances were
       reached).}
+    \item{\code{num.col.ra}:}{A bivariate vector containing, for
+      \eqn{\underline{s}_N} and \eqn{\overline{s}_N}, the number
+      of column rearrangments of the underlying matrices
+      of quantiles.}
+    \item{\code{m.row.sums}:}{A \code{\link{list}} of length two containing minimal
+      (for \code{method="worst"}) or maximal (for \code{method="best"})
+      row sums (after each (considered) column rearrangement)
+      for the computed \eqn{\underline{s}_N} and \eqn{\overline{s}_N}.}
     \item{\code{X}:}{The initially constructed (\code{N}, \code{d})-matrices
       of quantiles for computing
       \eqn{\underline{s}_N} and \eqn{\overline{s}_N}.}
-    \item{\code{X.rearranged}:}{The rearranged \code{X}.}
-    \item{\code{num.iter}:}{A bivariate vector containing, for
-      \eqn{\underline{s}_N} and \eqn{\overline{s}_N}, the number
-      of iterations over all columns of the underlying matrix
-      of quantiles.}
-    \item{\code{row.sums}:}{A \code{\link{list}} of length two containing
-      the computed matrices of row sums for computing \eqn{\underline{s}_N} and
-      \eqn{\overline{s}_N} (one column for each iteration over all
-      columns of \code{X}); see also \code{row.sums} returned by
-      \code{rearrange()} above.}
-    \item{\code{m.row.sums}:}{A list of length two containing minimal
-      (for \code{method="worst"}) or maximal (for \code{method="best"})
-      row sums for the computed \eqn{\underline{s}_N} and \eqn{\overline{s}_N}.}
+    \item{\code{X.rearranged}:}{The rearranged matrices \code{X} (for
+      \eqn{\underline{s}_N} and \eqn{\overline{s}_N}).}
   }
 
   \code{ARA()} returns a \code{\link{list}} containing
@@ -238,13 +235,17 @@ ARA(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
       joint convergence (i.e., whether the computed
       \eqn{\underline{s}_N} and \eqn{\overline{s}_N} are sufficiently close
       according to \code{reltol[2]}).}
-    \item{\code{X}:}{See \code{RA()}.}
-    \item{\code{X.rearranged}:}{See \code{RA()}.}
+    \item{\code{converged}:}{A \code{\link{logical}} vector of length three
+      indicating convergence of the computed \eqn{\underline{s}_N} (first entry),
+      the computed \eqn{\overline{s}_N} (second entry) and indicating
+      convergence of the two bounds according to the attained
+      joint relative tolerance (third entry).}
     \item{\code{N.used}:}{The actual \code{N} used for computing
       the (final) \eqn{\underline{s}_N} and \eqn{\overline{s}_N}.}
-    \item{\code{num.iter}:}{See \code{RA()}.}
-    \item{\code{row.sums}:}{See \code{RA()}.}
+    \item{\code{num.col.ra}:}{See \code{RA()}.}
     \item{\code{m.row.sums}:}{See \code{RA()}.}
+    \item{\code{X}:}{See \code{RA()}.}
+    \item{\code{X.rearranged}:}{See \code{RA()}.}
   }
 }
 \details{
@@ -301,23 +302,23 @@ ARA(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01), maxiter=12,
   performance reasons, no checking is done. It should only be used by
   experts.
 
-  For the Rearrangement Algorithm \code{RA()}, unless
-  \code{maxiter}-many iterations have been reached, convergence of
+  For the Rearrangement Algorithm \code{RA()}, convergence of
   \eqn{\underline{s}_N} and \eqn{\overline{s}_N} is determined if the
   minimal (for the worst Value-at-Risk) or maximal (for the best
-  Value-at-Risk) row sums after an iteration did not change by more than
-  (the absolute tolerance) \code{abstol} (so \eqn{\le\epsilon}{<=
-  eps}). This is slightly different from Embrechts et al. (2013) who use
-  \eqn{<\epsilon}{< eps} but this slight modification has the advantage
-  of allowing for \eqn{\epsilon=0}{eps=0}.
+  Value-at-Risk) row sum satisfies the specified \code{abstol}
+  (so \eqn{\le\epsilon}{<=eps})
+  after a column rearrangement after at most \code{max.num.col.ra}-many
+  column rearrangements. This is different
+  from Embrechts et al. (2013) who use \eqn{<\epsilon}{< eps} and
+  only check for convergence after an iteration through all
+  columns of the underlying matrix of quantiles.
 
   For the Adaptive Rearrangement Algorithm \code{ARA()},
-  again unless \code{maxiter}-many iterations
-  have been reached, convergence is determined if the minimal
-  (for the worst Value-at-Risk) or maximal (for the best
-  Value-at-Risk) row sums after an iteration did not change by more than
-  (the individual relative tolerance) \code{reltol[1]} (see \code{tol} above for
-  the meaning of \code{reltol[1]=NULL}) \emph{and} the
+  convergence of \eqn{\underline{s}_N} and \eqn{\overline{s}_N}
+  is determined if, after at most \code{max.num.col.ra}-many column
+  rearrangements, the (the individual relative tolerance)
+  \code{reltol[1]} (see \code{tol}
+  above for the meaning of \code{reltol[1]=NULL}) is satisfied \emph{and} the
   relative (joint) tolerance between both bounds is at most \code{reltol[2]}.
 
   Note that both \code{RA()} and \code{ARA()} need to evalute the
@@ -446,7 +447,7 @@ RAworst <- RA(alpha, qF=rep(list(qF), d), N=ARAworst$N.used,
 stopifnot(all.equal(c(VaR.W[1], VaR.W.Par.trafo[1],
                       ARAbest$bounds[1], ARAbest$bounds[2],
                       RAbest$bounds[1],  RAbest$bounds[2]),
-                    rep(VaR.W.Par[1],6), tolerance=0.004, check.names=FALSE))
+                    rep(VaR.W.Par[1],6), tolerance=0.005, check.names=FALSE))
 ## Worst VaR
 stopifnot(all.equal(c(VaR.W[2], VaR.W.Par.trafo[2], VaR.d[2],
                       ARAworst$bounds[1], ARAworst$bounds[2],
@@ -458,10 +459,11 @@ stopifnot(all.equal(c(VaR.W[2], VaR.W.Par.trafo[2], VaR.d[2],
 
 xlim <- c(1, max(sapply(RAworst$m.row.sums, length)))
 ylim <- range(RAworst$m.row.sums)
-plot(RAworst$m.row.sums[[2]], type="b", xlim=xlim, ylim=ylim, xlab="Iteration",
-     ylab=paste0("Minimal row sum"),
-     main=substitute("RA for worst VaR with"~alpha==a.*","~d==d.*" and Par("*
-                     th.*")", list(a.=alpha, d.=d, th.=th)))
+plot(RAworst$m.row.sums[[2]], type="b", xlim=xlim, ylim=ylim,
+     xlab="Number or rearranged columns",
+     ylab=paste0("Minimal row sum per rearranged column"),
+     main=substitute("Worst VaR minimal row sums ("*alpha==a.*","~d==d.*" and Par("*
+                     th.*"))", list(a.=alpha, d.=d, th.=th)))
 lines(1:length(RAworst$m.row.sums[[1]]), RAworst$m.row.sums[[1]], type="b",
       col="blue")
 legend("bottomright", bty="n", lty=rep(1,2),
@@ -471,18 +473,29 @@ legend("bottomright", bty="n", lty=rep(1,2),
 
 ## "Reproducing" examples from Embrechts et al. (2013) #########################
 
-## "Reproducing" Table 1 (but seed and eps unknown)
+## "Reproducing" Table 1 (but seed and eps are unknown)
+## Left-hand side of Table 1
+N <- 50
+qPar <- rep(list(qF), 3)
+p <- alpha + (1-alpha)*(0:(N-1))/N # for 'worst' (= largest) VaR
+X <- sapply(qPar, function(qF) qF(p))
+cbind(X, rowSums(X))
+## Right-hand side of Table 1
 set.seed(271)
-RA(alpha, qF=rep(list(qF), 3), N=50)
+res <- RA(alpha, qF=qPar, N=N)
+row.sum <- rowSums(res$X.rearranged$low)
+cbind(res$X.rearranged$low, row.sum)[order(row.sum),]
 
-## "Reproducing" Table 3 for alpha=0.99 (but seed unknown)
+## "Reproducing" Table 3 for alpha=0.99 (but seed is unknown)
 N <- 2e4 # we use a smaller N here to save run time
 eps <- 0.1 # absolute tolerance
 xi <- c(1.19, 1.17, 1.01, 1.39, 1.23, 1.22, 0.85, 0.98)
 beta <- c(774, 254, 233, 412, 107, 243, 314, 124)
 qF.lst <- lapply(1:8, function(j){ function(p) qGPD(p, xi=xi[j], beta=beta[j])})
 set.seed(271)
-RA(0.99, qF=qF.lst, N=N, abstol=eps, method="best")
-RA(0.99, qF=qF.lst, N=N, abstol=eps)
+res.best <- RA(0.99, qF=qF.lst, N=N, abstol=eps, method="best")
+print(format(res.best$bounds, scientific=TRUE), quote=FALSE) # close to first value of 1st row
+res.worst <- RA(0.99, qF=qF.lst, N=N, abstol=eps)
+print(format(res.worst$bounds, scientific=TRUE), quote=FALSE) # close to last value of 1st row
 }
 \keyword{distribution}

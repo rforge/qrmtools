@@ -250,7 +250,7 @@ for(i in seq_len(n.th)) {
     ## "Wang" (numerical integration with smaller uniroot() tolerance; numerically critical)
     Wang.num.res <- tryCatch(VaR_bounds_hom(alpha, d=d, qF=qFs[[i]])[2], error=function(e) e)
     if(is(Wang.num.res, "simpleError")) { # warnings appeared
-        warning("there was an error: ", conditionMessage(Wang.num.res), " (will use NA as result)")
+        ## warning("there was an error: ", conditionMessage(Wang.num.res), " (will use NA as result)")
         Wang.num.res <- NA
     }
     res[i,"Wang"] <- Wang.num.res
@@ -362,19 +362,22 @@ plot(d, (1-res[,2]/res[,1])*100, type="b", log="x", ylim=c(0,100),
 
 ## 4) How `rearrange()` acts on specific matrices
 
-To see how `rearrange()` actually proceeds, consider the following example.
+To see how `rearrange()` actually proceeds, consider the following example. Due
+to `trace=TRUE`, the matrix is printed after each column is rearranged. A "|" and
+"=" indicate whether the respective column has changed or not, respectively, and
+the last two printed columns provide the row sums over all other (but the
+current) column as well as the new updated row sums (over all columns) after the
+rearrangement.
 ```{r}
 A <- matrix(c(1:4, 2*(1:4)-1, 2^(0:3)), ncol=3)
-rearrange(A, tol=NULL, sample=FALSE, is.sorted=TRUE)
+rearrange(A, tol=NULL, sample=FALSE, is.sorted=TRUE, trace=TRUE)
 ## => Highest-possible/optimal solution
 
 B <- matrix(rep(1:3, 3), ncol=3)
-rearrange(B, tol=NULL, sample=FALSE, is.sorted=TRUE)
+rearrange(B, tol=NULL, sample=FALSE, is.sorted=TRUE, trace=TRUE)
 ## => Non-optimal solution (6 would be better and possible
 ##    via the rearrangement matrix(c(1,2,3, 2,3,1, 3,1,2), ncol=3))
 ```
-To see the rearrangement steps for each column, consider using `rearrange(,
-trace=TRUE)`.
 
 
 ## 5) A real data application
