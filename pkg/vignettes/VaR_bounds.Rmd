@@ -303,7 +303,8 @@ if(doPDF) dev.off()
 ## 3) Run-time comparison between a straightforward implementation and the actual efficient implementation
 
 A straightforward (but inefficient) implementation of a basic
-`rearrange(, sample=FALSE, is.sorted=TRUE)` is:
+`rearrange(, sample=FALSE, is.sorted=TRUE)` is the following. Note that our
+implementation in `qrmtools` allows for much greater functionality *and* is faster.
 ```{r}
 rearrange_ <- function(X, tol=0)
 {
@@ -345,7 +346,7 @@ qF <- function(p, theta=2) (1-p)^(-1/theta)-1
 
 ## For each d, measure the run time
 for(i in seq_along(d)) {
-    cat("Working on d =",d[i],"\n")
+    ## cat("Working on d =",d[i],"\n")
     X <- sapply(rep(list(qF), d[i]), function(qF.) qF.(p))
     res[i,] <- c(system.time(rearrange_(X))[["elapsed"]],
                  system.time(rearrange(X, sample=FALSE, is.sorted=TRUE))[["elapsed"]])
@@ -363,21 +364,26 @@ plot(d, (1-res[,2]/res[,1])*100, type="b", log="x", ylim=c(0,100),
 ## 4) How `rearrange()` acts on specific matrices
 
 To see how `rearrange()` actually proceeds, consider the following example. Due
-to `trace=TRUE`, the matrix is printed after each column is rearranged. A "|" and
+to `trace=TRUE`, the matrix is printed after each column rearrangement. A "|" and
 "=" indicate whether the respective column has changed or not, respectively, and
-the last two printed columns provide the row sums over all other (but the
-current) column as well as the new updated row sums (over all columns) after the
-rearrangement.
+the last two printed columns provide the row sums over all other columns but the
+current one as well as the new updated row sums (over all columns) after the
+rearrangement. We see that for `tol=NULL` the algorithm stops after the first
+time $d$ (here: 3) consecutive rearrangements left the matrix unchanged.
 ```{r}
 A <- matrix(c(1:4, 2*(1:4)-1, 2^(0:3)), ncol=3)
 rearrange(A, tol=NULL, sample=FALSE, is.sorted=TRUE, trace=TRUE)
-## => Highest-possible/optimal solution
-
+```
+This is the highest possible minimal row sum and thus the optimally rearranged
+matrix. Let's consider another example.
+```{r}
 B <- matrix(rep(1:3, 3), ncol=3)
 rearrange(B, tol=NULL, sample=FALSE, is.sorted=TRUE, trace=TRUE)
-## => Non-optimal solution (6 would be better and possible
-##    via the rearrangement matrix(c(1,2,3, 2,3,1, 3,1,2), ncol=3))
 ```
+
+Here we do not reach an optimal rearrangement (6 would be a better minimal
+row sum, attainable via the rearrangement `matrix(c(1,2,3, 2,3,1, 3,1,2), ncol=3)`).
+
 
 
 ## 5) A real data application
@@ -443,10 +449,48 @@ beta. <- sapply(res, function(x) x$beta) # all fitted beta's
 alpha <- 0.999 # confidence level
 qF <- lapply(res, function(r) { function(p) qGPD(p, xi=r$xi, beta=r$beta) }) # list of fitted marginal quantile functions
 set.seed(271) # set a seed (for reproducibility)
-system.time(res.ARA <- ARA(alpha, qF=qF)) # apply ARA()
+res.ARA <- ARA(alpha, qF=qF) # apply ARA()
 stopifnot(res.ARA$converged) # check convergence
 res.ARA$bounds # ARA bounds on worst VaR
-system.time(res.RA <- RA(alpha, qF=qF, N=1024, abstol=0.005)) # apply RA()
+res.RA <- RA(alpha, qF=qF, N=res.ARA$N.used, abstol=0) # apply RA() (with the same N)
 stopifnot(res.RA$converged) # check convergence
 res.RA$bounds # RA bounds on worst VaR
 ```
+
+To see how the bounds on worst VaR depend on the chosen tolerance,
+consider the following.
+```{r}
+## Build the input matrices for rearrange()
+N <- res.ARA$N.used
+p.low <- alpha + (1-alpha)*(0:(N-1))/N # probability points for worst VaR (lower bound)
+p.up  <- alpha + (1-alpha)*(1:N)/N # probability points for worst VaR (upper bound)
+X.low <- sapply(qF, function(qF) qF(p.low)) # input matrix (lower bound)
+X.up  <- sapply(qF, function(qF) qF(p.up)) # input matrix (upper bound)
+X.up[N,] <- sapply(1:d, function(j) if(is.infinite(X.up[N,j]))
+                                        qF[[j]](alpha+(1-alpha)*(1-1/(2*N))) else X.up[N,j])
+
+## Apply rearrange() for various tolerances (incl. NULL)
+tol <- seq(0, 0.02, length.out=21) # considered tolerances
+res.low  <- sapply(tol, function(t) rearrange(X.low,  tol=t, sample=FALSE, is.sorted=TRUE)$bound)
+res.low. <- rearrange(X.low, tol=NULL, sample=FALSE, is.sorted=TRUE)$bound # for tol=NULL
+res.up  <- sapply(tol, function(t) rearrange(X.up, tol=t, sample=FALSE, is.sorted=TRUE)$bound)
+res.up. <- rearrange(X.up, tol=NULL, sample=FALSE, is.sorted=TRUE)$bound # for tol=NULL
+```
+
+```{r}
+## Plot the lower and upper bound on worst VaR as a function in the chosen tol
+plot(tol, res.low, type="b", log="y", ylim=range(res.low, res.low., res.up, res.up.),
+     col="royalblue3", xlab="Relative tolerance tol of rearrange()",
+     ylab=substitute("Bounds on worst"~VaR[a], list(a=alpha)))
+points(0, res.low., pch=3, col="royalblue3") # draw tol=NULL result at 0, too (as '+')
+lines(tol, res.up, type="b")
+points(0, res.up., pch=3) # draw tol=NULL result at 0, too (as '+')
+legend("topright", bty="n", lty=rep(1,2),
+       col=c("black", "royalblue3"), legend=c("upper bound", "lower bound"))
+```
+
+As we see, the results for `tol=NULL` (i.e., all columns oppositely ordered with
+respect to the sum of all others; indicated by '+') are identical to the
+results for `tol=0` here; the latter are typically much faster to compute.
+However, we also see that choosing a too large `tol` can lead to the wrong
+bounds (although the bounds themselves are close).

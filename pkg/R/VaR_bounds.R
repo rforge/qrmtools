@@ -423,7 +423,7 @@ num_of_opp_ordered_cols <- function(x) {
 ##'        change anymore d consecutive times
 ##' @param tol.type Character string indicating the tolerance function used
 ##'        ("relative" or "absolute")
-##' @param max.num.col.ra Maximal number of column rearrangements
+##' @param max.ra Maximal number of column rearrangements
 ##' @param method Character indicating which VaR is approximated (worst/best)
 ##'        determines optimizing function (min for worst VaR; max
 ##'        for best VaR)
@@ -450,7 +450,7 @@ num_of_opp_ordered_cols <- function(x) {
 ##'       - The columns of X have to be given in increasing order if !is.sorted!
 ##'       - No checking here due to speed!
 rearrange <- function(X, tol=0, tol.type=c("relative", "absolute"),
-                      max.num.col.ra=Inf, method=c("worst", "best"),
+                      max.ra=Inf, method=c("worst", "best"),
                       sample=TRUE, is.sorted=FALSE, trace=FALSE)
 {
     N <- nrow(X)
@@ -489,13 +489,13 @@ rearrange <- function(X, tol=0, tol.type=c("relative", "absolute"),
         X.lst <- X.lst.sorted # list of columns of X
         X.rs <- .rowSums(X, m=N, n=d) # initial row sum
     }
-    m.rs.old <- optim.fun(X.rs) # initial minimal row sum
 
     ## Go through the columns and rearrange one at a time
-    m.row.sums <- c() # vector of minimal/maximal row sums after each considered column
     iter <- 0 # current iteration number
     j <- 0 # current column number
-    num.cols.no.change <- 0 # number of consecutive columns without change
+    num.cols.no.change <- 0 # number of consecutively rearranged columns with no change
+    m.row.sums <- optim.fun(X.rs) # vector of minimal/maximal row sums after each considered column (starting from the original matrix)
+    is.null.tol <- is.null(tol)
     while (TRUE) {
 
         ## Update the running indices
@@ -529,40 +529,54 @@ rearrange <- function(X, tol=0, tol.type=c("relative", "absolute"),
         }
 
         ## Update the vector of computed minimal/maximal row sums
-        m.rs.new <- optim.fun(Y.rs) # compute new minimal/maximal row sum
-        m.row.sums <- c(m.row.sums, m.rs.new) # append it
+        m.rs.cur.col <- optim.fun(Y.rs) # compute new minimal/maximal row sum
+        m.row.sums <- c(m.row.sums, m.rs.cur.col) # append it
 
-        ## Update the number of consecutive columns without change
-        if(is.null(tol)) {
-            no.change <- identical(yj, yj.)
-            num.cols.no.change <- if(no.change) {
-                num.cols.no.change+1
-            } else {
-                0
+        ## Check convergence
+        ## Idea: After a column has been rearranged, compute the tol (and thus
+        ##       determine convergence) between the minimal/maximal row sum
+        ##       after that rearrangement and from d steps before when that
+        ##       column was considered (either rearranged (if iter > d) or
+        ##       simply contained in the original matrix X (if iter <= d)) the last time.
+        ## Note: - This is a bit more elegant than the original RA which checked only
+        ##         on j=d, not after rearranging *each* column.
+        ##       - Checking only two consecutive columns led to bad behavior for ARA()
+        ##         in some cases (e.g., real OpRisk data): Both the individual and the joint
+        ##         relative tolerances were satisfied but far off (with reltol[1]=0.001).
+        ##         Of course one could check d consecutive columns for *all* of them to
+        ##         fulfill the 'convergence' criterion, but then what's the reached
+        ##         tolerance tol if more than two columns are involved? Maybe the maximum
+        ##         tolerance computed over all previous d many rearranged columns?
+        ##         There's probably no gain in doing that.
+        if(is.null.tol) { # tol = NULL
+            num.cols.no.change <- if(identical(yj, yj.)) num.cols.no.change + 1 else 0
+            if(num.cols.no.change == d) { # => matrix has not changed in d consecutive col rearrangements
+                tol. <- 0 # as there was no change
+                tol.reached <- TRUE # as we reached 'no change' in d consecutive steps (we don't care whether max.ra has been reached)
+                break
+            } else { # check whether we have to stop due to max.ra
+                if(iter == max.ra) {
+                    m.rs.d.col.ago <- m.row.sums[max(iter-d, 0) + 1] # if iter <= d, use initial minimal/maximal row sum
+                    tol. <- tol.fun(m.rs.cur.col, m.rs.d.col.ago) # compute the attained tolerance (in comparison to the last time the jth column was rearranged)
+                    tol.reached <- FALSE # as num.cols.no.change < d
+                    break
+                }
             }
+        } else { # tol >= 0
+            m.rs.d.col.ago <- m.row.sums[max(iter-d, 0) + 1] # if iter <= d, use initial minimal/maximal row sum
+            tol. <- tol.fun(m.rs.cur.col, m.rs.d.col.ago) # compute the attained tolerance (in comparison to the last time the jth column was rearranged)
+            tol.reached <- tol. <= tol
+            if(iter == max.ra || tol.reached) break
         }
 
-        ## Compute tolerance and check convergence
-        tol. <- tol.fun(m.rs.new, m.rs.old) # compute the attained tolerance
-        tol.reached <- if(is.null(tol)) { # has tol been reached?
-            num.cols.no.change == d # check the last d rearranged columns for 'no change'
-        } else {
-            tol. <= tol
-        }
-
-        ## Determine whether to break
-        if(iter == max.num.col.ra || tol.reached) { # stop
-            break # the only escape...
-        } else { # update
-            m.rs.old <- m.rs.new # update m.rs.old
-            X.rs <- Y.rs # update the row sums
-            X.lst <- Y.lst # update the working 'matrix'
-        }
+        ## Updates for the next column rearrangement
+        X.lst <- Y.lst # update the working 'matrix'
+        X.rs <- Y.rs # update the row sums
 
     }
 
     ## Return
-    list(bound=m.rs.new, # computed bound (\underline{s}_N or \overline{s}_N)
+    list(bound=m.rs.cur.col, # computed bound (\underline{s}_N or \overline{s}_N)
          tol=tol., # tolerance for the computed bound
          converged=tol.reached, # indicating whether converged
          m.row.sums=m.row.sums, # the computed row sums after each column rearrangement
@@ -574,7 +588,7 @@ rearrange <- function(X, tol=0, tol.type=c("relative", "absolute"),
 ##' @param qF d-list of marginal quantile functions
 ##' @param N Number of discretization points
 ##' @param abstol Absolute convergence tolerance (to determine convergence)
-##' @param max.num.col.ra Maximal number of column rearrangements
+##' @param max.ra Maximal number of column rearrangements
 ##' @param method Character indicating which VaR is approximated (worst/best)
 ##' @param sample Logical indicating whether each column of the two working
 ##'        matrices is randomly permuted before the rearrangements begin
@@ -593,19 +607,19 @@ rearrange <- function(X, tol=0, tol.type=c("relative", "absolute"),
 ##' @author Marius Hofert
 ##' @note Notation is from p. 2757 in Embrechts, Puccetti, Rueschendorf (2013);
 ##'       variables are named according to the 'worst' VaR case.
-RA <- function(alpha, qF, N, abstol=0, max.num.col.ra=Inf,
+RA <- function(alpha, qF, N, abstol=0, max.ra=Inf,
                method=c("worst", "best"), sample=TRUE)
 {
     ## Checks and Step 1 (get N, abstol)
     stopifnot(0 < alpha, alpha < 1, is.null(abstol) || abstol >= 0,
-              length(N) >= 1, N >= 2, max.num.col.ra >= 1, is.logical(sample))
+              length(N) >= 1, N >= 2, max.ra >= 1, is.logical(sample))
     method <- match.arg(method)
     stopifnot(is.list(qF), sapply(qF, is.function), (d <- length(qF)) >= 2)
 
     ## Compute lower bound
 
     ## Step 2 (build \underline{X}^\alpha)
-    p <- if(method=="worst") alpha + (1-alpha)*0:(N-1)/N else alpha*0:(N-1)/N # N-vector of prob. in *increasing* order
+    p <- if(method=="worst") alpha + (1-alpha)*(0:(N-1))/N else alpha*(0:(N-1))/N # N-vector of prob. in *increasing* order
     X.low <- sapply(qF, function(qF) qF(p))
     ## adjust those that are -Inf (for method="best")
     ## use alpha*((0+1)/2 / N) = alpha/(2N) instead of 0 quantile
@@ -617,15 +631,15 @@ RA <- function(alpha, qF, N, abstol=0, max.num.col.ra=Inf,
     ## randomly permute each column of \underline{X}^\alpha and
     ## repeat oppositely ordering \underline{X}^\alpha until there is only an
     ## abstol change in the min (method="worst") or max (method="best") row sum
-    ## or until we reached max.num.col.ra number of column rearrangements
+    ## or until we reached max.ra number of column rearrangements
     res.low <- rearrange(X.low, tol=abstol, tol.type="absolute",
-                         max.num.col.ra=max.num.col.ra, method=method,
+                         max.ra=max.ra, method=method,
                          sample=sample, is.sorted=TRUE)
 
     ## Compute upper bound
 
     ## Step 2 (build \overline{X}^\alpha)
-    p <- if(method=="worst") alpha + (1-alpha)*1:N/N else alpha*1:N/N # N-vector of prob. in *increasing* order
+    p <- if(method=="worst") alpha + (1-alpha)*(1:N)/N else alpha*(1:N)/N # N-vector of prob. in *increasing* order
     X.up <- sapply(qF, function(qF) qF(p))
     ## adjust those that are Inf (for method="worst")
     ## use alpha+(1-alpha)*(N-1+N)/(2*N) = alpha+(1-alpha)*(1-1/(2*N)) instead of 1 quantile
@@ -637,9 +651,9 @@ RA <- function(alpha, qF, N, abstol=0, max.num.col.ra=Inf,
     ## randomly permute each column of \overline{X}^\alpha and
     ## repeat oppositely ordering \overline{X}^\alpha until there is only an
     ## abstol change in the min (method="worst") or max (method="best") row sum
-    ## or until we reached max.num.col.ra number of column rearrangements
+    ## or until we reached max.ra number of column rearrangements
     res.up <- rearrange(X.up, tol=abstol, tol.type="absolute",
-                        max.num.col.ra=max.num.col.ra, method=method,
+                        max.ra=max.ra, method=method,
                         sample=sample, is.sorted=TRUE)
 
     ## Return
@@ -648,7 +662,7 @@ RA <- function(alpha, qF, N, abstol=0, max.num.col.ra=Inf,
          rel.ra.gap=abs((res.up$bound-res.low$bound)/res.up$bound), # relative RA gap
          ind.abs.tol=c(low=res.low$tol, up=res.up$tol), # individual absolute tolerances
          converged=c(low=res.low$converged, up=res.up$converged), # converged?
-         num.col.ra=c(low=length(res.low$m.row.sums), up=length(res.up$m.row.sums)), # number of considered column rearrangements (low, up)
+         num.ra=c(low=length(res.low$m.row.sums), up=length(res.up$m.row.sums)), # number of considered column rearrangements (low, up)
          m.row.sums=list(low=res.low$m.row.sum, up=res.up$m.row.sums), # optimal row sums (low, up)
          X=list(low=X.low, up=X.up), # input matrices X (low, up)
          X.rearranged=list(low=res.low$X.rearranged, up=res.up$X.rearranged)) # rearranged Xs (low, up)
@@ -663,7 +677,7 @@ RA <- function(alpha, qF, N, abstol=0, max.num.col.ra=Inf,
 ##'        tolerance in the minimal/maximal row sum for each of the bounds) and
 ##'        the joint relative tolerance (i.e., the relative
 ##'        tolerance between the computed lower and upper bounds).
-##' @param max.num.col.ra Maximal number of column rearrangements per N
+##' @param max.ra Maximal number of column rearrangements per N
 ##' @param method Character indicating which VaR is approximated (worst/best)
 ##' @param sample Logical indicating whether each column of the two working
 ##'        matrices is randomly permuted before the rearrangements begin
@@ -682,15 +696,19 @@ RA <- function(alpha, qF, N, abstol=0, max.num.col.ra=Inf,
 ##'          8) List of (N, d) input matrices X (for each bound)
 ##'          9) List of rearranged Xs (for each bound)
 ##' @author Marius Hofert
-ARA <- function(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01),
-                max.num.col.ra=12*length(qF), method=c("worst", "best"), sample=TRUE)
+ARA <- function(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0, 0.01),
+                max.ra=10*length(qF), method=c("worst", "best"), sample=TRUE)
 {
     ## Checks and Step 1 (get N, reltol)
-    stopifnot(0 < alpha, alpha < 1, length(reltol) == 2,
-              is.null(reltol[1]) || reltol[1] >= 0, reltol[2] >= 0,
-              length(N.exp) >= 1, N.exp >= 1, max.num.col.ra >= 1, is.logical(sample))
+    lreltol <- length(reltol)
+    stopifnot(0 < alpha, alpha < 1, lreltol==1 || lreltol==2, reltol >= 0,
+              length(N.exp) >= 1, N.exp >= 1, max.ra >= 1, is.logical(sample))
     method <- match.arg(method)
     stopifnot(is.list(qF), sapply(qF, is.function), (d <- length(qF)) >= 2)
+
+    ## Determine tolerances
+    itol <- if(lreltol == 2) reltol[1] else NULL # individual tolerance
+    jtol <- if(lreltol == 2) reltol[2] else reltol[1] # joint tolerance
 
     ## Loop over N
     for(N in 2^N.exp) {
@@ -698,7 +716,7 @@ ARA <- function(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01),
         ## Compute lower bound
 
         ## Step 2 (build \underline{X}^\alpha)
-        p <- if(method=="worst") alpha + (1-alpha)*0:(N-1)/N else alpha*0:(N-1)/N # N-vector of prob. in *increasing* order
+        p <- if(method=="worst") alpha + (1-alpha)*(0:(N-1))/N else alpha*(0:(N-1))/N # N-vector of prob. in *increasing* order
         X.low <- sapply(qF, function(qF) qF(p))
         ## adjust those that are -Inf (for method="best")
         ## use alpha*((0+1)/2 / N) = alpha/(2N) instead of 0 quantile
@@ -709,16 +727,16 @@ ARA <- function(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01),
         ## Steps 3--7 (determine \underline{X}^*)
         ## randomly permute each column of \underline{X}^\alpha and
         ## repeat oppositely ordering \underline{X}^\alpha until there is only an
-        ## reltol[1] change in the min (method="worst") or max (method="best") row sum
-        ## or until we reached max.num.col.ra number of column rearrangements
-        res.low <- rearrange(X.low, tol=reltol[1], tol.type="relative",
-                             max.num.col.ra=max.num.col.ra, method=method,
+        ## itol change in the min (method="worst") or max (method="best") row sum
+        ## or until we reached max.ra number of column rearrangements
+        res.low <- rearrange(X.low, tol=itol, tol.type="relative",
+                             max.ra=max.ra, method=method,
                              sample=sample, is.sorted=TRUE)
 
         ## Compute upper bound
 
         ## Step 2 (build \overline{X}^\alpha)
-        p <- if(method=="worst") alpha + (1-alpha)*1:N/N else alpha*1:N/N # N-vector of prob. in *increasing* order
+        p <- if(method=="worst") alpha + (1-alpha)*(1:N)/N else alpha*(1:N)/N # N-vector of prob. in *increasing* order
         X.up <- sapply(qF, function(qF) qF(p))
         ## adjust those that are Inf (for method="worst")
         ## use alpha+(1-alpha)*(N-1+N)/(2*N) = alpha+(1-alpha)*(1-1/(2*N)) instead of 1 quantile
@@ -729,15 +747,15 @@ ARA <- function(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01),
         ## Step 3--7 (determine \overline{X}^*)
         ## randomly permute each column of \overline{X}^\alpha and
         ## repeat oppositely ordering \overline{X}^\alpha until there is only an
-        ## reltol[1] change in the min (method="worst") or max (method="best") row sum
-        ## or until we reached max.num.col.ra number of column rearrangements
-        res.up <- rearrange(X.up, tol=reltol[1], tol.type="relative",
-                            max.num.col.ra=max.num.col.ra, method=method,
+        ## itol change in the min (method="worst") or max (method="best") row sum
+        ## or until we reached max.ra number of column rearrangements
+        res.up <- rearrange(X.up, tol=itol, tol.type="relative",
+                            max.ra=max.ra, method=method,
                             sample=sample, is.sorted=TRUE)
 
         ## Determine (individual and joint) convergence
         joint.tol <- abs((res.low$bound-res.up$bound)/res.up$bound)
-        joint.tol.reached <- joint.tol <= reltol[2]
+        joint.tol.reached <- joint.tol <= jtol
         if(res.low$converged && res.up$converged && joint.tol.reached) break
 
     }
@@ -749,7 +767,7 @@ ARA <- function(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01),
          rel.tol=c(low=res.low$tol, up=res.up$tol, joint=joint.tol), # individual and joint relative tolerances
          converged=c(low=res.low$converged, up=res.up$converged, joint=joint.tol.reached), # converged?
          N.used=N, # number of discretization points used
-         num.col.ra=c(low=length(res.low$m.row.sums), up=length(res.up$m.row.sums)), # number of considered column rearrangements (low, up)
+         num.ra=c(low=length(res.low$m.row.sums), up=length(res.up$m.row.sums)), # number of considered column rearrangements (low, up)
          m.row.sums=list(low=res.low$m.row.sums,
                          up=res.up$m.row.sums), # optimal row sums (low, up) for the N used
          X=list(low=X.low, up=X.up), # input matrices X (low, up)

@@ -15,12 +15,12 @@ VaR_bounds_hom(alpha, d, method=c("Wang", "Wang.Par", "Wang.Par.trafo", "dual"),
                interval=NULL, tol=NULL, ...)
 dual_bound(s, d, pF, tol=.Machine$double.eps^0.25, ...)
 
-rearrange(X, tol=0, tol.type=c("relative", "absolute"), max.num.col.ra=Inf,
+rearrange(X, tol=0, tol.type=c("relative", "absolute"), max.ra=Inf,
           method=c("worst", "best"), sample=TRUE, is.sorted=FALSE, trace=FALSE)
-RA(alpha, qF, N, abstol=0, max.num.col.ra=Inf, method=c("worst", "best"),
+RA(alpha, qF, N, abstol=0, max.ra=Inf, method=c("worst", "best"),
    sample=TRUE)
-ARA(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01),
-    max.num.col.ra=12*length(qF), method=c("worst", "best"), sample=TRUE)
+ARA(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0, 0.01),
+    max.ra=10*length(qF), method=c("worst", "best"), sample=TRUE)
 }
 \arguments{
   \item{alpha}{Value-at-Risk confidence level (e.g., 0.99).}
@@ -97,14 +97,14 @@ ARA(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01),
   \item{X}{An (\code{N}, \code{d})-matrix of quantiles (to be
     rearranged). If \code{is.sorted} it is assumed that the columns of
     \code{X} are sorted in \emph{increasing} order.}
-  \item{max.num.col.ra}{Maximal number of (considered) column rearrangements
+  \item{max.ra}{Maximal number of (considered) column rearrangements
     of the underlying matrix of quantiles (can be set to \code{Inf}).}
   \item{N}{The number of discretization points.}
   \item{N.exp}{The exponents of the number of discretization points
     (a \code{\link{vector}}) over which the algorithm iterates to find
     the smallest number of discretization points for which the desired
     accuracy (specified by \code{reltol}) is attained; for each number
-    of discretization points, at most \code{max.num.col.ra}-many
+    of discretization points, at most \code{max.ra}-many
     column rearrangements are of the underlying matrix of quantiles
     are considered.}
   \item{abstol}{Absolute convergence tolerance \eqn{\epsilon}{epsilon}
@@ -113,22 +113,25 @@ ARA(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01),
     row sums for the lower bound \eqn{\underline{s}_N} and the upper
     bound \eqn{\overline{s}_N}. \code{abstol} is typically
     \eqn{\ge0}{>=0}; it can also be \code{\link{NULL}}, see \code{tol} above.}
-  \item{reltol}{A \code{\link{vector}} containing two relative
-    convergence tolerances, the individual relative tolerance
-    (first component; used to determine
+  \item{reltol}{A \code{\link{vector}} of length one or two containing the
+    relative convergence tolerances. If \code{reltol} is of length two,
+    the first component is the the individual relative tolerance
+    (used to determine
     convergence of the minimal (for \code{method="worst"}) or maximal
     (for \code{method="best"}) row sums for
     \eqn{\underline{s}_N} and \eqn{\overline{s}_N})
-    and the joint relative tolerance (second component; relative tolerance
-    between the computed \eqn{\underline{s}_N} and
+    and the second component is the joint relative tolerance (i.e., the
+    relative tolerance between the computed \eqn{\underline{s}_N} and
     \eqn{\overline{s}_N} with respect to
-          \eqn{\overline{s}_N}). \code{reltol} is typically
-          \eqn{\ge0}{>=0}; \code{reltol[1]} can also be
-          \code{\link{NULL}}, see \code{tol} above.}
+    \eqn{\overline{s}_N}). If \code{reltol} is of length one, it denotes
+    the joint relative tolerance; the individual relative tolerance is
+    then taken as \code{NULL} (see \code{tol} above).}
   \item{sample}{A \code{\link{logical}} indicating whether each column of
     the two underlying matrices of quantiles (see Step 3 of the Rearrangement
     Algorithm in Embrechts et al. (2013))
-    are randomly permuted before the rearrangements begin.}
+    are randomly permuted before the rearrangements begin. This typically has
+    quite a positive effect on run time (as most of the time is spent (oppositely)
+    ordering columns).}
   \item{is.sorted}{A \code{\link{logical}} indicating whether the columns of \code{X}
     are sorted in increasing order.}
   \item{trace}{A \code{\link{logical}} indicating whether the underlying matrix is
@@ -176,7 +179,8 @@ ARA(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01),
       or \eqn{\overline{s}_N}.}
     \item{\code{tol}:}{The reached tolerance (i.e., the (absolute or
       relative) change of the minimal (for \code{method="worst"}) or
-      maximal (for \code{method="best"}) row sum after the last rearrangement).}
+      maximal (for \code{method="best"}) row sum after the last rearranged
+      column).}
     \item{\code{converged}:}{A \code{\link{logical}} indicating whether
       the desired (absolute or relative) tolerance \code{tol} has been reached.}
     \item{\code{m.row.sums}:}{A \code{\link{vector}} containing the
@@ -198,20 +202,20 @@ ARA(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01),
       relative rearrangement gap) between
       \eqn{\underline{s}_N} and \eqn{\overline{s}_N} computed with
       respect to \eqn{\overline{s}_N}.}
-    \item{\code{ind.abs.tol}:}{A bivariate vector containing the
+    \item{\code{ind.abs.tol}:}{A bivariate \code{\link{vector}} containing the
       reached individual absolute tolerances (i.e., the absolute change
       of the minimal
       (for \code{method="worst"}) or maximal (for \code{method="best"})
       row sums for computing \eqn{\underline{s}_N} and \eqn{\overline{s}_N};
-      see also \code{tol} returned by \code{rearrange()} above.}
-    \item{\code{converged}:}{A \code{\link{logical}} vector of length two
+      see also \code{tol} returned by \code{rearrange()} above).}
+    \item{\code{converged}:}{A bivariate \code{\link{logical}} vector
       indicating convergence of the computed \eqn{\underline{s}_N} and
       \eqn{\overline{s}_N} (i.e., whether the desired tolerances were
       reached).}
-    \item{\code{num.col.ra}:}{A bivariate vector containing, for
-      \eqn{\underline{s}_N} and \eqn{\overline{s}_N}, the number
+    \item{\code{num.ra}:}{A bivariate vector containing the number
       of column rearrangments of the underlying matrices
-      of quantiles.}
+      of quantiles for
+      \eqn{\underline{s}_N} and \eqn{\overline{s}_N}.}
     \item{\code{m.row.sums}:}{A \code{\link{list}} of length two containing minimal
       (for \code{method="worst"}) or maximal (for \code{method="best"})
       row sums (after each (considered) column rearrangement)
@@ -227,25 +231,20 @@ ARA(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01),
   \describe{
     \item{\code{bounds}:}{See \code{RA()}.}
     \item{\code{rel.ra.gap}:}{See \code{RA()}.}
-    \item{\code{rel.tol}:}{A bivariate \code{\link{logical}}
-      \code{\link{vector}} indicating
-      individual convergence (i.e., whether the desired (according to
-      \code{reltol[1]}) individual tolerances for computing
-      \eqn{\underline{s}_N} and \eqn{\overline{s}_N} were reached) and
-      joint convergence (i.e., whether the computed
-      \eqn{\underline{s}_N} and \eqn{\overline{s}_N} are sufficiently close
-      according to \code{reltol[2]}).}
-    \item{\code{converged}:}{A \code{\link{logical}} vector of length three
-      indicating convergence of the computed \eqn{\underline{s}_N} (first entry),
-      the computed \eqn{\overline{s}_N} (second entry) and indicating
-      convergence of the two bounds according to the attained
+    \item{\code{rel.tol}:}{A trivariate \code{\link{vector}} containing
+      the reached individual relative tolerances and the reached joint
+      relative tolerance (computed with respect to \eqn{\overline{s}_N}).}
+    \item{\code{converged}:}{A trivariate \code{\link{logical}} \code{\link{vector}}
+      indicating individual convergence of the computed
+      \eqn{\underline{s}_N} (first entry) and \eqn{\overline{s}_N} (second entry) and
+      indicating joint convergence of the two bounds according to the attained
       joint relative tolerance (third entry).}
     \item{\code{N.used}:}{The actual \code{N} used for computing
       the (final) \eqn{\underline{s}_N} and \eqn{\overline{s}_N}.}
-    \item{\code{num.col.ra}:}{See \code{RA()}.}
-    \item{\code{m.row.sums}:}{See \code{RA()}.}
-    \item{\code{X}:}{See \code{RA()}.}
-    \item{\code{X.rearranged}:}{See \code{RA()}.}
+    \item{\code{num.ra}:}{See \code{RA()}; computed for \code{N.used}.}
+    \item{\code{m.row.sums}:}{See \code{RA()}; computed for \code{N.used}.}
+    \item{\code{X}:}{See \code{RA()}; computed for for \code{N.used}.}
+    \item{\code{X.rearranged}:}{See \code{RA()}; computed for for \code{N.used}.}
   }
 }
 \details{
@@ -298,27 +297,31 @@ ARA(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01),
 
 
   Concerning the inhomogeneous case, \code{rearrange()} is an auxiliary
-  function which is called by \code{RA()} and \code{ARA()}. For
-  performance reasons, no checking is done. It should only be used by
-  experts.
+  function which is called by \code{RA()} and \code{ARA()}.
+  After a column of \code{X} has been rearranged, the tolerance between
+  the minimal (for the worst Value-at-Risk) or maximal (for the best
+  Value-at-Risk) row sum after this rearrangement and the
+  one of \eqn{d} steps before (so typically when that column
+  was rearranged the last time) is computed and convergence determined.
+  For performance reasons, no checking is done and \code{rearrange()}
+  can change in future versions to (futher) improve run time. Overall
+  it should only be used by experts.
 
   For the Rearrangement Algorithm \code{RA()}, convergence of
   \eqn{\underline{s}_N} and \eqn{\overline{s}_N} is determined if the
   minimal (for the worst Value-at-Risk) or maximal (for the best
   Value-at-Risk) row sum satisfies the specified \code{abstol}
   (so \eqn{\le\epsilon}{<=eps})
-  after a column rearrangement after at most \code{max.num.col.ra}-many
-  column rearrangements. This is different
+  after at most \code{max.ra}-many column rearrangements. This is different
   from Embrechts et al. (2013) who use \eqn{<\epsilon}{< eps} and
   only check for convergence after an iteration through all
-  columns of the underlying matrix of quantiles.
+  columns of the underlying matrix of quantiles has been completed.
 
   For the Adaptive Rearrangement Algorithm \code{ARA()},
   convergence of \eqn{\underline{s}_N} and \eqn{\overline{s}_N}
-  is determined if, after at most \code{max.num.col.ra}-many column
+  is determined if, after at most \code{max.ra}-many column
   rearrangements, the (the individual relative tolerance)
-  \code{reltol[1]} (see \code{tol}
-  above for the meaning of \code{reltol[1]=NULL}) is satisfied \emph{and} the
+  \code{reltol[1]} is satisfied \emph{and} the
   relative (joint) tolerance between both bounds is at most \code{reltol[2]}.
 
   Note that both \code{RA()} and \code{ARA()} need to evalute the
@@ -465,9 +468,9 @@ plot(RAworst$m.row.sums[[2]], type="b", xlim=xlim, ylim=ylim,
      main=substitute("Worst VaR minimal row sums ("*alpha==a.*","~d==d.*" and Par("*
                      th.*"))", list(a.=alpha, d.=d, th.=th)))
 lines(1:length(RAworst$m.row.sums[[1]]), RAworst$m.row.sums[[1]], type="b",
-      col="blue")
+      col="royalblue3")
 legend("bottomright", bty="n", lty=rep(1,2),
-       col=c("black", "blue"), legend=c("upper bound", "lower bound"))
+       col=c("black", "royalblue3"), legend=c("upper bound", "lower bound"))
 ## => One should use ARA() instead of RA()
 
 
