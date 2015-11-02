@@ -8,7 +8,7 @@
 
 
 static const R_CallMethodDef callMethods[] = {
-	{"indices_opp_ordered_to", (DL_FUNC) &indices_opp_ordered_to, 1},
+	/* {"indices_opp_ordered_to", (DL_FUNC) &indices_opp_ordered_to, 1}, */
 	{"col_split", (DL_FUNC) &col_split, 1},
 	{NULL, NULL, 0}
 };

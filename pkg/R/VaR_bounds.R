@@ -301,7 +301,7 @@ VaR_bounds_hom <- function(alpha, d, method=c("Wang", "Wang.Par",
                ## Compute lower uniroot boundaries and check
                if(is.null(interval)) {
                    low <- if(th > 1) {
-                       (1-alpha)/((1+d/(th-1))^th+d-1)
+                       (1-alpha)/((1+d/(th-1))^th + d-1)
                    } else if(th == 1) {
                        e <- exp(1)
                        (1-alpha)/((d+1)^(e/(e-1))+d-1)
