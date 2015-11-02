@@ -141,18 +141,19 @@ ARA(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0, 0.01),
     \describe{
       \item{\code{crude_VaR_bounds()}:}{Ellipsis argument passed
         to (all provided) quantile functions.}
-      \item{\code{VaR_bounds_hom()}:}{For \code{d=2}, the ellipsis argument must contain the quantile
-        function \code{qF()}. The same holds for \code{method="Wang"},
-        but additional arguments passed via the ellipsis argument are passed on to
+      \item{\code{VaR_bounds_hom()}:}{The case \code{method="Wang"}
+        requires the quantile function \code{qF()} to be provided
+        and additional arguments passed via the ellipsis argument are passed on to
 	% the underlying objective function Wang_h() from which they
 	% are passed on to
 	the underlying \code{\link{integrate}()}. For
         \code{method="Wang.Par"} and \code{method="Wang.Par.trafo"},
-	the ellipsis argument must contain the Pareto parameter \eqn{\theta>0}{theta>0}.
+	the ellipsis argument must contain the parameter \eqn{\theta>0}{theta>0} of
+	the Pareto distribution.
 	For \code{method="dual"}, the ellipsis argument must contain the distribution
 	function \code{pF()} and the initial interval \code{interval} for
-	the outer root finding procedure; additional arguments
-	are passed on to the underlying
+	the outer root finding procedure (not for \code{d=2});
+	additional arguments are passed on to the underlying
 	\code{\link{integrate}()} for computing the dual bound
 	\eqn{D(s)}.}
       \item{\code{dual_bound()}:}{The ellipsis argument is passed to the

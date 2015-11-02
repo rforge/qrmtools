@@ -215,10 +215,19 @@ VaR_bounds_hom <- function(alpha, d, method=c("Wang", "Wang.Par",
 
     ## Deal with d==2 first
     if(d==2) { # See Embrechts, Puccetti, Rueschendorf (2013, Prop. 2)
-        qF <- NULL # make CRAN check happy
-        if(!hasArg(qF))
-            stop("The bivariate case requires the quantile function qF of F")
-        qF <- list(...)$qF
+        qF <- if(method == "Wang.Par" || method == "Wang.Par.trafo") {
+            theta <- NULL # make CRAN check happy
+            if(!hasArg(theta))
+                stop("The Pareto case requires the parameter theta")
+            th <- list(...)$theta
+            stopifnot(length(th) == 1, th > 0) # check theta here
+            function(p) qPar(p, theta=th)
+        } else {
+            qF <- NULL # make CRAN check happy
+            if(!hasArg(qF))
+                stop("The quantile function qF of F is required")
+            list(...)$qF
+        }
         return(c(qF(alpha), 2*qF((1+alpha)/2)))
     }
 
