@@ -2,7 +2,8 @@
 
 #include "VaR_bounds.h"
 
-
+/* The following is working but a) not faster and b) creates problems under
+ * Windows if R < 3.3.0 */
 /* /\** */
 /*  * @title Fast order(order(x, decreasing=TRUE)) */
 /*  * @param x N-vector (one column in the (A)RA()/rearrange() input matrix X) */

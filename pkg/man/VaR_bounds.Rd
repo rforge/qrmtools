@@ -11,7 +11,7 @@
 }
 \usage{
 crude_VaR_bounds(alpha, qF, ...)
-VaR_bounds_hom(alpha, d, method=c("Wang", "Wang.Par", "Wang.Par.trafo", "dual"),
+VaR_bounds_hom(alpha, d, method=c("Wang", "Wang.Par", "dual"),
                interval=NULL, tol=NULL, ...)
 dual_bound(s, d, pF, tol=.Machine$double.eps^0.25, ...)
 
@@ -30,16 +30,16 @@ ARA(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0, 0.01),
           general case).}
   \item{method}{A \code{\link{character}} string. For
     \describe{
-      \item{\code{VaR_bounds_hom()}:}{\code{method="Wang"},
-	\code{method="Wang.Par"} and \code{method="Wang.Par.trafo"}
+      \item{\code{VaR_bounds_hom()}:}{\code{method="Wang"} and
+	\code{method="Wang.Par"}
          apply the approaches of Embrechts et al. (2014,
 	 Proposition 3.1) for computing best (i.e., smallest) and
 	 worst (i.e., largest) Value-at-Risk. The
-         latter two methods assume Pareto margins and thus do
-	 not require numerical integration;
-         \code{method="Wang.Par.trafo"} first transforms the
+         latter method assumes Pareto margins and thus does
+	 not require numerical integration; note that
+         \code{method="Wang.Par"} first transforms the
          root finding problem for computing worst Value-at-Risk to
-	 a different scale.
+	 a different scale which is numerically more stable.
 	\code{method="dual"} applies the dual bound approach as
 	 in Embrechts et al. (2013, Proposition 4)
          for computing worst Value-at-Risk (no value for the best
@@ -63,10 +63,9 @@ ARA(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0, 0.01),
 	interval is \eqn{[0,(1-\alpha)/d]}{[0,(1-alpha)/d]}.}
       \item{\code{method="Wang.Par"}:}{The initial
 	interval is \eqn{[c_l,c_u]}, where \eqn{c_l} and \eqn{c_u}
-	are chosen as in Hofert et al. (2015).}
-      \item{\code{method="Wang.Par.trafo"}:}{The initial
-	interval is \eqn{[x_l,x_u]},
-	where \eqn{x_l} and \eqn{x_u} are chosen as in Hofert et al. (2015).}
+	are chosen as in Hofert et al. (2015). Note that, internally,
+	these values are transformed as described in Hofert et al. (2015)
+	to improve numerical stability.}
       \item{\code{method="dual"}:}{In this case, no good defaults are known.
 	Note that the lower endpoint of the initial interval has to be
 	sufficiently large in order for the the inner root-finding algorithm
@@ -147,7 +146,7 @@ ARA(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0, 0.01),
 	% the underlying objective function Wang_h() from which they
 	% are passed on to
 	the underlying \code{\link{integrate}()}. For
-        \code{method="Wang.Par"} and \code{method="Wang.Par.trafo"},
+        \code{method="Wang.Par"}
 	the ellipsis argument must contain the parameter \eqn{\theta>0}{theta>0} of
 	the Pareto distribution.
 	For \code{method="dual"}, the ellipsis argument must contain the distribution
@@ -251,8 +250,7 @@ ARA(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0, 0.01),
 \details{
   For \code{d=2}, \code{VaR_bounds_hom()} uses the method of
   Embrechts et al. (2013,
-  Proposition 2). For \code{method="Wang"}, \code{method="Wang.Par"} and
-  \code{method="Wang.Par.trafo"},
+  Proposition 2). For \code{method="Wang"} and \code{method="Wang.Par"}
   the method presented in Embrechts et al. (2014, Proposition 3.1) is
   implemented. This requires
   one \code{\link{uniroot}()} and, for the generic \code{method="Wang"},
@@ -268,8 +266,7 @@ ARA(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0, 0.01),
   \eqn{(0,(1-\alpha)/d}{(1-alpha)/d)}.
   In the case of Pareto margins, Hofert et al. (2015) have
   derived such an initial (which is used by
-  \code{method="Wang.Par"} and \code{method="Wang.Par.trafo"};
-  see Hofert et al. (2015) for more details.
+  \code{method="Wang.Par"}).
   Also note that the chosen smaller default tolerances for
   \code{\link{uniroot}()} in case of \code{method="Wang"} and
   \code{method="Wang.Par"} are crucial for obtaining reliable
@@ -289,12 +286,8 @@ ARA(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0, 0.01),
   for more details. As a
   rule of thumb, use \code{method="Wang"} if you have to (i.e., if the
   margins are not Pareto) and \code{method="Wang.Par"} if you can (i.e.,
-  if the margins are Pareto); in the former case, it might be wise to
-  follow along the lines of \code{method="Wang.Par.trafo"} to implement
-  one's own method (e.g., if our \code{method="Wang"} turns out to be
-  numerically critical), see Hofert et al. (2015) for more details.
-  Furthermore, it is not recommended to use (the numerically more challenging)
-  \code{method="dual"}.
+  if the margins are Pareto). It is not recommended to use
+  (the numerically even more challenging) \code{method="dual"}.
 
 
   Concerning the inhomogeneous case, \code{rearrange()} is an auxiliary
@@ -397,23 +390,14 @@ set.seed(271) # set seed (for reproducibility)
 ARAbest  <- ARA(alpha, qF=rep(list(qF), d), method="best")
 ARAworst <- ARA(alpha, qF=rep(list(qF), d))
 
-## Rearrangement Algorithm (RA) with N as in ARA and abstol (roughly) chosen as in ARA
-## Best VaR
-RAbest  <- RA(alpha, qF=rep(list(qF), d), N=ARAbest$N.used,
-              abstol=mean(tail(abs(diff(ARAbest$m.row.sums$low)), n=1),
-                          tail(abs(diff(ARAbest$m.row.sums$up)), n=1)),
-              method="best")
-## Worst VaR
-RAworst <- RA(alpha, qF=rep(list(qF), d), N=ARAworst$N.used,
-              abstol=mean(tail(abs(diff(ARAworst$m.row.sums$low)), n=1),
-                          tail(abs(diff(ARAworst$m.row.sums$up)), n=1)))
+## Rearrangement Algorithm (RA) with N as in ARA()
+RAbest  <- RA(alpha, qF=rep(list(qF), d), N=ARAbest$N.used, method="best")
+RAworst <- RA(alpha, qF=rep(list(qF), d), N=ARAworst$N.used)
 
-## Compare (comparably large tolerances required to contain both (A)RA bounds)
-## Best VaR
+## Compare
 stopifnot(all.equal(c(ARAbest$bounds[1], ARAbest$bounds[2],
                       RAbest$bounds[1],  RAbest$bounds[2]),
                     rep(VaRbounds[1], 4), tolerance=0.004, check.names=FALSE))
-## Worst VaR
 stopifnot(all.equal(c(ARAworst$bounds[1], ARAworst$bounds[2],
                       RAworst$bounds[1],  RAworst$bounds[2]),
                     rep(VaRbounds[2], 4), tolerance=0.003, check.names=FALSE))
@@ -425,51 +409,41 @@ d <- 8 # dimension
 
 ## Compute VaR bounds with various methods
 I <- crude_VaR_bounds(alpha, qF=rep(list(qF), d)) # crude bound
-VaR.W           <- VaR_bounds_hom(alpha, d=d, method="Wang", qF=qF)
-VaR.W.Par       <- VaR_bounds_hom(alpha, d=d, method="Wang.Par", theta=th)
-VaR.W.Par.trafo <- VaR_bounds_hom(alpha, d=d, method="Wang.Par.trafo", theta=th)
-VaR.d           <- VaR_bounds_hom(alpha, d=d, method="dual", interval=I, pF=pF)
+VaR.W     <- VaR_bounds_hom(alpha, d=d, method="Wang", qF=qF)
+VaR.W.Par <- VaR_bounds_hom(alpha, d=d, method="Wang.Par", theta=th)
+VaR.dual  <- VaR_bounds_hom(alpha, d=d, method="dual", interval=I, pF=pF)
 
-## Adaptive Rearrangement Algorithm (ARA) (with defaults)
+## Adaptive Rearrangement Algorithm (ARA) (with different relative tolerances)
 set.seed(271) # set seed (for reproducibility)
-ARAbest  <- ARA(alpha, qF=rep(list(qF), d), method="best")
-ARAworst <- ARA(alpha, qF=rep(list(qF), d))
+ARAbest  <- ARA(alpha, qF=rep(list(qF), d), reltol=c(0.001, 0.01), method="best")
+ARAworst <- ARA(alpha, qF=rep(list(qF), d), reltol=c(0.001, 0.01))
 
 ## Rearrangement Algorithm (RA) with N as in ARA and abstol (roughly) chosen as in ARA
-## Best VaR
 RAbest  <- RA(alpha, qF=rep(list(qF), d), N=ARAbest$N.used,
               abstol=mean(tail(abs(diff(ARAbest$m.row.sums$low)), n=1),
                           tail(abs(diff(ARAbest$m.row.sums$up)), n=1)),
               method="best")
-## Worst VaR
 RAworst <- RA(alpha, qF=rep(list(qF), d), N=ARAworst$N.used,
               abstol=mean(tail(abs(diff(ARAworst$m.row.sums$low)), n=1),
                           tail(abs(diff(ARAworst$m.row.sums$up)), n=1)))
 
-## Compare (comparably large tolerances required to contain both (A)RA bounds)
-## Best VaR
-stopifnot(all.equal(c(VaR.W[1], VaR.W.Par.trafo[1],
-                      ARAbest$bounds[1], ARAbest$bounds[2],
-                      RAbest$bounds[1],  RAbest$bounds[2]),
-                    rep(VaR.W.Par[1],6), tolerance=0.005, check.names=FALSE))
-## Worst VaR
-stopifnot(all.equal(c(VaR.W[2], VaR.W.Par.trafo[2], VaR.d[2],
-                      ARAworst$bounds[1], ARAworst$bounds[2],
-                      RAworst$bounds[1],  RAworst$bounds[2]),
-                    rep(VaR.W.Par[2],7), tolerance=0.003, check.names=FALSE))
+## Compare
+stopifnot(all.equal(c(VaR.W[1], ARAbest$bounds, RAbest$bounds),
+                    rep(VaR.W.Par[1],5), tolerance=0.004, check.names=FALSE))
+stopifnot(all.equal(c(VaR.W[2], VaR.dual[2], ARAworst$bounds, RAworst$bounds),
+                    rep(VaR.W.Par[2],6), tolerance=0.003, check.names=FALSE))
 
 
 ## Using (some of) the additional results computed by (A)RA() ##################
 
 xlim <- c(1, max(sapply(RAworst$m.row.sums, length)))
 ylim <- range(RAworst$m.row.sums)
-plot(RAworst$m.row.sums[[2]], type="b", xlim=xlim, ylim=ylim,
+plot(RAworst$m.row.sums[[2]], type="l", xlim=xlim, ylim=ylim,
      xlab="Number or rearranged columns",
      ylab=paste0("Minimal row sum per rearranged column"),
      main=substitute("Worst VaR minimal row sums ("*alpha==a.*","~d==d.*" and Par("*
                      th.*"))", list(a.=alpha, d.=d, th.=th)))
-lines(1:length(RAworst$m.row.sums[[1]]), RAworst$m.row.sums[[1]], type="b",
-      col="royalblue3")
+lines(1:length(RAworst$m.row.sums[[1]]), RAworst$m.row.sums[[1]], col="royalblue3")
 legend("bottomright", bty="n", lty=rep(1,2),
        col=c("black", "royalblue3"), legend=c("upper bound", "lower bound"))
 ## => One should use ARA() instead of RA()

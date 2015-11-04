@@ -91,6 +91,40 @@ dual_bound <- function(s, d, pF, tol=.Machine$double.eps^0.25, ...)
 
 ### Wang's methods #############################################################
 
+##' @title Conditional expectation (\bar{I}(a, b)) for computing best/worst VaR as
+##'        in Embrechts, Puccetti, Rueschendorf, Wang, Beleraj (2014, Prop. 3.1)
+##' @param a lower evaluation point
+##' @param b upper evaluation point
+##' @param alpha confidence level alpha
+##' @param d dimension d
+##' @param method character string giving the method
+##'        generic = numerical integration; Wang.Par = Pareto distibution (explicit)
+##' @param ... ellipsis argument passed to integrate()
+##'        => must contain qF for "generic" and "theta" for "Wang.Par"
+##' @return \bar{I}(a, b) = 1/(b-a)\int_a^b qF(y) dy =(subs) IE[L|L\in [qF(a), aF(b)]]
+##' @author Marius Hofert
+Wang_Ibar <- function(a, b, alpha, d, method=c("generic", "Wang.Par"), ...)
+{
+    stopifnot(length(a) == length(b), 0 <= a, a < b, b <= 1)
+    ddd <- list(...)
+    method <- match.arg(method)
+    switch(method,
+           "generic" = {
+               stopifnot(length(a) == 1, length(b) == 1) # not vectorized (due to integrate())
+               qF <- ddd$qF # grab out provided 'qF()'
+               ddd$qF <- NULL # rm qF from '...'
+               h <- function(...)
+                   integrate(qF, lower=a, upper=b, ...)$value / (b-a)
+               do.call(h, ddd) # call integrate() on the remaining arguments in '...'
+           },
+           "Wang.Par" = { # vectorized
+               th <- ddd$theta # use provided 'theta'
+               if(th == 1) log((1-a)/(1-b))/(b-a) - 1
+               else (th/(1-th))*((1-b)^(1-1/th)-(1-a)^(1-1/th))/(b-a) - 1
+           },
+           stop("Wrong method"))
+}
+
 ##' @title Right-hand side term in the objective function for computing the worst VaR
 ##'        as in Embrechts, Puccetti, Rueschendorf, Wang, Beleraj (2014, Prop. 3.1)
 ##' @param c evaluation point
@@ -107,22 +141,10 @@ Wang_h_aux <- function(c, alpha, d, method=c("generic", "Wang.Par"), ...)
 {
     ddd <- list(...)
     method <- match.arg(method)
-    switch(method,
-    "generic" = {
-        qF <- ddd$qF # needs 'qF()'
-        a <- alpha + (d-1)*c
-        b <- 1-c
-        qF(a)*(d-1)/d + qF(b)/d
-    },
-    "Wang.Par" = {
-        ## We don't use qF(a)*(d-1)/d + qF(b)/d for qF(x) = qPar(x, theta=theta)
-        ## here as qF(b) = qF(1-c) and 1-c==1 for small c > 0 => numerically,
-        ## qF(b) = Inf then.
-        th <- ddd$theta # needs 'theta'
-        t1 <- (1-alpha)/c-(d-1)
-        (c^(-1/th)/d) * ((d-1)*t1^(-1/th)+1) - 1
-    },
-    stop("Wrong method"))
+    qF <- if(method=="Wang.Par") function(y) qPar(y, theta=ddd$theta) else ddd$qF
+    a <- alpha + (d-1)*c
+    b <- 1-c
+    qF(a)*(d-1)/d + qF(b)/d
 }
 
 ##' @title Objective function for computing the worst VaR as in
@@ -131,7 +153,7 @@ Wang_h_aux <- function(c, alpha, d, method=c("generic", "Wang.Par"), ...)
 ##' @param alpha confidence level alpha
 ##' @param d dimension d
 ##' @param method character string giving the method
-##' @param ... ellipsis argument passed to Wang_h_aux() and integrate()
+##' @param ... ellipsis argument passed to Wang_h_aux() and Wang_Ibar()
 ##' @return objective function for computing the worst VaR
 ##' @author Marius Hofert
 Wang_h <- function(c, alpha, d, method=c("generic", "Wang.Par"), ...)
@@ -139,37 +161,18 @@ Wang_h <- function(c, alpha, d, method=c("generic", "Wang.Par"), ...)
     stopifnot(0 <= c, c <= (1-alpha)/d) # sanity check (otherwise b > a)
     method <- match.arg(method)
     ddd <- list(...)
-
-    ## Compute \bar{I}(a, b) = 1/(b-a)\int_a^b qF(y) dy =(subs) IE[L|L\in [qF(a), aF(b)]]
-    Ibar <- switch(method,
-    "generic" = {
-        qF <- ddd$qF # needs 'qF()'
-        if(c == (1-alpha)/d) { # Properly deal with limit c=(1-alpha)/d
-            qF(1-(1-alpha)/d)
-        } else {
-            a <- alpha + (d-1)*c
-            b <- 1-c
-            ddd$qF <- NULL # remove from '...'
-            int <- function(...)
-                integrate(qF, lower=a, upper=b, ...)$value / (b-a)
-            do.call(int, ddd)
+    ## Properly deal with limit c=(1-alpha)/d
+    Ib <- if(c == (1-alpha)/d) {
+        if(method=="generic") { # qF() needs to be provided
+            ddd$qF((d-1+alpha)/d)
+        } else { # theta needs to be provided
+            qPar((d-1+alpha)/d, theta=ddd$theta)
         }
-    },
-    "Wang.Par" = {
-        th <- ddd$theta # needs 'theta'
-        if(c == (1-alpha)/d) { # Properly deal with limit c=(1-alpha)/d
-            ((1-alpha)/d)^(-1/th) - 1
-        } else {
-            t1 <- (1-alpha)/c-(d-1)
-            t2 <- 1-alpha-d*c
-            if(th == 1) log(t1)/t2 - 1
-            else (th/(1-th))*c^(1-1/th)*(1-t1^(1-1/th))/t2 - 1
-        }
-    },
-    stop("Wrong method"))
-
+    } else {
+        Wang_Ibar(a=alpha+(d-1)*c, b=1-c, alpha=alpha, d=d, method=method, ...)
+    }
     ## Return
-    Ibar - Wang_h_aux(c, alpha=alpha, d=d, method=method, ...)
+    Ib - Wang_h_aux(c, alpha=alpha, d=d, method=method, ...)
 }
 
 
@@ -190,8 +193,10 @@ Wang_h <- function(c, alpha, d, method=c("generic", "Wang.Par"), ...)
 ##'                   Integral evaluated numerically; needs smaller default
 ##'                   tolerance for uniroot()!
 ##'           "Wang.Par": The same, just with explicit formula for the integral
-##'                       in the Pareto case. Note that we compute the root on
-##'                       a different scale here to avoid massive numerical problems.
+##'                       in the Pareto case; needs smaller default tolerance
+##'                       for uniroot()!
+##'           "Wang.Par.trafo": The same, just transforming the problem to
+##'                             a different scale; for best VaR this is not needed
 ##'           "dual": Embrechts, Puccetti, Rueschendorf (2013, Proposition 4)
 ##'                   Numerically less stable; no formula for best VaR known (=> NA)
 ##' @param alpha confidence level
@@ -202,30 +207,19 @@ Wang_h <- function(c, alpha, d, method=c("generic", "Wang.Par"), ...)
 ##' @param ... ellipsis arguments passed to Wang_h()
 ##' @return (best VaR, worst VaR) in the homogeneous case
 ##' @author Marius Hofert
-VaR_bounds_hom <- function(alpha, d, method=c("Wang", "Wang.Par", "dual"),
-                           interval=NULL, tol=NULL, ...)
+VaR_bounds_hom <- function(alpha, d, method=c("Wang", "Wang.Par",
+                          "Wang.Par.trafo", "dual"), interval=NULL, tol=NULL, ...)
 {
     stopifnot(0<alpha, alpha<1, d>=2)
     method <- match.arg(method)
 
-    ## Deal with d==2 first ####################################################
-
+    ## Deal with d==2 first
     if(d==2) { # See Embrechts, Puccetti, Rueschendorf (2013, Prop. 2)
-        if(method == "Wang.Par") {
-            theta <- NULL # make CRAN check happy
-            if(!hasArg(theta))
-                stop("The Pareto case requires the parameter theta")
-            th <- list(...)$theta
-            stopifnot(length(th) == 1, th > 0) # check theta here
-            qF <- function(p) qPar(p, theta=th)
-            return( c((1-alpha)^(-1/th)-1, 2*(((1-alpha)/2)^(-1/th)-1)) )
-        } else {
-            qF <- NULL # make CRAN check happy
-            if(!hasArg(qF))
-                stop("The quantile function qF of F is required")
-            qF <- list(...)$qF
-            return(c(qF(alpha), 2*qF((1+alpha)/2)))
-        }
+        qF <- NULL # make CRAN check happy
+        if(!hasArg(qF))
+            stop("The bivariate case requires the quantile function qF of F")
+        qF <- list(...)$qF
+        return(c(qF(alpha), 2*qF((1+alpha)/2)))
     }
 
     ## Best VaR for d >= 3 #####################################################
@@ -236,24 +230,15 @@ VaR_bounds_hom <- function(alpha, d, method=c("Wang", "Wang.Par", "dual"),
                    qF <- NULL # make CRAN check happy
                    if(!hasArg(qF))
                        stop("Method 'Wang' requires the quantile function qF of F")
-                   ddd <- list(...)
-                   qF <- ddd$qF # get qF()
-                   ddd$qF <- NULL # remove from '...'
-                   int <- function(...)
-                       integrate(qF, lower=0, upper=alpha, ...)$value / alpha
                    max((d-1)*qF(0)+qF(alpha), # Note: Typo in Wang, Peng, Yang (2013)
-                       d * do.call(int, ddd))
+                       d*Wang_Ibar(a=0, b=alpha, alpha=alpha, d=d, ...))
                },
-               "Wang.Par" = {
+               "Wang.Par" =, "Wang.Par.trafo" = {
                    theta <- NULL # make CRAN check happy
                    if(!hasArg(theta))
-                       stop("Method 'Wang.Par' requires the parameter theta")
-                   th <- list(...)$theta
-                   stopifnot(length(th) == 1, th > 0) # check theta here
-                   Ibar <- if(th == 1) -log1p(-alpha) - alpha
-                   else ((1-alpha)^(1-1/th)-1)/(1-1/th) - alpha
-                   max((d-1)*0 + (1-alpha)^(-1/th)-1, # Note: Typo in Wang, Peng, Yang (2013)
-                       d * Ibar)
+                       stop("Method 'Wang.Par' and 'Wang.Par.trafo' require the parameter theta")
+                   max((d-1)*qF(0)+qF(alpha), # Note: Typo in Wang, Peng, Yang (2013)
+                       d*Wang_Ibar(a=0, b=alpha, alpha=alpha, d=d, method="Wang.Par", ...))
                },
                "dual" = { # "dual" only provides worst VaR
                    NA
@@ -262,8 +247,9 @@ VaR_bounds_hom <- function(alpha, d, method=c("Wang", "Wang.Par", "dual"),
 
     ## Worst VaR for d >= 3  ###################################################
 
-    if(is.null(tol)) # use smaller tol
-        tol <- if(method=="Wang") 2.2204e-16 # MATLAB default
+    if(is.null(tol)) # use smaller tol (matters; see vignette("VaR_bounds", package="qrmtools"))
+        tol <- if(method=="Wang" || method=="Wang.Par")
+                   2.2204e-16 # MATLAB default
                else .Machine$double.eps^0.25 # uniroot() default
     worst <- switch(method,
            "Wang" = {
@@ -289,13 +275,10 @@ VaR_bounds_hom <- function(alpha, d, method=c("Wang", "Wang.Par", "dual"),
                ## Root-finding on 'interval'
                c. <- uniroot(function(c) Wang_h(c, alpha=alpha, d=d, ...),
                              interval=interval, f.lower=h.low, f.upper=h.up, tol=tol)$root
-               d * Wang_h_aux(c., alpha=alpha, d=d, qF=qF)
+               d * Wang_h_aux(c., alpha=alpha, d=d, qF=list(...)$qF)
 
            },
            "Wang.Par" = {
-
-               ## Here we compute the root on a different scale as numerically more
-               ## challenging otherwise
 
                ## Check 'theta'
                theta <- NULL # make CRAN check happy
@@ -304,42 +287,58 @@ VaR_bounds_hom <- function(alpha, d, method=c("Wang", "Wang.Par", "dual"),
                th <- list(...)$theta
                stopifnot(length(th) == 1, th > 0) # check theta here
 
-               ## Compute uniroot() initial interval and check it
-               ## Note: c-bound = (1-alpha)/(x-bound + d-1) or
-               ##       x-bound = (1-alpha)/c-bound - (d-1)
-               ##       (and lower bound changes to upper bound and vice versa)
+               ## Compute lower uniroot boundaries and check
                if(is.null(interval)) {
-                   ## Lower bound in x-scale (= upper bound in c-scale)
-                   low <- if(th == 1) {
-                       d/2
-                   } else {
-                       (d-1)*(1+th)/(d-1+th)
-                   }
-                   ## Upper bound in x-scale (= lower bound in c-scale)
-                   up <- if(th > 1) {
-                       ## Theoretical bound: (1+d/(th-1))^th
-                       ## => We use an even larger numerical bound here to avoid that
-                       ##    uniroot() fails due to h not being of opposite sign at
-                       ##    interval endpoints.
-                       (1+1e-12+d/(th-1))^th # instead of (1+d/(th-1))^th
+                   low <- if(th > 1) {
+                       (1-alpha)/((1+d/(th-1))^th+d-1)
                    } else if(th == 1) {
                        e <- exp(1)
-                       (d+1)^(e/(e-1))
-                   } else { # th < 0
-                       d*th/(1-th)+1
-                   }
+                       (1-alpha)/((d+1)^(e/(e-1))+d-1)
+                   } else { (1-th)*(1-alpha)/d }
+                   up <- if(th == 1) (1-alpha)/(3*d/2-1) else
+                         (1-alpha)*(d-1+th)/((d-1)*(2*th+d))
                    interval <- c(low, up)
                } else {
-                   ## The user provides 'interval' in 'c-scale' (c in [0, (1-alpha)/d])
                    if(interval[1] < 0) stop("interval[1] needs to be >= 0")
                    if(interval[1] > (1-alpha)/d) stop("interval[2] needs to be <= (1-alpha)/d")
                    if(interval[1] >= interval[2]) stop("interval[1] needs to be smaller than interval[2]")
-                   ## We convert 'interval' to the 'x-scale' (x in [1,Inf)) to determine the root
-                   interval <- (1-alpha)/rev(interval) - (d-1)
+               }
+               if(th <= 1 && interval[1] == 0)
+                   stop("If theta <=1, interval[1] has to be > 0 as otherwise the internal Wang_h() is NaN")
+
+               ## Root-finding on 'interval'
+               c. <- uniroot(function(c)
+                             Wang_h(c, alpha=alpha, d=d, method="Wang.Par", ...),
+                             interval=interval, tol=tol)$root
+               d * Wang_h_aux(c., alpha=alpha, d=d, method="Wang.Par", theta=th)
+
+           },
+           "Wang.Par.trafo" = { # here we compute the root on a different scale
+
+               ## Check 'theta'
+               theta <- NULL # make CRAN check happy
+               if(!hasArg(theta))
+                   stop("Method 'Wang.Par' requires the parameter theta")
+               th <- list(...)$theta
+               stopifnot(length(th) == 1, th > 0) # check theta here
+
+               ## Compute uniroot boundaries (has to be in [1,Inf) here) and check
+               if(is.null(interval)) {
+                   low <- if(th == 1) d/2 else (d-1)*(1+th)/(d-1+th)
+                   up <- if(th > 1) {
+                       (1+d/(th-1))^th
+                   } else if(th == 1) {
+                       e <- exp(1)
+                       (d+1)^(e/(e-1))
+                   } else { d*th/(1-th)+1 }
+                   interval <- c(low, up)
+               } else {
+                   if(interval[1] < 1) stop("interval[1] needs to be >= 1")
+                   if(interval[1] >= interval[2]) stop("interval[1] needs to be smaller than interval[2]")
                }
 
                ## Define objective function (\tilde{\tilde{h}})
-               h <- if(th == 1) {
+               h.tt <- if(th == 1) {
                    function(x) x^2 + x*(-d*log(x)+d-2)-(d-1)
                } else {
                    function(x)
@@ -347,9 +346,9 @@ VaR_bounds_hom <- function(alpha, d, method=c("Wang", "Wang.Par", "dual"),
                }
 
                ## Root-finding on 'interval'
-               x <- uniroot(h, interval=interval, tol=tol)$root
-               c <- (1-alpha)/(x+d-1) # convert back to c-scale
-               d * Wang_h_aux(c, alpha=alpha, d=d, method="Wang.Par", theta=th)
+               x. <- uniroot(h.tt, interval=interval, tol=tol)$root
+               c. <- (1-alpha)/(x.+d-1) # convert back to c
+               d * Wang_h_aux(c., alpha=alpha, d=d, method="Wang.Par", theta=th)
 
            },
            "dual" = {
@@ -392,7 +391,7 @@ indices_opp_ordered_to <- function(x)
     ## Note: The following test is expensive... and the call to C even
     ##       only very slightly faster...
     ## if(getRversion() >= "3.2.3")
-    ## .Call(C_indices_opp_ordered_to, x)
+    ##     .Call(C_indices_opp_ordered_to, x)
     ## else
     order(order(x, decreasing=TRUE))
 }
@@ -418,16 +417,15 @@ num_of_opp_ordered_cols <- function(x) {
 ##' @title Basic rearrangement function for (A)RA
 ##' @param X (N, d)-matrix \underline{X}^\alpha or \overline{X}^\alpha
 ##' @param tol Tolerance to determine (the individual) convergence;
-##'        if NULL, column rearrangements are done until the matrix doesn't
-##'        change anymore d consecutive times
+##'        if NULL, the iteration is done until the matrix doesn't change
 ##' @param tol.type Character string indicating the tolerance function used
 ##'        ("relative" or "absolute")
-##' @param max.ra Maximal number of column rearrangements
+##' @param maxiter Maximal number of iterations
 ##' @param method Character indicating which VaR is approximated (worst/best)
 ##'        determines optimizing function (min for worst VaR; max
 ##'        for best VaR)
 ##' @param sample A logical indicating whether each column of the working
-##'        matrix is randomly permuted before the rearrangements begin
+##'        matrix is sampled before the iteration begins
 ##' @param is.sorted A logical indicating whether X is columnwise sorted in
 ##'        increasing order
 ##' @param trace A logical indicating whether the underlying matrix is
@@ -437,20 +435,17 @@ num_of_opp_ordered_cols <- function(x) {
 ##'            best [depending on method]) VaR
 ##'         2) (Individual) tolerance reached
 ##'         3) Logical indicating whether the algorithm has converged
-##'         4) Vector of minimal [for worst VaR] or maximal [for best VaR]
-##'            row sums after each considered column rearrangement
+##'         4) (N, .)-matrix of row sums (one column for each iteration)
 ##'         5) The (optimally) rearranged (N, d)-matrix
 ##' @author Marius Hofert and Kurt Hornik
 ##' @note - We use "<= tol" to determine convergence instead of "< tol" as
 ##'         this then also nicely works with "= 0" (if tol=0) which stops in
 ##'         case the matrices are identical (no change at all).
-##'       - We conduct checks of convergence after rearranging each column
-##'         (not only after rearranging all d columns)
-##'       - The columns of X have to be given in increasing order if !is.sorted!
 ##'       - No checking here due to speed!
-rearrange <- function(X, tol=0, tol.type=c("relative", "absolute"),
-                      max.ra=Inf, method=c("worst", "best"),
-                      sample=TRUE, is.sorted=FALSE, trace=FALSE)
+##'       - The columns of X have to be given in increasing order if !is.sorted!
+rearrange <- function(X, tol=0, tol.type=c("relative", "absolute"), maxiter=Inf,
+                      method=c("worst", "best"), sample=TRUE, is.sorted=FALSE,
+                      trace=FALSE)
 {
     N <- nrow(X)
     d <- ncol(X)
@@ -465,7 +460,7 @@ rearrange <- function(X, tol=0, tol.type=c("relative", "absolute"),
         function(x, y) abs((x-y)/y)
     }
 
-    ## Tracing
+    ## Output initial matrix
     if(trace) {
         B <- X
         colnames(B) <- rep("", d)
@@ -488,109 +483,77 @@ rearrange <- function(X, tol=0, tol.type=c("relative", "absolute"),
         X.lst <- X.lst.sorted # list of columns of X
         X.rs <- .rowSums(X, m=N, n=d) # initial row sum
     }
+    m.rs.old <- optim.fun(X.rs) # initial minimal row sum
 
-    ## Go through the columns and rearrange one at a time
-    iter <- 0 # current iteration number
-    j <- 0 # current column number
-    num.cols.no.change <- 0 # number of consecutively rearranged columns with no change
-    m.row.sums <- optim.fun(X.rs) # vector of minimal/maximal row sums after each considered column (starting from the original matrix)
-    is.null.tol <- is.null(tol)
+    ## Loop through the columns
+    row.sums <- matrix(, nrow=N, ncol=0) # (N, 0)-matrix of computed row sums
     while (TRUE) {
 
-        ## Update the running indices
-        iter <- iter+1 # current iteration number (in IN)
-        j <- if(j >= d) 1 else j+1 # current column
-
-        ## Update the working 'matrix'
-        Y.lst <- X.lst # define 'matrix' Y (former 'matrix' X) to work with
-        Y.rs <- X.rs # row sum of Y (= row sum of X)
-
-        ## Oppositely order the jth column to the sum of all others
-        yj <- Y.lst[[j]] # pick out jth column
-        rs <- Y.rs - yj # sum over all other columns (but the jth)
-        ## Note: The elements of X.lst.sorted are sorted in increasing order
-        ##       which is required for oppositely reordering them
-        yj. <- X.lst.sorted[[j]][indices_opp_ordered_to(rs)] # oppositely reorder Y_j
-
-        ## Update the working 'matrix'
-        Y.lst[[j]] <- yj. # update with rearranged jth column
-        Y.rs <- rs + yj. # update row sum of Y
-
-        ## Tracing
-        if(trace) {
-            B <- do.call(cbind, Y.lst)
-            colnames(B) <- rep("", d)
-            no.change <- identical(yj, yj.)
-            colnames(B)[j] <- if(no.change) "=" else "|"
-            B <- cbind(B, rs, sum=.rowSums(B, m=N, n=d))
-            colnames(B)[d+1] <- paste0("-",j)
-            print(B)
-        }
-
-        ## Update the vector of computed minimal/maximal row sums
-        m.rs.cur.col <- optim.fun(Y.rs) # compute new minimal/maximal row sum
-        m.row.sums <- c(m.row.sums, m.rs.cur.col) # append it
-
-        ## Check convergence
-        ## Idea: After a column has been rearranged, compute the tol (and thus
-        ##       determine convergence) between the minimal/maximal row sum
-        ##       after that rearrangement and from d steps before when that
-        ##       column was considered (either rearranged (if iter > d) or
-        ##       simply contained in the original matrix X (if iter <= d)) the last time.
-        ## Note: - This is a bit more elegant than the original RA which checked only
-        ##         on j=d, not after rearranging *each* column.
-        ##       - Checking only two consecutive columns led to bad behavior for ARA()
-        ##         in some cases (e.g., real OpRisk data): Both the individual and the joint
-        ##         relative tolerances were satisfied but far off (with reltol[1]=0.001).
-        ##         Of course one could check d consecutive columns for *all* of them to
-        ##         fulfill the 'convergence' criterion, but then what's the reached
-        ##         tolerance tol if more than two columns are involved? Maybe the maximum
-        ##         tolerance computed over all previous d many rearranged columns?
-        ##         There's probably no gain in doing that.
-        if(is.null.tol) { # tol = NULL
-            num.cols.no.change <- if(identical(yj, yj.)) num.cols.no.change + 1 else 0
-            if(num.cols.no.change == d) { # => matrix has not changed in d consecutive col rearrangements
-                tol. <- 0 # as there was no change
-                tol.reached <- TRUE # as we reached 'no change' in d consecutive steps (we don't care whether max.ra has been reached)
-                break
-            } else { # check whether we have to stop due to max.ra
-                if(iter == max.ra) {
-                    m.rs.d.col.ago <- m.row.sums[max(iter-d, 0) + 1] # if iter <= d, use initial minimal/maximal row sum
-                    tol. <- tol.fun(m.rs.cur.col, m.rs.d.col.ago) # compute the attained tolerance (in comparison to the last time the jth column was rearranged)
-                    tol.reached <- FALSE # as num.cols.no.change < d
-                    break
-                }
+        ## Oppositely order X (=> Y)
+        ## Note: - The elements of X.lst.sorted are in increasing order
+        ##         => required for oppositely reordering them
+        ##       - One could check whether d consecutive column-rearrangements
+        ##         did not lead to a change and then stop (as all columns are
+        ##         oppositely ordered to the sum of all others in this case).
+        ##         This is doable for smaller matrices, but typically neither
+        ##         the case nor efficient to do for larger matrices.
+        Y.lst <- X.lst
+        Y.rs <- X.rs # row sum of Y
+        for(j in 1:d) { # one iteration over all columns of the matrix
+            yj <- Y.lst[[j]] # jth column of Y
+            rs <- Y.rs - yj # sum over all other columns (but the jth)
+            yj <- X.lst.sorted[[j]][indices_opp_ordered_to(rs)] # oppositely reorder
+            Y.lst[[j]] <- yj # update list with rearranged jth column
+            Y.rs <- rs + yj # update row sum of Y
+            if(trace) { # for debugging
+                B <- do.call(cbind, Y.lst)
+                colnames(B) <- rep("", d)
+                colnames(B)[j] <- "|"
+                B <- cbind(B, rs)
+                colnames(B)[d+1] <- paste0("-",j)
+                print(B)
             }
-        } else { # tol >= 0
-            m.rs.d.col.ago <- m.row.sums[max(iter-d, 0) + 1] # if iter <= d, use initial minimal/maximal row sum
-            tol. <- tol.fun(m.rs.cur.col, m.rs.d.col.ago) # compute the attained tolerance (in comparison to the last time the jth column was rearranged)
-            tol.reached <- tol. <= tol
-            if(iter == max.ra || tol.reached) break
         }
 
-        ## Updates for the next column rearrangement
-        X.lst <- Y.lst # update the working 'matrix'
-        X.rs <- Y.rs # update the row sums
+        ## Compute row sums and minimal/maximal row sums
+        row.sums <- cbind(row.sums, Y.rs) # append the new row sums
+        m.rs.new <- optim.fun(Y.rs) # compute new minimal/maximal row sum
+
+        ## Check convergence (we use "<= tol" as it entails tol=0)
+        maxiter.reached <- ncol(row.sums) == maxiter # reached maxiter?
+        tol. <- tol.fun(m.rs.new, m.rs.old) # attained tolerance
+        tol.reached <- if(is.null(tol)) {
+            ## Note that tol=NULL can lead to non-convergence!
+            identical(Y.lst, X.lst)
+        } else { tol. <= tol }
+        if(maxiter.reached || tol.reached) {
+            break
+        } else {
+            m.rs.old <- m.rs.new # update m.rs.old
+            X.rs <- Y.rs
+            X.lst <- Y.lst
+        }
 
     }
 
     ## Return
-    list(bound=m.rs.cur.col, # computed bound (\underline{s}_N or \overline{s}_N)
+    colnames(row.sums) <- NULL # remove column names so that they don't appear in output
+    list(bound=m.rs.new, # computed bound (\underline{s}_N or \overline{s}_N)
          tol=tol., # tolerance for the computed bound
          converged=tol.reached, # indicating whether converged
-         m.row.sums=m.row.sums, # the computed minimal/maximal row sums after each column rearrangement
+         row.sums=row.sums, # the computed row sums after each iteration through all cols
          X.rearranged=do.call(cbind, Y.lst)) # the rearranged matrix X
 }
 
 ##' @title Computing lower/upper bounds for the worst VaR with the RA
-##' @param alpha Confidence level
+##' @param alpha confidence level
 ##' @param qF d-list of marginal quantile functions
-##' @param N Number of discretization points
-##' @param abstol Absolute convergence tolerance (to determine convergence)
-##' @param max.ra Maximal number of column rearrangements
-##' @param method Character indicating which VaR is approximated (worst/best)
-##' @param sample Logical indicating whether each column of the two working
-##'        matrices is randomly permuted before the rearrangements begin
+##' @param N number of discretization points
+##' @param abstol absolute convergence tolerance (to determine convergence)
+##' @param maxiter maximal number of iterations
+##' @param method character indicating which VaR is approximated (worst/best)
+##' @param sample logical indicating whether each column of the two working
+##'        matrices are sampled before the iteration begins
 ##' @return List containing the
 ##'         1) Computed lower and upper bound for (worst or best) VaR
 ##'         2) The relative rearrangement gap
@@ -598,27 +561,29 @@ rearrange <- function(X, tol=0, tol.type=c("relative", "absolute"),
 ##'         3) Individual absolute tolerances reached (for each bound)
 ##'         4) 2-vector of logicals indicating whether the individual bounds reached
 ##'            the desired tolerances (=> convergence)
-##'         5) Number of columns considered for rearrangement
+##'         5) Number of iterations through the matrix columns used
 ##'         6) Vectors of minimal [for worst VaR] or maximal [for best VaR] row sums
-##'            after each considered column rearrangement
-##'         7) List of (N, d) input matrices X (for each bound)
-##'         8) List of rearranged Xs (for each bound)
+##'            (for each bound)
+##'         7) List of (N, .)-matrices of row sums (one column for each iteration;
+##'            for each bound)
+##'         8) List of (N, d) input matrices X (for each bound)
+##'         9) List of rearranged Xs (for each bound)
 ##' @author Marius Hofert
 ##' @note Notation is from p. 2757 in Embrechts, Puccetti, Rueschendorf (2013);
 ##'       variables are named according to the 'worst' VaR case.
-RA <- function(alpha, qF, N, abstol=0, max.ra=Inf,
+RA <- function(alpha, qF, N, abstol=0, maxiter=Inf,
                method=c("worst", "best"), sample=TRUE)
 {
     ## Checks and Step 1 (get N, abstol)
     stopifnot(0 < alpha, alpha < 1, is.null(abstol) || abstol >= 0,
-              length(N) >= 1, N >= 2, max.ra >= 1, is.logical(sample))
+              length(N) >= 1, N >= 2, maxiter >= 1, is.logical(sample))
     method <- match.arg(method)
     stopifnot(is.list(qF), sapply(qF, is.function), (d <- length(qF)) >= 2)
 
     ## Compute lower bound
 
     ## Step 2 (build \underline{X}^\alpha)
-    p <- if(method=="worst") alpha + (1-alpha)*(0:(N-1))/N else alpha*(0:(N-1))/N # N-vector of prob. in *increasing* order
+    p <- if(method=="worst") alpha + (1-alpha)*0:(N-1)/N else alpha*0:(N-1)/N # N-vector of prob. in *increasing* order
     X.low <- sapply(qF, function(qF) qF(p))
     ## adjust those that are -Inf (for method="best")
     ## use alpha*((0+1)/2 / N) = alpha/(2N) instead of 0 quantile
@@ -630,15 +595,14 @@ RA <- function(alpha, qF, N, abstol=0, max.ra=Inf,
     ## randomly permute each column of \underline{X}^\alpha and
     ## repeat oppositely ordering \underline{X}^\alpha until there is only an
     ## abstol change in the min (method="worst") or max (method="best") row sum
-    ## or until we reached max.ra number of column rearrangements
-    res.low <- rearrange(X.low, tol=abstol, tol.type="absolute",
-                         max.ra=max.ra, method=method,
-                         sample=sample, is.sorted=TRUE)
+    ## or until we reached maxiter number of iterations
+    res.low <- rearrange(X.low, tol=abstol, tol.type="absolute", maxiter=maxiter,
+                         method=method, sample=sample, is.sorted=TRUE)
 
     ## Compute upper bound
 
     ## Step 2 (build \overline{X}^\alpha)
-    p <- if(method=="worst") alpha + (1-alpha)*(1:N)/N else alpha*(1:N)/N # N-vector of prob. in *increasing* order
+    p <- if(method=="worst") alpha + (1-alpha)*1:N/N else alpha*1:N/N # N-vector of prob. in *increasing* order
     X.up <- sapply(qF, function(qF) qF(p))
     ## adjust those that are Inf (for method="worst")
     ## use alpha+(1-alpha)*(N-1+N)/(2*N) = alpha+(1-alpha)*(1-1/(2*N)) instead of 1 quantile
@@ -650,10 +614,9 @@ RA <- function(alpha, qF, N, abstol=0, max.ra=Inf,
     ## randomly permute each column of \overline{X}^\alpha and
     ## repeat oppositely ordering \overline{X}^\alpha until there is only an
     ## abstol change in the min (method="worst") or max (method="best") row sum
-    ## or until we reached max.ra number of column rearrangements
-    res.up <- rearrange(X.up, tol=abstol, tol.type="absolute",
-                        max.ra=max.ra, method=method,
-                        sample=sample, is.sorted=TRUE)
+    ## or until we reached maxiter number of iterations
+    res.up <- rearrange(X.up, tol=abstol, tol.type="absolute", maxiter=maxiter,
+                        method=method, sample=sample, is.sorted=TRUE)
 
     ## Return
     optim.fun <- if(method=="worst") min else max
@@ -661,25 +624,27 @@ RA <- function(alpha, qF, N, abstol=0, max.ra=Inf,
          rel.ra.gap=abs((res.up$bound-res.low$bound)/res.up$bound), # relative RA gap
          ind.abs.tol=c(low=res.low$tol, up=res.up$tol), # individual absolute tolerances
          converged=c(low=res.low$converged, up=res.up$converged), # converged?
-         num.ra=c(low=length(res.low$m.row.sums), up=length(res.up$m.row.sums)), # number of considered column rearrangements (low, up)
-         m.row.sums=list(low=res.low$m.row.sum, up=res.up$m.row.sums), # optimal row sums (low, up)
+         num.iter=c(low=ncol(res.low$row.sums), up=ncol(res.up$row.sums)), # number of iterations (low, up)
+         m.row.sums=list(low=apply(res.low$row.sums, 2, optim.fun),
+                         up=apply(res.up$row.sums, 2, optim.fun)), # optimal row sums (low, up)
+         row.sums=list(low=res.low$row.sums, up=res.up$row.sums), # row sums (low, up)
          X=list(low=X.low, up=X.up), # input matrices X (low, up)
          X.rearranged=list(low=res.low$X.rearranged, up=res.up$X.rearranged)) # rearranged Xs (low, up)
 }
 
 ##' @title Computing lower/upper bounds for the worst VaR with the ARA
-##' @param alpha Confidence level
+##' @param alpha confidence level
 ##' @param qF d-list of marginal quantile functions
-##' @param N.exp Vector of exponents of 2 used as discretization points
+##' @param N.exp vector of exponents of 2 used as discretization points
 ##' @param reltol 2-vector of relative convergence tolerances
 ##'        for determining the individual relative tolerance (i.e., the relative
 ##'        tolerance in the minimal/maximal row sum for each of the bounds) and
 ##'        the joint relative tolerance (i.e., the relative
 ##'        tolerance between the computed lower and upper bounds).
-##' @param max.ra Maximal number of column rearrangements per N
-##' @param method Character indicating which VaR is approximated (worst/best)
-##' @param sample Logical indicating whether each column of the two working
-##'        matrices is randomly permuted before the rearrangements begin
+##' @param maxiter maximal number of iterations per N
+##' @param method character indicating which VaR is approximated (worst/best)
+##' @param sample logical indicating whether each column of the two working
+##'        matrices are sampled before the iteration begins
 ##' @return List containing the
 ##'          1) Computed lower and upper bound for (worst or best) VaR
 ##'          2) The relative rearrangement gap
@@ -689,25 +654,23 @@ RA <- function(alpha, qF, N, abstol=0, max.ra=Inf,
 ##'          4) 3-vector of logicals indicating whether the individual bounds and
 ##'             the two bounds jointly reached the desired tolerances (=> convergence)
 ##'          5) The number of discretization points used
-##'          6) Number of columns considered for rearrangement
+##'          6) Number of iterations through the matrix columns used
 ##'          7) Vectors of minimal [for worst VaR] or maximal [for best VaR] row sums
-##'             after each considered column rearrangement
-##'          8) List of (N, d) input matrices X (for each bound)
-##'          9) List of rearranged Xs (for each bound)
+##'             (for each bound)
+##'          8) List of (N, .)-matrices of row sums (one column for each iteration;
+##'             for each bound)
+##'          9) List of (N, d) input matrices X (for each bound)
+##'         10) List of rearranged Xs (for each bound)
 ##' @author Marius Hofert
-ARA <- function(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0, 0.01),
-                max.ra=10*length(qF), method=c("worst", "best"), sample=TRUE)
+ARA <- function(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0.001, 0.01),
+                maxiter=12, method=c("worst", "best"), sample=TRUE)
 {
     ## Checks and Step 1 (get N, reltol)
-    lreltol <- length(reltol)
-    stopifnot(0 < alpha, alpha < 1, lreltol==1 || lreltol==2, reltol >= 0,
-              length(N.exp) >= 1, N.exp >= 1, max.ra >= 1, is.logical(sample))
+    stopifnot(0 < alpha, alpha < 1, length(reltol) == 2,
+              is.null(reltol[1]) || reltol[1] >= 0, reltol[2] >= 0,
+              length(N.exp) >= 1, N.exp >= 1, maxiter >= 1, is.logical(sample))
     method <- match.arg(method)
     stopifnot(is.list(qF), sapply(qF, is.function), (d <- length(qF)) >= 2)
-
-    ## Determine tolerances
-    itol <- if(lreltol == 2) reltol[1] else NULL # individual tolerance
-    jtol <- if(lreltol == 2) reltol[2] else reltol[1] # joint tolerance
 
     ## Loop over N
     for(N in 2^N.exp) {
@@ -715,7 +678,7 @@ ARA <- function(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0, 0.01),
         ## Compute lower bound
 
         ## Step 2 (build \underline{X}^\alpha)
-        p <- if(method=="worst") alpha + (1-alpha)*(0:(N-1))/N else alpha*(0:(N-1))/N # N-vector of prob. in *increasing* order
+        p <- if(method=="worst") alpha + (1-alpha)*0:(N-1)/N else alpha*0:(N-1)/N # N-vector of prob. in *increasing* order
         X.low <- sapply(qF, function(qF) qF(p))
         ## adjust those that are -Inf (for method="best")
         ## use alpha*((0+1)/2 / N) = alpha/(2N) instead of 0 quantile
@@ -726,16 +689,15 @@ ARA <- function(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0, 0.01),
         ## Steps 3--7 (determine \underline{X}^*)
         ## randomly permute each column of \underline{X}^\alpha and
         ## repeat oppositely ordering \underline{X}^\alpha until there is only an
-        ## itol change in the min (method="worst") or max (method="best") row sum
-        ## or until we reached max.ra number of column rearrangements
-        res.low <- rearrange(X.low, tol=itol, tol.type="relative",
-                             max.ra=max.ra, method=method,
-                             sample=sample, is.sorted=TRUE)
+        ## reltol[1] change in the min (method="worst") or max (method="best") row sum
+        ## or until we reached maxiter number of iterations
+        res.low <- rearrange(X.low, tol=reltol[1], tol.type="relative",
+                             maxiter=maxiter, method=method, sample=sample, is.sorted=TRUE)
 
         ## Compute upper bound
 
         ## Step 2 (build \overline{X}^\alpha)
-        p <- if(method=="worst") alpha + (1-alpha)*(1:N)/N else alpha*(1:N)/N # N-vector of prob. in *increasing* order
+        p <- if(method=="worst") alpha + (1-alpha)*1:N/N else alpha*1:N/N # N-vector of prob. in *increasing* order
         X.up <- sapply(qF, function(qF) qF(p))
         ## adjust those that are Inf (for method="worst")
         ## use alpha+(1-alpha)*(N-1+N)/(2*N) = alpha+(1-alpha)*(1-1/(2*N)) instead of 1 quantile
@@ -746,15 +708,14 @@ ARA <- function(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0, 0.01),
         ## Step 3--7 (determine \overline{X}^*)
         ## randomly permute each column of \overline{X}^\alpha and
         ## repeat oppositely ordering \overline{X}^\alpha until there is only an
-        ## itol change in the min (method="worst") or max (method="best") row sum
-        ## or until we reached max.ra number of column rearrangements
-        res.up <- rearrange(X.up, tol=itol, tol.type="relative",
-                            max.ra=max.ra, method=method,
-                            sample=sample, is.sorted=TRUE)
+        ## reltol[1] change in the min (method="worst") or max (method="best") row sum
+        ## or until we reached maxiter number of iterations
+        res.up <- rearrange(X.up, tol=reltol[1], tol.type="relative",
+                            maxiter=maxiter, method=method, sample=sample, is.sorted=TRUE)
 
         ## Determine (individual and joint) convergence
         joint.tol <- abs((res.low$bound-res.up$bound)/res.up$bound)
-        joint.tol.reached <- joint.tol <= jtol
+        joint.tol.reached <- joint.tol <= reltol[2]
         if(res.low$converged && res.up$converged && joint.tol.reached) break
 
     }
@@ -766,9 +727,10 @@ ARA <- function(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0, 0.01),
          rel.tol=c(low=res.low$tol, up=res.up$tol, joint=joint.tol), # individual and joint relative tolerances
          converged=c(low=res.low$converged, up=res.up$converged, joint=joint.tol.reached), # converged?
          N.used=N, # number of discretization points used
-         num.ra=c(low=length(res.low$m.row.sums), up=length(res.up$m.row.sums)), # number of considered column rearrangements (low, up)
-         m.row.sums=list(low=res.low$m.row.sums,
-                         up=res.up$m.row.sums), # optimal row sums (low, up) for the N used
+         num.iter=c(low=ncol(res.low$row.sums), up=ncol(res.up$row.sums)), # # of iterations (low, up) over all cols
+         m.row.sums=list(low=apply(res.low$row.sums, 2, optim.fun),
+                         up=apply(res.up$row.sums, 2, optim.fun)), # optimal row sums (low, up) after each iteration over all cols (for the N used)
+         row.sums=list(low=res.low$row.sums, up=res.up$row.sums), # row sums (low, up) after each iteration over all cols (for the N used)
          X=list(low=X.low, up=X.up), # input matrices X (low, up)
          X.rearranged=list(low=res.low$X.rearranged, up=res.up$X.rearranged)) # rearranged Xs (low, up)
 }
