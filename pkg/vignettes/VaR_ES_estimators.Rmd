@@ -11,7 +11,7 @@ require(mvtnorm) # see http://dirk.eddelbuettel.com/blog/2012/08/05/ on its impo
 require(QRM) # for fit.mst(), fit.GPD()
 ```
 
-## 1) Working with the (BMW, Siemens) data
+## 1 Working with the (BMW, Siemens) data
 
 First, we download the data.
 ```{r}
@@ -60,7 +60,7 @@ plot(X, xlim=ran, ylim=ran, main="Risk-factor changes", cex=0.2)
 ```
 
 
-## 2) Implement (and document) some auxiliary functions
+## 2 Implement (and document) some auxiliary functions
 
 ```{r}
 ##' @title Compute the Loss Operator
@@ -200,7 +200,7 @@ risk_measure <- function(S, lambda, alpha,
 ```
 
 
-## 3) Compute VaR and ES for the different methods
+## 3 Compute VaR and ES for the different methods
 
 Specify a setup.
 ```{r}
@@ -250,7 +250,7 @@ qqline(y=excess., distribution=qF)
 ```
 
 
-## 4) Graphical analysis
+## 4 Graphical analysis
 
 Compute historical losses (for creating a histogram); see `risk.measure()`.
 ```{r}

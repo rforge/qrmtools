@@ -29,6 +29,7 @@ legend("topleft", bty="n", lty=rep(1,length(theta)), col=cols,
        legend=as.expression(lapply(1:length(theta),
        function(k) substitute(theta==k, list(k=theta[k])))))
 
+
 ## For debugging and bug-fixing purposes
 if(FALSE) {
     ## Systematically search for numerical issues
@@ -42,6 +43,7 @@ if(FALSE) {
     }
 
     ## Problem 1): d=1002, theta=10 (h2 not of opposite sign at endpoints)
+    ## h not of opposite signs at interval endpoints
 
     d <- 1002
     th <- 10
@@ -64,19 +66,20 @@ if(FALSE) {
     (interval <- c(low, up))
 
     ## Internal auxiliary function to find root of
-    h2 <- if(th == 1) {
+    h. <- if(th == 1) {
         function(x) x^2 + x*(-d*log(x)+d-2)-(d-1)
     } else {
         function(x)
         (d/(1-th)-1)*x^(-1/th + 1) - (d-1)*x^(-1/th) + x - (d*th/(1-th) + 1)
     }
 
-    ## Evaluate the auxiliary function h2 at the endpoints to see what fails
-    h2(interval[1]) # should be negative
-    h2(interval[2]) # should be positive => fails => adjust in this case
+    ## Evaluate the auxiliary function h. at the endpoints to see what fails
+    h.(interval[1]) # should be negative
+    h.(interval[2]) # should be positive => fails => adjust in this case
 
 
     ## Problem 2): d=500, theta=20 (worst VaR = Inf)
+    ## => '1-c = 1' cancellation problem
 
     d <- 500
     th <- 20
@@ -98,29 +101,19 @@ if(FALSE) {
     }
     (interval <- c(low, up))
 
-    ## Internal auxiliary function to find root of
-    h <- if(th == 1) {
-        function(x) x^2 + x*(-d*log(x)+d-2)-(d-1)
-    } else {
-        function(x)
-        (d/(1-th)-1)*x^(-1/th + 1) - (d-1)*x^(-1/th) + x - (d*th/(1-th) + 1)
-        ## function(x)
-        ## exp(x) - (d/(th-1)+1)*exp((1-1/th)*x) - (d-1)*exp(-x/th) +  (d*th/(th-1) - 1)
-    }
+    ## Evaluate the auxiliary function h. at the endpoints to see what fails
+    h.(interval[1]) # should be negative
+    h.(interval[2]) # should be positive => fine
 
-    ## Evaluate the auxiliary function h2 at the endpoints to see what fails
-    h(interval[1]) # should be negative
-    h(interval[2]) # should be positive => fine
-
-    ## Plot h2 there
+    ## Plot h. there
     x <- seq(interval[1], interval[2], length.out=256)
-    y <- h(x)
+    y <- h.(x)
     plot(x, y, type="l")
 
     ## Root-finding on 'interval'
     tol <- .Machine$double.eps^0.25
     (x <- uniroot(h, interval=interval, tol=tol)$root) # => right end point of interval!
-    ## => h(there) >> 0!
+    ## => h.(there) >> 0! (not a big problem as h is 'steep')
     x <- exp(x)
     c <- (1-alpha)/(x+d-1) # convert back to c-scale
 

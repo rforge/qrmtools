@@ -289,7 +289,7 @@ VaR_bounds_hom <- function(alpha, d, method=c("Wang", "Wang.Par", "dual"),
                ## Root-finding on 'interval'
                c. <- uniroot(function(c) Wang_h(c, alpha=alpha, d=d, ...),
                              interval=interval, f.lower=h.low, f.upper=h.up, tol=tol)$root
-               d * Wang_h_aux(c., alpha=alpha, d=d, qF=qF)
+               d * Wang_h_aux(c., alpha=alpha, d=d, ...)
 
            },
            "Wang.Par" = {
@@ -338,8 +338,8 @@ VaR_bounds_hom <- function(alpha, d, method=c("Wang", "Wang.Par", "dual"),
                    interval <- (1-alpha)/rev(interval) - (d-1)
                }
 
-               ## Define objective function (\tilde{\tilde{h}})
-               h <- if(th == 1) {
+               ## Define objective function (transformed 'h')
+               h. <- if(th == 1) {
                    function(x) x^2 + x*(-d*log(x)+d-2)-(d-1)
                } else {
                    function(x)
@@ -347,7 +347,7 @@ VaR_bounds_hom <- function(alpha, d, method=c("Wang", "Wang.Par", "dual"),
                }
 
                ## Root-finding on 'interval'
-               x <- uniroot(h, interval=interval, tol=tol)$root
+               x <- uniroot(h., interval=interval, tol=tol)$root
                c <- (1-alpha)/(x+d-1) # convert back to c-scale
                d * Wang_h_aux(c, alpha=alpha, d=d, method="Wang.Par", theta=th)
 
