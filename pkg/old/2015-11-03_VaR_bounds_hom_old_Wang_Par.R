@@ -1,3 +1,87 @@
+##' @title Conditional expectation (\bar{I}(a, b)) for computing best/worst VaR as
+##'        in Embrechts, Puccetti, Rueschendorf, Wang, Beleraj (2014, Prop. 3.1)
+##' @param a lower evaluation point
+##' @param b upper evaluation point
+##' @param alpha confidence level alpha
+##' @param d dimension d
+##' @param method character string giving the method
+##'        generic = numerical integration; Wang.Par = Pareto distibution (explicit)
+##' @param ... ellipsis argument passed to integrate()
+##'        => must contain qF for "generic" and "theta" for "Wang.Par"
+##' @return \bar{I}(a, b) = 1/(b-a)\int_a^b qF(y) dy =(subs) IE[L|L\in [qF(a), aF(b)]]
+##' @author Marius Hofert
+Wang_Ibar <- function(a, b, alpha, d, method=c("generic", "Wang.Par"), ...)
+{
+    stopifnot(length(a) == length(b), 0 <= a, a < b, b <= 1)
+    ddd <- list(...)
+    method <- match.arg(method)
+    switch(method,
+           "generic" = {
+               stopifnot(length(a) == 1, length(b) == 1) # not vectorized (due to integrate())
+               qF <- ddd$qF # grab out provided 'qF()'
+               ddd$qF <- NULL # rm qF from '...'
+               h <- function(...)
+                   integrate(qF, lower=a, upper=b, ...)$value / (b-a)
+               do.call(h, ddd) # call integrate() on the remaining arguments in '...'
+           },
+           "Wang.Par" = { # vectorized
+               th <- ddd$theta # use provided 'theta'
+               if(th == 1) log((1-a)/(1-b))/(b-a) - 1
+               else (th/(1-th))*((1-b)^(1-1/th)-(1-a)^(1-1/th))/(b-a) - 1
+           },
+           stop("Wrong method"))
+}
+
+##' @title Right-hand side term in the objective function for computing the worst VaR
+##'        as in Embrechts, Puccetti, Rueschendorf, Wang, Beleraj (2014, Prop. 3.1)
+##' @param c evaluation point
+##' @param alpha confidence level alpha
+##' @param d dimension d
+##' @param method character string giving the method
+##'        generic = numerical integration; Wang.Par = Pareto distibution
+##' @param ... ellipsis argument containing theta (for method="Wang.Par")
+##'        or qF (for method="generic")
+##' @return Right-hand side term in Prop. 3.1
+##' @author Marius Hofert
+##' @note for the correct 'c', this is the conditional expectation
+Wang_h_aux <- function(c, alpha, d, method=c("generic", "Wang.Par"), ...)
+{
+    ddd <- list(...)
+    method <- match.arg(method)
+    qF <- if(method=="Wang.Par") function(y) qPar(y, theta=ddd$theta) else ddd$qF
+    a <- alpha + (d-1)*c
+    b <- 1-c
+    qF(a)*(d-1)/d + qF(b)/d
+}
+
+##' @title Objective function for computing the worst VaR as in
+##'        Embrechts, Puccetti, Rueschendorf, Wang, Beleraj (2014, Prop. 3.1)
+##' @param c evaluation point
+##' @param alpha confidence level alpha
+##' @param d dimension d
+##' @param method character string giving the method
+##' @param ... ellipsis argument passed to Wang_h_aux() and Wang_Ibar()
+##' @return objective function for computing the worst VaR
+##' @author Marius Hofert
+Wang_h <- function(c, alpha, d, method=c("generic", "Wang.Par"), ...)
+{
+    stopifnot(0 <= c, c <= (1-alpha)/d) # sanity check (otherwise b > a)
+    method <- match.arg(method)
+    ddd <- list(...)
+    ## Properly deal with limit c=(1-alpha)/d
+    Ib <- if(c == (1-alpha)/d) {
+        if(method=="generic") { # qF() needs to be provided
+            ddd$qF((d-1+alpha)/d)
+        } else { # theta needs to be provided
+            qPar((d-1+alpha)/d, theta=ddd$theta)
+        }
+    } else {
+        Wang_Ibar(a=alpha+(d-1)*c, b=1-c, alpha=alpha, d=d, method=method, ...)
+    }
+    ## Return
+    Ib - Wang_h_aux(c, alpha=alpha, d=d, method=method, ...)
+}
+
 ## This has various flaws:
 ## - It needs a smaller default tolerance for uniroot() to work properly
 ## - For large d and both small and large thetas, the *theoretically* correct

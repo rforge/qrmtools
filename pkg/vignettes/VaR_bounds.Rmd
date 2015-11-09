@@ -10,6 +10,7 @@ vignette: >
 require(qrmtools)
 require(QRM)
 require(copula)
+require(combinat)
 doPDF <- FALSE
 ```
 
@@ -144,7 +145,7 @@ Check the objective function $h(c)$ (`Wang_h()` without numerical integration)
 ```{r}
 d <- 8 # dimension
 alpha <- 0.99 # confidence level
-theta <- c(0.1, 0.5, 1, 5, 10, 20) # theta values
+theta <- c(0.1, 0.5, 1, 5, 10, 50) # theta values
 palette <- colorRampPalette(c("darkorange2", "maroon3", "royalblue3", "black"), space="Lab")
 cols <- palette(length(theta))
 c <- seq(0, (1-alpha)/d, length.out=2^13+1)
@@ -183,7 +184,7 @@ plot Value-at-Risk as a function in $\alpha$.
 ```{r}
 d <- 8 # dimension
 alpha <- 1-2^seq(-0.001, -10, length.out=128) # confidence levels; concentrated near 1
-theta <- c(0.1, 0.5, 1, 5, 10, 20) # theta values
+theta <- c(0.1, 0.5, 1, 5, 10, 50) # theta values
 VaR <- simplify2array(sapply(alpha, function(a)
     sapply(theta, function(th) VaR_bounds_hom(a, d=d, method="Wang.Par",
                                               theta=th)), simplify=FALSE))
@@ -213,7 +214,7 @@ Now consider best/worst Value-at-Risk as a function in $d$.
 ```{r}
 d <- seq(2, 1002, by=20) # dimensions
 alpha <- 0.99 # confidence level
-theta <- c(0.1, 0.5, 1, 5, 10, 20) # theta values
+theta <- c(0.1, 0.5, 1, 5, 10, 50) # theta values
 VaR <- simplify2array(sapply(d, function(d.)
     sapply(theta, function(th) VaR_bounds_hom(alpha, d=d., method="Wang.Par",
                                               theta=th)), simplify=FALSE))
@@ -242,50 +243,113 @@ if(doPDF) dev.off()
 
 ### 1.4 Compare crude_VaR_bounds(), "Wang" (numerical), "Wang.Par", "dual", RA()
 
-Now consider a graphical comparison between the various methods. To stress what
-(numerical improvements) went into the implementation, let us include the
-following straightforward implementation of Wang's approach for the Pareto
-case in the comparison.
-
+Now consider a graphical comparison between the various methods. To stress the
+numerical challenges, let us include the
+following implementation of Wang's approach (with various switches to
+highlight the individual numerical challenges)
+for the Pareto case.
 ```{r}
-worst_VaR_hom_Par <- function(alpha, d, theta, ...)
+## Initial interval for the root finding in case of worst VaR
+init_interval <- function(alpha, d, theta, trafo=FALSE, adjusted=FALSE)
+{
+    if(trafo) {
+        low <- if(theta == 1) {
+            d/2
+        } else {
+            (d-1)*(1+theta)/(d-1+theta)
+        }
+        up <- if(theta > 1) {
+            r <- (1+d/(theta-1))^theta
+            if(adjusted) 2*r else r
+        } else if(theta == 1) {
+            e <- exp(1)
+            (d+1)^(e/(e-1))
+        } else {
+            d*theta/(1-theta)+1
+        }
+        c(low, up)
+    } else {
+        low <- if(theta > 1) {
+            r <- (1-alpha)/((d/(theta-1)+1)^theta + d-1)
+            if(adjusted) r/2 else r
+        } else if(theta == 1) {
+            e <- exp(1)
+            (1-alpha)/((d+1)^(e/(e-1))+d-1)
+        } else {
+            r <- (1-theta)*(1-alpha)/d
+            if(adjusted) r/2 else r
+        }
+        up <- if(theta == 1) (1-alpha)/(3*d/2-1)
+              else (1-alpha)*(d-1+theta)/((d-1)*(2*theta+d))
+        c(low, up)
+    }
+}
+
+## Function to compute the best/worst Value-at-Risk in the homogeneous case with
+## Par(theta) margins
+VaR_hom_Par <- function(alpha, d, theta, method=c("worst", "best"),
+                        trafo=FALSE, interval=NULL, adjusted=FALSE,
+                        avoid.cancellation=FALSE, ...)
 {
     ## Pareto quantile function
     qF <- function(p) (1 - p)^(-1/theta) - 1
 
-    ## Initial interval
-    low <- if(theta > 1) {
-        (1-alpha)/((d/(theta-1)+1)^theta + d-1)
-    } else if(theta == 1) {
-        e <- exp(1)
-        (1-alpha)/((d+1)^(e/(e-1))+d-1)
-    } else {
-        (1-theta)*(1-alpha)/d
+    ## Compute \bar{I}
+    Ibar <- function(a, b, alpha, d, theta)
+    {
+        if(theta == 1) log((1-a)/(1-b))/(b-a) - 1
+        else (theta/(1-theta))*((1-b)^(1-1/theta)-(1-a)^(1-1/theta))/(b-a) - 1
     }
-    up <- if(theta == 1) (1-alpha)/(3*d/2-1)
-          else (1-alpha)*(d-1+theta)/((d-1)*(2*theta+d))
-    interval <- c(low, up)
 
-    ## Auxiliary function h
-    h <- function(c) {
-        ## Compute \bar{I}
-        Ibar <- if(c == (1-alpha)/d) { # Properly deal with limit c=(1-alpha)/d
-            ((1-alpha)/d)^(-1/theta) - 1
+    ## Main
+    method <- match.arg(method)
+    switch(method,
+    "worst" = {
+
+        ## Distinguish according to whether we optimize the auxiliary function
+        ## on a transformed scale
+        h <- if(trafo) {
+            ## Auxiliary function to find the root of on (1, Inf)
+            if(theta == 1) {
+                function(x) x^2 + x*(-d*log(x)+d-2)-(d-1)
+            } else {
+                function(x)
+                (d/(1-theta)-1)*x^(-1/theta + 1) - (d-1)*x^(-1/theta) + x - (d*theta/(1-theta) + 1)
+            }
         } else {
-            t1 <- (1-alpha)/c-(d-1)
-            t2 <- 1-alpha-d*c
-            if(theta == 1) log(t1)/t2 - 1
-            else (theta/(1-theta))*c^(1-1/theta)*(1-t1^(1-1/theta))/t2 - 1
+            ## Auxiliary function to find the root of on (0, (1-alpha)/d)
+            function(c) {
+                a <- alpha+(d-1)*c
+                b <- 1-c
+                Ib <- if(c == (1-alpha)/d) { # Properly deal with limit c=(1-alpha)/d
+                    ((1-alpha)/d)^(-1/theta) - 1
+                } else {
+                    Ibar(a=a, b=b, alpha=alpha, d=d, theta=theta)
+                }
+                Ib - (qF(a)*(d-1)/d + qF(b)/d)
+            }
         }
-        ## Compute h(c)
-        Ibar - (qF(alpha + (d-1)*c)*(d-1)/d + qF(1-c)/d)
-    }
 
-    ## Root-finding on 'interval'
-    c. <- uniroot(h, interval=interval, ...)$root
-
-    ## Computing worst VaR
-    qF(alpha + (d-1)*c.)*(d-1) + qF(1-c.)
+        ## Do the optimization
+        if(is.null(interval)) interval <- init_interval(alpha, d, theta,
+                                                        trafo=trafo, adjusted=adjusted)
+        c <- uniroot(h, interval=interval, ...)$root
+        if(trafo) # convert value back to the right scale (c-scale)
+            c <- (1-alpha)/(c+d-1)
+        if(avoid.cancellation) {
+            t1 <- (1-alpha)/c-(d-1)
+            d * ((c^(-1/theta)/d) * ((d-1)*t1^(-1/theta) + 1) - 1) # = qF(a)*(d-1) + qF(b)
+        } else {
+            a <- alpha+(d-1)*c
+            b <- 1-c
+            qF(a)*(d-1) + qF(b)
+        }
+    },
+    "best" = {
+        max((d-1)*0 + (1-alpha)^(-1/theta)-1, # Note: Typo in Wang, Peng, Yang (2013)
+            d*Ibar(a=0, b=alpha, alpha=alpha, d=d, theta))
+    },
+    stop("Wrong 'method'"))
 }
 ```
 
@@ -294,9 +358,7 @@ For the comparison, consider the following setup.
 alpha <- 0.99 # confidence level
 d <- 8 # dimension
 n.th <- 32 # number of thetas
-th.low <- 0.2
-th.up <- 5
-th <- seq(th.low, th.up, length.out=n.th) # thetas
+th <- seq(0.2, 5, length.out=n.th) # thetas
 qFs <- lapply(th, function(th.) {th.; function(p) qPar(p, theta=th.)}) # n.th-vector of Pareto quantile functions
 pFs <- lapply(th, function(th.) {th.; function(q) pPar(q, theta=th.)}) # n.th-vector of Pareto dfs
 N <- 1e4 # number of discretization points for RA(); N=1e5 does not improve the situation
@@ -304,18 +366,20 @@ N <- 1e4 # number of discretization points for RA(); N=1e5 does not improve the 
 
 Now compute the values and plot them.
 ```{r, results="hide", warning=FALSE}
-res <- matrix(, nrow=n.th, ncol=6)
-colnames(res) <- c("Wang", "simple", "Wang.Par",
+res <- matrix(, nrow=n.th, ncol=7)
+colnames(res) <- c("Wang", "straightforward", "transformed", "Wang.Par",
                    "dual", "RA.low", "RA.up")
 pb <- txtProgressBar(max=n.th, style=if(isatty(stdout())) 3 else 1) # setup progress bar
 on.exit(close(pb)) # on exit, close progress bar
 for(i in seq_len(n.th)) {
-    ## "Wang" (numerical integration with smaller uniroot() tolerance; numerically critical)
-    ## => catch "the integral is probably divergent" errors
+    ## "Wang" (numerical integration with smaller uniroot() tolerance; still
+    ## numerically critical -- we catch "the integral is probably divergent"-errors here)
     Wang.num.res <- tryCatch(VaR_bounds_hom(alpha, d=d, qF=qFs[[i]])[2], error=function(e) e)
     res[i,"Wang"] <- if(is(Wang.num.res, "simpleError")) NA else Wang.num.res
-    ## Our simple implementation
-    res[i,"simple"] <- worst_VaR_hom_Par(alpha, d=d, theta=th[i])
+    ## Our straightforward implementation
+    res[i,"straightforward"] <- VaR_hom_Par(alpha, d=d, theta=th[i])
+    ## Our straightforward implementation based on the transformed auxiliary function
+    res[i,"transformed"] <- VaR_hom_Par(alpha, d=d, theta=th[i], trafo=TRUE)
     ## "Wang.Par" (internally using a transformed objective function and
     ## avoids cancellation)
     res[i,"Wang.Par"] <- VaR_bounds_hom(alpha, d=d, method="Wang.Par", theta=th[i])[2]
@@ -325,7 +389,7 @@ for(i in seq_len(n.th)) {
                                     pF=pFs[[i]])[2]
     ## Rearrangement Algorithm
     set.seed(271) # use the same random permutation for each theta
-    RA. <- RA(alpha, qF=rep(qFs[i], d), N=N, abstol=0.0001)
+    RA. <- RA(alpha, qF=rep(qFs[i], d), N=N)
     res[i,"RA.low"] <- RA.$bounds[1]
     res[i,"RA.up"]  <- RA.$bounds[2]
     ## Progress
@@ -335,37 +399,139 @@ for(i in seq_len(n.th)) {
 
 ```{r, fig.width=10, fig.height=7}
 res. <- res/res[,"dual"] # standardize
-if(doPDF) {
-    file <- paste0("fig_worst_VaR_",alpha,"_hom_comparison_d=",d,"_N=",N,".pdf")
-    pdf(file=(file), width=6, height=6)
-}
-plot(th, res.[,"Wang"], type="l", ylim=range(res., na.rm=TRUE),
+ylim <- range(res., na.rm=TRUE)
+if(doPDF)
+    pdf(file=(file <- paste0("fig_worst_VaR_",alpha,"_hom_comparison_d=",
+                             d,"_N=",N,".pdf")), width=6, height=6)
+plot(th, res.[,"Wang"], type="l", ylim=ylim,
      xlab=expression(theta), ylab=substitute("Standardized (by dual method) worst"~
      VaR[0.99]~"for d ="~d.~"Par("*theta*") margins", list(d.=d)),
      col="gray60", lty=2, lwd=5.5) # Wang (with numerical integration)
-lines(th, res.[,"simple"], col="maroon3", lty=1, lwd=1) # not as bad as without initial interval [c_l,c_u], still...
+lines(th, res.[,"straightforward"], col="maroon3", lty=1, lwd=1) # still bad (although we have an initial interval)
+lines(th, res.[,"transformed"], col="black", lty=1, lwd=1) # okay
 lines(th, res.[,"Wang.Par"], col="royalblue3", lty=2, lwd=2.5) # Wang Pareto (wo num. integration)
 lines(th, res.[,"RA.low"], col="black", lty=3, lwd=1)
 lines(th, res.[,"RA.up"],  col="black", lty=2, lwd=1)
 legend("topright", bty="n",
-       col=c("gray60", "maroon3", "royalblue3", "black", "black"),
-       lty=c(2,1,2,3,2), lwd=c(5.5,1,2.5,1,1),
+       col=c("gray60", "maroon3", "black", "royalblue3", "black", "black"),
+       lty=c(2,1,1,2,3,2), lwd=c(5.5,1,1,2.5,1,1),
        legend=c("Wang (num. int.)", "Wang Pareto (straightforward)",
-                "Wang Pareto (wo num. int.)",
+                "Wang Pareto (transformed)", "Wang Pareto (wo num. int.)",
                 "Lower RA bound", "Upper RA bound"))
 if(doPDF) dev.off()
 ```
 
-So what goes wrong with our straightforward implementation? Three
-things... Let's start with the obvious.
+So what goes wrong with our straightforward implementation?
+Let's start with the obvious. As we can infer from the x-axis scale
+in the plots of $h$ above, `uniroot()`'s default tolerance
+`tol=.Machine$double.eps^0.25`($\approx 0.0001220703$ here) is too large to
+determine the root accurately. In fact, if we choose a smaller `tol`,
+we have no problem.
 ```{r}
-
+tol <- 2.2204e-16
+wVaR.tol <- sapply(th, function(th.)
+    VaR_hom_Par(alpha=alpha, d=d, theta=th., tol=tol))
+plot(th, wVaR.tol/res[,"dual"], type="l", ylim=ylim,
+     xlab=expression(theta), ylab="Wang's approach (straightforward) but with smaller tol for uniroot()")
 ```
 
+So is this the solution to all the problems? No. Consider the setup as before,
+where $d$ is running (we catch the appearing errors here).
+```{r}
+alpha <- 0.99 # confidence level
+d <- seq(2, 1002, by=20) # dimensions
+theta <- c(0.1, 0.5, 1, 5, 10, 50) # theta values
+VaR <- simplify2array(sapply(d, function(d.)
+    sapply(theta, function(th) {
+        res <- tryCatch(VaR_hom_Par(alpha, d=d., theta=th, tol=tol),
+                        error=function(e) e)
+        if(is(res, "simpleError")) { warning(conditionMessage(res)); NA }
+        else res
+    }), simplify=FALSE))
+```
 
-TODO: explain the 'default tol' problem and the two problems that appeared in BUG.R afterwards.
-TODO: put script df <- of <- rearranged <- matrices.R in here as well to see
-that the algorithm terminates (and describe what would happen otherwise...)
+By using `warnings()` we see that we cannot even determine the root in all cases
+as the function values are *numerically* not of opposite sign at the endpoints
+of the *theoretically correct* initial interval containing the root. We can
+solve this (non-elegantly) by simply adjusting the lower bound.
+```{r}
+VaR <- simplify2array(sapply(d, function(d.)
+    sapply(theta, function(th) VaR_hom_Par(alpha, d=d., theta=th, tol=tol, adjusted=TRUE)),
+    simplify=FALSE))
+```
+
+So we see that we need a smaller tolerance and to extend the initial interval in
+order to get reasonable results.
+
+What about using the transformed auxiliary function directly?
+Is this a numerically more stable approach?
+```{r}
+d <- 500
+th <- 20
+VaR_hom_Par(alpha, d=d, theta=th, trafo=TRUE) # Inf
+```
+
+As we can see, there is a problem as well. To understand it, consider
+the following minimized version of `VaR_hom_Par()` (for computing worst
+Value-at-Risk for $\theta\neq 1$ only).
+```{r}
+h <- function(x)
+     (d/(1-th)-1)*x^(-1/th + 1) - (d-1)*x^(-1/th) + x - (d*th/(1-th) + 1)
+interval <- init_interval(alpha, d, th, trafo=TRUE)
+x <- uniroot(h, interval=interval)$root
+c <- (1-alpha)/(x+d-1) # convert back to c-scale
+stopifnot(c>0)
+a <- alpha+(d-1)*c
+b <- 1-c
+qPar(a, theta=th)*(d-1) + qPar(b, theta=th) # Inf
+stopifnot(b==1) # => b is 1 => qPar(b, theta=th) = Inf
+```
+
+As we can see, $c>0$ is so small that $b=1-c$ is numerically equal to 1 and thus
+the Pareto quantile evaluated as $\infty$. This cancellation can be avoided by
+simplifying the terms (note that `qPar(1-c, theta=th)=c^{-1/th}-1`).
+```{r}
+qPar(a, theta=th)*(d-1) + c^(-1/th)-1
+```
+
+We can apply this to our range of variables as before. Note that
+due to the partly extreme values of $d$ and $\theta$, we also need to
+adjust the range here in order for a root to be found.
+```{r}
+d <- seq(2, 1002, by=20) # dimensions
+theta <- c(0.1, 0.5, 1, 5, 10, 50) # theta values
+VaR. <- simplify2array(sapply(d, function(d.)
+    sapply(theta, function(th) VaR_hom_Par(alpha, d=d., theta=th,
+                                           trafo=TRUE, adjusted=TRUE,
+                                           avoid.cancellation=TRUE)),
+    simplify=FALSE))
+```
+
+We can now compare the values (based on the non-transformed/transformed
+auxiliary function) in a graph.
+```{r}
+ylim <- range(VaR, VaR.)
+if(doPDF)
+    pdf(file=(file <- paste0("fig_worst_VaR_",alpha,"_hom_comparison_num_problems.pdf")),
+        width=6, height=6)
+plot(d, VaR[1,], type="l", ylim=ylim, log="y",
+     xlab=expression(italic(d)), ylab=substitute("Worst"~VaR[a]~"for Par("*theta*
+     ") margins", list(a=alpha)), col=cols[1])
+for(k in 2:length(theta)) lines(d, VaR [k,], col=cols[k])
+for(k in 1:length(theta)) lines(d, VaR.[k,], col=cols[k], lty=2, lwd=2)
+legend("right", bty="n",
+       col=cols, lty=rep(1, length(theta)),
+       legend=as.expression( lapply(1:length(theta), function(k)
+           substitute(theta==th, list(th=theta[k]))) ))
+mtext("Solid line: direct; dashed line: transformed auxiliary function",
+      side=4, line=1, adj=0)
+if(doPDF) dev.off()
+```
+
+We see that the results differ slightly if both $d$ and $\theta$ are large. It
+remains numerically challenging to appropriately compute worst Value-at-Risk in
+this case. However, both of the above approaches work for dimensions even as
+large as $10^5$.
 
 
 ## 2 Inhomogeneous case
@@ -458,7 +624,82 @@ ncol=3)`). It remains an open problem how an *efficient* algorithm can avoid
 such a case.
 
 
-### 2.3 A real data application
+### 2.3 Convergence
+
+Whether `rearrange()` converges or not depends to a large degree on the
+underlying sorting algorithm. We found that *unstable* sorting algorithms such
+as C's `qsort()` lead to `rearrange()` not terminating on certain input matrices.
+One example is the above matrix `B`, for which the 2nd/3rd column are constantly
+swapped after the first column being rearranged since the row sum of all others is
+`(4,4,4)` and termination then totally depends on how ranks are assigned to
+these three equal numbers. The current implementation is also not based on a
+*stable* sorting algorithm but a) is comparably fast and b) terminates on all
+input matrices. To see the latter, consider the following example in which we
+investigate the possible output matrices of `rearrange()` on all input matrices
+(obviously only for $d=3$ due to run time; larger $N$ can be chosen but note
+that the effort is $(N!)^{d-1}$).
+
+```{r}
+### Investigate the probability of certain rearranged matrices to appear #######
+
+##' @title Create a list of all possible input matrices for d=3
+##' @param N The number of discretization points
+##' @param method The method how to create the list
+##' @return A N!^2-list (containing all possible (N,d) input matrices with 1:N in
+##'         the first column)
+##' @author Marius Hofert
+create_mat <- function(N)
+{
+    x_perm <- permn(N) # N!-long list containing all possible permutations of 1:N
+    N. <- factorial(N)
+    lst <- vector("list", length=N.^2)
+    cnt <- 0
+    for (i in 1:N.) { # double 'for' not time critical here
+        for (j in 1:N.){
+            cnt <- cnt+1
+            lst[[cnt]] <- cbind(1:N, x_perm[[i]], x_perm[[j]])
+        }
+    }
+    lst
+}
+
+
+## Main
+N <- 5 # chosen N (<= 6 due to extensive run time)
+system.time(mat  <- create_mat(N)) # create the list of matrices (N!^2-many)
+
+## Rearrange all of them
+N. <- factorial(N)^2
+system.time(mat.ra <- lapply(1:N., function(i) {
+                if(i %% (N./20) == 0) cat(round(100*i/N.),"% done!\n", sep="");
+                rearrange(mat[[i]], tol=NULL, sample=FALSE)$X.rearranged
+            }))
+
+## Go through all of the rearranged matrices, 'uniquify' them and count
+lst <- list(mat.ra[[1]])
+freq <- c(1)
+for(i in 2:length(mat.ra))
+{
+    bool <- sapply(1:length(lst),
+                   function(i) { identical(lst[[i]], mat.ra[[i]]) }) # is mat.ra in lst?
+    if(any(bool)) { # mat.ra has been observed before
+        freq[min(which(bool))] <- freq[min(which(bool))] + 1
+    } else { # mat.ra has not been observed before
+        lst <- c(lst, mat.ra[[i]]) # append it to lst()
+        freq <- c(freq, 1) # append its frequency
+    }
+}
+
+## Result
+lst # final rearranged matrices
+freq/N. # their corresponding probability
+```
+
+As we can see, not only does `rearrange()` terminate on all inputs, it also
+generates the same output matrix for all inputs.
+
+
+### 2.4 A real data application
 
 We now consider the task of computing best and worst Value-at-Risk (VaR) at
 confidence level 99.9% for a real data set. To illustrate the ideas, we simply

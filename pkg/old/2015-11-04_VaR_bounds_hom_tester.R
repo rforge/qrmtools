@@ -1,3 +1,10 @@
+## To use an older version of 'qrmtools', do this:
+## cd ~/Downloads
+## svn co -r91 svn+ssh://mhofert@r-forge.r-project.org/svnroot/qrmtools
+## cd qrmtools
+## R CMD check pkg # then open R
+## require(qrmtools, lib.loc="/Users/mhofert/Downloads/qrmtools/pkg.Rcheck")
+
 require(qrmtools)
 
 ## Setup
@@ -102,23 +109,22 @@ if(FALSE) {
     (interval <- c(low, up))
 
     ## Evaluate the auxiliary function h. at the endpoints to see what fails
-    h.(interval[1]) # should be negative
-    h.(interval[2]) # should be positive => fine
+    ## h.(interval[1]) # should be negative
+    ## h.(interval[2]) # should be positive => fine
 
     ## Plot h. there
-    x <- seq(interval[1], interval[2], length.out=256)
-    y <- h.(x)
-    plot(x, y, type="l")
+    ## x <- seq(interval[1], interval[2], length.out=256)
+    ## y <- h.(x)
+    ## plot(x, y, type="l")
 
     ## Root-finding on 'interval'
     tol <- .Machine$double.eps^0.25
     (x <- uniroot(h, interval=interval, tol=tol)$root) # => right end point of interval!
     ## => h.(there) >> 0! (not a big problem as h is 'steep')
-    x <- exp(x)
-    c <- (1-alpha)/(x+d-1) # convert back to c-scale
-
-    a <- alpha + (d-1)*c
-    b <- 1-c # => problem: is 1
-    qPar(a, theta=th)*(d-1) + qPar(b, theta=th)
-    (d-1)*(1-a)^(-1/th)-d+c^(-1/th) # => works
+    (c <- (1-alpha)/(x+d-1)) # convert back to c-scale; problem: c>0 so small that 1-c == 1
+    (a <- alpha + (d-1)*c)
+    (b <- 1-c)
+    b==1 # problem: is 1 => qPar(b, theta=th) = Inf
+    qPar(a, theta=th)*(d-1) + qPar(b, theta=th) # worst VaR; Inf
+    (d-1)*((1-a)^(-1/th)-1) + c^(-1/th) - 1 # worst VaR; works
 }

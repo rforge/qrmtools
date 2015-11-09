@@ -1,2 +1,2 @@
-- maybe write do.call(cbind()) and .rowSums(do.call(cbind())) as C functions
+- Maybe write do.call(cbind()) and .rowSums(do.call(cbind())) as C functions
   to further speed-up rearrange()
