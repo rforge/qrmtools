@@ -11,6 +11,7 @@ require(qrmtools)
 require(QRM)
 require(copula)
 require(combinat)
+require(sfsmisc)
 doPDF <- FALSE
 ```
 
@@ -21,6 +22,7 @@ all marginal distributions are equal.
 ```{r}
 qF <- function(p, th=2) qPar(p, theta=th) # Pareto quantile function
 pF <- function(q, th=2) pPar(q, theta=th) # Pareto distribution function
+dim <- 8 # variable dimension (we use 8 or 100 here)
 ```
 
 
@@ -102,15 +104,16 @@ plot(c, h.aux, type="l", xlab="c (in initial interval)",
 ```
 
 Check the objective function $h(c)$ (i.e., `Wang_h()` with numerical
-integration) on its domain ($h$ is used to determine the root in the
-open interval $(0,(1-\alpha)/d)$ for computing worst Value-at-Risk).
+integration) on its domain. Note that $h$ is used to determine the root in the
+open interval $(0,(1-\alpha)/d)$ for computing worst Value-at-Risk.
 ```{r}
 h <- sapply(c, function(c.) qrmtools:::Wang_h(c., alpha=alpha, d=d, qF=qF))
 if(doPDF)
     pdf(file=(file <- paste0("fig_worst_VaR_",alpha,"_hom_Wang_h_Par=2_d=",d,"_num.pdf")),
         width=6, height=6)
 plot(c, h, type="l", xlab="c (in initial interval)",
-     ylab=substitute("h(c) for"~~alpha~"= 0.99 and d ="~d.~"Par(2) margins", list(d.=d)))
+     ylab=substitute("h(c) for"~~alpha~"= 0.99 and d ="~d.~"Par(2) margins",
+                     list(d.=d)))
 abline(h=0, lty=2)
 if(doPDF) dev.off()
 ```
@@ -134,16 +137,14 @@ qrmtools:::Wang_h_aux(0, alpha=alpha, d=d, method=method, theta=th) # Inf
 ```
 
 A proper initial interval $[c_l,u_l]$ with $0<c_l<=c_u<(1-\alpha)/d$ (containing
-the root) is thus required.  We have derived this in Hofert et al. (2015,
-"Improved Algorithms for Computing Worst Value-at-Risk: Numerical Challenges and
-the Adaptive Rearrangement Algorithm").
+the root) is thus required. We have derived this in Hofert et al. (2016).
 
 
-#### 1.2.2 Check of $h(c)$ without numerical integration (for a range of $\theta$)
+#### 1.2.2 Check of $h(c)$ *without* numerical integration (for a range of $\theta$)
 
 Check the objective function $h(c)$ (`Wang_h()` without numerical integration)
 ```{r}
-d <- 8 # dimension
+d <- dim # dimension
 alpha <- 0.99 # confidence level
 theta <- c(0.1, 0.5, 1, 5, 10, 50) # theta values
 palette <- colorRampPalette(c("darkorange2", "maroon3", "royalblue3", "black"), space="Lab")
@@ -164,9 +165,10 @@ z[z <= 0] <- NA # > 0 => makes log-scale possible
 if(doPDF)
     pdf(file=(file <- paste0("fig_worst_VaR_",alpha,"_hom_Wang_h_Par_d=",d,".pdf")),
         width=6, height=6)
-plot(NA, xlim=range(c), ylim=range(z, na.rm=TRUE), log="y", xlab="c",
+plot(NA, xlim=range(c), ylim=range(z, na.rm=TRUE), log="y", yaxt="n", xlab="c",
      ylab=substitute("h(c) for"~~alpha~"= 0.99, d ="~d.~"Par("*theta*") margins",
                      list(d.=d)))
+eaxis(2)
 for(k in 1:length(theta))
     lines(c, z[,k], col=cols[k])
 legend("topleft", bty="n", lty=rep(1,length(theta)), col=cols,
@@ -176,13 +178,13 @@ if(doPDF) dev.off()
 ```
 
 
-### 1.3 Compute best/worst VaR_alpha (via "Wang.Par")
+### 1.3 Compute best/worst $\mathrm{VaR}_\alpha$ (via "Wang.Par")
 
 After dealing with various numerical issues, we can now look at
 some example calculations of best/worst Value-at-Risk. We first
 plot Value-at-Risk as a function in $\alpha$.
 ```{r}
-d <- 8 # dimension
+d <- dim # dimension
 alpha <- 1-2^seq(-0.001, -10, length.out=128) # confidence levels; concentrated near 1
 theta <- c(0.1, 0.5, 1, 5, 10, 50) # theta values
 VaR <- simplify2array(sapply(alpha, function(a)
@@ -195,11 +197,11 @@ VaR <- simplify2array(sapply(alpha, function(a)
 if(doPDF)
     pdf(file=(file <- paste0("fig_worst_VaR_hom_Wang_Par_d=",d,".pdf")),
         width=6, height=6)
-plot(NA, xlim=range(alpha), ylim=range(VaR), log="xy",
+plot(NA, xlim=range(alpha), ylim=range(VaR), log="xy", yaxt="n",
      xlab=expression(1-alpha),
-     ylab=as.expression(substitute("Best (dashed) and worst (solid)"~VaR[alpha]~
-                                   "for d ="~d.~"and Par("*theta*") margins",
+     ylab=as.expression(substitute(VaR[alpha]~"for d ="~d.~"and Par("*theta*") margins",
                                    list(d.=d))))
+eaxis(2)
 for(k in 1:length(theta)) {
     lines(1-alpha, VaR[2,k,], col=cols[k]) # worst VaR
     lines(1-alpha, VaR[1,k,], col=cols[k], lty=2) # best VaR
@@ -207,6 +209,8 @@ for(k in 1:length(theta)) {
 legend("topright", bty="n", lty=rep(1,length(theta)), col=cols,
        legend=as.expression(lapply(1:length(theta),
        function(k) substitute(theta==k, list(k=theta[k])))))
+mtext("Solid line: worst; dashed line: best VaR",
+      side=4, line=1, adj=0)
 if(doPDF) dev.off()
 ```
 
@@ -225,11 +229,11 @@ VaR <- simplify2array(sapply(d, function(d.)
 if(doPDF)
     pdf(file=(file <- paste0("fig_worst_VaR_hom_Wang_Par_alpha=",alpha,".pdf")),
         width=6, height=6)
-plot(NA, xlim=range(d), ylim=range(VaR), log="xy",
+plot(NA, xlim=range(d), ylim=range(VaR), log="xy", yaxt="n",
      xlab=expression(d),
-     ylab=as.expression(substitute("Best (dashed) and worst (solid)"~VaR[a]~
-                                   "for Par("*theta*") margins",
+     ylab=as.expression(substitute(VaR[a]~"for Par("*theta*") margins",
                                    list(a=alpha))))
+eaxis(2)
 for(k in 1:length(theta)) {
     lines(d, VaR[2,k,], col=cols[k]) # worst VaR
     lines(d, VaR[1,k,], col=cols[k], lty=2) # best VaR
@@ -237,11 +241,13 @@ for(k in 1:length(theta)) {
 legend("topleft", bty="n", lty=rep(1,length(theta)), col=cols,
        legend=as.expression(lapply(1:length(theta),
        function(k) substitute(theta==k, list(k=theta[k])))))
+mtext("Solid line: worst; dashed line: best VaR",
+      side=4, line=1, adj=0)
 if(doPDF) dev.off()
 ```
 
 
-### 1.4 Compare crude_VaR_bounds(), "Wang" (numerical), "Wang.Par", "dual", RA()
+### 1.4 Comparison between various methods for computing worst Value-at-Risk
 
 Now consider a graphical comparison between the various methods. To stress the
 numerical challenges, let us include the
@@ -356,7 +362,7 @@ VaR_hom_Par <- function(alpha, d, theta, method=c("worst", "best"),
 For the comparison, consider the following setup.
 ```{r}
 alpha <- 0.99 # confidence level
-d <- 8 # dimension
+d <- dim # dimension
 n.th <- 32 # number of thetas
 th <- seq(0.2, 5, length.out=n.th) # thetas
 qFs <- lapply(th, function(th.) {th.; function(p) qPar(p, theta=th.)}) # n.th-vector of Pareto quantile functions
@@ -432,12 +438,12 @@ tol <- 2.2204e-16
 wVaR.tol <- sapply(th, function(th.)
     VaR_hom_Par(alpha=alpha, d=d, theta=th., tol=tol))
 plot(th, wVaR.tol/res[,"dual"], type="l", ylim=ylim,
-     xlab=expression(theta), ylab="Wang's approach (straightforward) but with smaller tol for uniroot()")
+     xlab=expression(theta), ylab="Wang's approach (straightforward) but with smaller tol")
 ```
 
 So is this the solution to all the problems? No. Consider the setup as before,
 where $d$ is running (we catch the appearing errors here).
-```{r}
+```{r, warning=FALSE}
 alpha <- 0.99 # confidence level
 d <- seq(2, 1002, by=20) # dimensions
 theta <- c(0.1, 0.5, 1, 5, 10, 50) # theta values
@@ -479,8 +485,7 @@ h <- function(x)
      (d/(1-th)-1)*x^(-1/th + 1) - (d-1)*x^(-1/th) + x - (d*th/(1-th) + 1)
 interval <- init_interval(alpha, d, th, trafo=TRUE)
 x <- uniroot(h, interval=interval)$root
-c <- (1-alpha)/(x+d-1) # convert back to c-scale
-stopifnot(c>0)
+(c <- (1-alpha)/(x+d-1)) # convert back to c-scale
 a <- alpha+(d-1)*c
 b <- 1-c
 qPar(a, theta=th)*(d-1) + qPar(b, theta=th) # Inf
@@ -489,12 +494,12 @@ stopifnot(b==1) # => b is 1 => qPar(b, theta=th) = Inf
 
 As we can see, $c>0$ is so small that $b=1-c$ is numerically equal to 1 and thus
 the Pareto quantile evaluated as $\infty$. This cancellation can be avoided by
-simplifying the terms (note that `qPar(1-c, theta=th)=c^{-1/th}-1`).
+simplifying the terms (note that `qPar(1-c, theta=th)=c^(-1/th)-1`).
 ```{r}
 qPar(a, theta=th)*(d-1) + c^(-1/th)-1
 ```
 
-We can apply this to our range of variables as before. Note that
+We can apply this to the variable combinations as before. Note that
 due to the partly extreme values of $d$ and $\theta$, we also need to
 adjust the range here in order for a root to be found.
 ```{r}
@@ -514,16 +519,17 @@ ylim <- range(VaR, VaR.)
 if(doPDF)
     pdf(file=(file <- paste0("fig_worst_VaR_",alpha,"_hom_comparison_num_problems.pdf")),
         width=6, height=6)
-plot(d, VaR[1,], type="l", ylim=ylim, log="y",
-     xlab=expression(italic(d)), ylab=substitute("Worst"~VaR[a]~"for Par("*theta*
-     ") margins", list(a=alpha)), col=cols[1])
+plot(d, VaR[1,], type="l", ylim=ylim, log="y", yaxt="n",
+     xlab="d", ylab=substitute("Worst"~VaR[a]~"for Par("*theta*") margins",
+                               list(a=alpha)), col=cols[1])
+eaxis(2)
 for(k in 2:length(theta)) lines(d, VaR [k,], col=cols[k])
 for(k in 1:length(theta)) lines(d, VaR.[k,], col=cols[k], lty=2, lwd=2)
 legend("right", bty="n",
        col=cols, lty=rep(1, length(theta)),
        legend=as.expression( lapply(1:length(theta), function(k)
            substitute(theta==th, list(th=theta[k]))) ))
-mtext("Solid line: direct; dashed line: transformed auxiliary function",
+mtext("Solid line: direct; dashed line: transformed h",
       side=4, line=1, adj=0)
 if(doPDF) dev.off()
 ```
@@ -574,7 +580,9 @@ sample=FALSE, is.sorted=TRUE)`). To this end, we consider the following setup.
 alpha <- 0.99 # confidence level
 N <- 2^9 # 512
 p <- alpha + (1-alpha)*0:(N-1)/N
-d <- 2^(1:9) # 2, 4,..., 512
+if(FALSE)
+    d <- 2^(4:10) # 16, ..., 1024
+d <- 2^(4:8) # 16, ..., 256 (to save time here)
 res <- matrix(, nrow=length(d), ncol=2)
 colnames(res) <- c("slow", "fast")
 qF <- function(p, theta=2) (1-p)^(-1/theta)-1
@@ -591,8 +599,12 @@ for(i in seq_along(d)) {
 Here's a plot which shows the improvement in run time (in %).
 For larger dimensions $d$, the improvement is very close to 100%.
 ```{r}
+if(doPDF)
+    pdf(file=(file <- paste0("fig_ARA_speed-up.pdf")),
+        width=6, height=6)
 plot(d, (1-res[,2]/res[,1])*100, type="b", log="x", ylim=c(0,100),
-     xlab=expression(italic(d)), ylab="Improvement (in %)")
+     xlab="d", ylab="Relative speed-up (in %) of implemented ARA() over a basic version")
+if(doPDF) dev.off()
 ```
 
 
@@ -671,7 +683,7 @@ system.time(mat  <- create_mat(N)) # create the list of matrices (N!^2-many)
 ## Rearrange all of them
 N. <- factorial(N)^2
 system.time(mat.ra <- lapply(1:N., function(i) {
-                if(i %% (N./20) == 0) cat(round(100*i/N.),"% done!\n", sep="");
+                ## if(i %% (N./20) == 0) cat(round(100*i/N.),"% done!\n", sep="");
                 rearrange(mat[[i]], tol=NULL, sample=FALSE)$X.rearranged
             }))
 
@@ -745,7 +757,7 @@ for(k in seq_len(d)) {
         stock <- names(res)[k]
         plot(qF., excess., xlab="Theoretical quantiles",
              ylab="Sample quantiles", main=paste0("Q-Q plot for the fitted GPD(",
-                                                  round(xi, 2),", ",round(beta, 2),") distribution for ", stock))
+             round(xi, 2),", ",round(beta, 2),") distribution for ", stock))
         qqline(y=as.numeric(excess.), distribution=qF)
     }
 
@@ -760,7 +772,7 @@ We can now apply the (Adaptive) Rearrangement Algorithm.
 xi. <- sapply(res, function(x) x$xi) # all fitted xi's
 beta. <- sapply(res, function(x) x$beta) # all fitted beta's
 alpha <- 0.999 # confidence level
-qF <- lapply(res, function(r) { function(p) qGPD(p, xi=r$xi, beta=r$beta) }) # list of fitted marginal quantile functions
+qF <- lapply(res, function(r) { function(p) qGPD(p, xi=r$xi, beta=r$beta) }) # list quantile functions
 set.seed(271) # set a seed (for reproducibility)
 res.ARA <- ARA(alpha, qF=qF) # apply ARA()
 stopifnot(res.ARA$converged) # check convergence
@@ -780,7 +792,7 @@ p.up  <- alpha + (1-alpha)*(1:N)/N # probability points for worst VaR (upper bou
 X.low <- sapply(qF, function(qF) qF(p.low)) # input matrix (lower bound)
 X.up  <- sapply(qF, function(qF) qF(p.up)) # input matrix (upper bound)
 X.up[N,] <- sapply(1:d, function(j) if(is.infinite(X.up[N,j]))
-                                        qF[[j]](alpha+(1-alpha)*(1-1/(2*N))) else X.up[N,j])
+                  qF[[j]](alpha+(1-alpha)*(1-1/(2*N))) else X.up[N,j])
 
 ## Apply rearrange() for various tolerances (incl. NULL)
 tol <- seq(0, 0.02, length.out=21) # considered tolerances
@@ -792,6 +804,9 @@ res.up. <- rearrange(X.up, tol=NULL, sample=FALSE, is.sorted=TRUE)$bound # for t
 
 ```{r}
 ## Plot the lower and upper bound on worst VaR as a function in the chosen tol
+if(doPDF)
+    pdf(file=(file <- paste0("fig_worst_VaR_bounds_application.pdf")),
+        width=6, height=6)
 plot(tol, res.low, type="b", log="y", ylim=range(res.low, res.low., res.up, res.up.),
      col="royalblue3", xlab="Relative tolerance tol of rearrange()",
      ylab=substitute("Bounds on worst"~VaR[a], list(a=alpha)))
@@ -800,6 +815,7 @@ lines(tol, res.up, type="b")
 points(0, res.up., pch=3) # draw tol=NULL result at 0, too (as '+')
 legend("topright", bty="n", lty=rep(1,2),
        col=c("black", "royalblue3"), legend=c("upper bound", "lower bound"))
+if(doPDF) dev.off()
 ```
 
 As we see, the results for `tol=NULL` (i.e., all columns oppositely ordered with
