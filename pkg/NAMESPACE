@@ -5,6 +5,10 @@ useDynLib(qrmtools, .registration=TRUE, .fixes="C_")
 
 import("xts") # for xts namespace to be loaded (e.g., for working with data sets)
 
+importFrom("methods", "hasArg")
+importFrom("stats", "dnorm", "dt", "integrate", "pnorm", "qnorm", "qt",
+           "runif", "uniroot")
+
 
 ### Exports ####################################################################
 
