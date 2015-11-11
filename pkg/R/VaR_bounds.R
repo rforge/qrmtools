@@ -91,8 +91,8 @@ dual_bound <- function(s, d, pF, tol=.Machine$double.eps^0.25, ...)
 
 ### Wang's methods #############################################################
 
-##' @title Right-hand side term in the objective function for computing the worst VaR
-##'        as in Embrechts, Puccetti, Rueschendorf, Wang, Beleraj (2014, Prop. 3.1)
+##' @title Scaled right-hand side term in the objective function for computing
+##'        worst VaR as in McNeil, Frey, Embrechts (2015, Prop. 8.32)
 ##' @param c evaluation point
 ##' @param alpha confidence level alpha
 ##' @param d dimension d
@@ -126,7 +126,7 @@ Wang_h_aux <- function(c, alpha, d, method=c("generic", "Wang.Par"), ...)
 }
 
 ##' @title Objective function for computing the worst VaR as in
-##'        Embrechts, Puccetti, Rueschendorf, Wang, Beleraj (2014, Prop. 3.1)
+##'        McNeil, Frey, Embrechts (2015, Prop. 8.32)
 ##' @param c evaluation point
 ##' @param alpha confidence level alpha
 ##' @param d dimension d
@@ -186,7 +186,7 @@ Wang_h <- function(c, alpha, d, method=c("generic", "Wang.Par"), ...)
 ##' @title Compute the best/worst VaR_\alpha in the homogeneous case with:
 ##'        1) d=2: Embrechts, Puccetti, Rueschendorf (2013, Proposition 2)
 ##'        2) d>=3:
-##'           "Wang": Embrechts, Puccetti, Rueschendorf, Wang, Beleraj (2014, Prop. 3.1)
+##'           "Wang": McNeil, Frey, Embrechts (2015, Prop. 8.32)
 ##'                   Integral evaluated numerically; needs smaller default
 ##'                   tolerance for uniroot()!
 ##'           "Wang.Par": The same, just with explicit formula for the integral
@@ -203,6 +203,13 @@ Wang_h <- function(c, alpha, d, method=c("generic", "Wang.Par"), ...)
 ##' @param ... ellipsis arguments passed to Wang_h()
 ##' @return (best VaR, worst VaR) in the homogeneous case
 ##' @author Marius Hofert
+##' @note (*) Typos:
+##'       - Wang, Peng, Yang (2013): best VaR wrong
+##'       - Published version of Embrechts, Puccetti, Rueschendorf, Wang, Beleraj (2014, Prop. 3.1):
+##'         Best VaR and worst VaR formulas wrong
+##'       - Updated version of Embrechts, Puccetti, Rueschendorf, Wang, Beleraj (2014)
+##'         on Ruodu's website: Correct worst VaR but still wrong best VaR (Eq. (3.4)).
+##'       - Both best and worst VaR are correct in McNeil, Frey, Embrechts (2015, Prop. 8.32)
 VaR_bounds_hom <- function(alpha, d, method=c("Wang", "Wang.Par", "dual"),
                            interval=NULL, tol=NULL, ...)
 {
@@ -242,7 +249,7 @@ VaR_bounds_hom <- function(alpha, d, method=c("Wang", "Wang.Par", "dual"),
                    ddd$qF <- NULL # remove from '...'
                    int <- function(...)
                        integrate(qF, lower=0, upper=alpha, ...)$value / alpha
-                   max((d-1)*qF(0)+qF(alpha), # Note: Typo in Wang, Peng, Yang (2013)
+                   max((d-1)*qF(0)+qF(alpha), # See (*) above
                        d * do.call(int, ddd))
                },
                "Wang.Par" = {
@@ -251,9 +258,12 @@ VaR_bounds_hom <- function(alpha, d, method=c("Wang", "Wang.Par", "dual"),
                        stop("Method 'Wang.Par' requires the parameter theta")
                    th <- list(...)$theta
                    stopifnot(length(th) == 1, th > 0) # check theta here
-                   Ibar <- if(th == 1) -log1p(-alpha) - alpha
-                   else ((1-alpha)^(1-1/th)-1)/(1-1/th) - alpha
-                   max((d-1)*0 + (1-alpha)^(-1/th)-1, # Note: Typo in Wang, Peng, Yang (2013)
+                   Ibar <- if(th == 1) {
+                       -log1p(-alpha) - alpha
+                   } else {
+                       ((1-alpha)^(1-1/th)-1)/(1-1/th) - alpha
+                   }
+                   max((d-1)*0 + (1-alpha)^(-1/th)-1, # See (*) above
                        d * Ibar)
                },
                "dual" = { # "dual" only provides worst VaR
@@ -368,16 +378,15 @@ VaR_bounds_hom <- function(alpha, d, method=c("Wang", "Wang.Par", "dual"),
 ##'       be as well, but internally uses order() and thus is not faster.
 ##'       However, we can make order() faster by using R_orderVector1() instead
 ##'       of R_orderVector() (available from 3.2.3 onwards)
-##'       => For d=1000 and N=16384, this only brought an improvement of 1.3%
-indices_opp_ordered_to <- function(x)
-{
-    ## Note: The following test is expensive... and the call to C even
-    ##       only very slightly faster...
-    ## if(getRversion() >= "3.2.3")
-    ## .Call(C_indices_opp_ordered_to, x)
-    ## else
-    order(order(x, decreasing=TRUE))
-}
+##'       => For d=1000 and N=16384, this only brought an improvement of 1.3%, though
+##'       If that turns out to be faster (in the future), use:
+##'       indices_opp_ordered_to <- if(getRversion() >= "3.2.3")
+##'       {
+##'          function(x) .Call(C_indices_opp_ordered_to, x)
+##'       } else {
+##'          function(x) order(order(x, decreasing=TRUE))
+##'       }
+indices_opp_ordered_to <- function(x) order(order(x, decreasing=TRUE))
 
 ##' @title Compute the number of columns oppositely ordered to the sum of all others
 ##' @param x (N, d)-matrix
