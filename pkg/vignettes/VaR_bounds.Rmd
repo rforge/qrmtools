@@ -247,8 +247,8 @@ if(doPDF) dev.off()
 ```
 
 We can also consider best/worst Value-at-Risk as a function in $\theta$. Note
-that best Value-at-Risk is the same for all $d$ here (depicted in a green dashed
-line below).
+that, as before, best Value-at-Risk is the same for all $d$ here (depicted
+in a green dashed line below).
 ```{r}
 d <- c(2, 10, 20, 100, 200, 1000) # dimensions
 theta <- 10^seq(-1, log(50, base=10), length.out=50) # theta values
