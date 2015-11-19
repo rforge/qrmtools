@@ -5,7 +5,7 @@
 \description{
   Data set consisting of daily open, high, low and close prices, trading volume
   (number of shares traded that day) and adjusted closing prices of the
-  S&P 500 from 1960-01-04 to 2013-12-31.
+  S\&P 500 from 1960-01-04 to 2013-12-31.
 }
 \usage{
 data("SnP_500")
