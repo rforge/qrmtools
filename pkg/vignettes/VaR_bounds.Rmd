@@ -196,7 +196,7 @@ VaR <- simplify2array(sapply(alpha, function(a)
 ```{r}
 if(doPDF)
     pdf(file=(file <- paste0("fig_worst_VaR_hom_Wang_Par_d=",d,".pdf")),
-        width=6, height=6)
+        width=7, height=7)
 par(mar=c(5, 4+1, 4, 2) + 0.1) # increase space (for y axis label)
 plot(NA, xlim=range(alpha), ylim=range(VaR), log="xy", yaxt="n",
      xlab=expression(1-alpha),
@@ -228,7 +228,7 @@ VaR <- simplify2array(sapply(d, function(d.)
 ```{r}
 if(doPDF)
     pdf(file=(file <- paste0("fig_worst_VaR_hom_Wang_Par_alpha=",alpha,"_in_d.pdf")),
-        width=6, height=6)
+        width=7, height=7)
 par(mar=c(5, 4+1, 4, 2) + 0.1) # increase space (for y axis label)
 plot(NA, xlim=range(d), ylim=range(VaR), log="xy", yaxt="n",
      xlab=expression(d),
@@ -443,7 +443,7 @@ res. <- res/res[,"dual"] # standardize (by dual method)
 ylim <- range(res., na.rm=TRUE)
 if(doPDF)
     pdf(file=(file <- paste0("fig_worst_VaR_",alpha,"_hom_comparison_d=",
-                             d,"_N=",N,".pdf")), width=6, height=6)
+                             d,"_N=",N,".pdf")), width=7, height=7)
 par(mar=c(5, 4+1, 4, 2) + 0.1) # increase space (for y axis label)
 plot(th, res.[,"Wang"], type="l", ylim=ylim,
      xlab=expression(theta), ylab=substitute("Standardized (by dual method)"~
