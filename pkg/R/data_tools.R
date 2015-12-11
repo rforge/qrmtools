@@ -37,8 +37,9 @@ get_data <- function(x, from=NULL, to=NULL, src="yahoo", FUN=NULL,
               is.character(src), is.logical(verbose))
 
     ## Distinguish univariate/multivariate data
-    res <- if(d == 1) {
-        ## Get data
+    if(d == 1) {
+
+        ## Get the data
         start <- as.Date(from)
         end <- as.Date(to)
         time.diff <- difftime(end, start, units="days")[[1]] # in days
@@ -48,25 +49,29 @@ get_data <- function(x, from=NULL, to=NULL, src="yahoo", FUN=NULL,
             num.periods <- length(periods)-1 # >= 1 periods to get data from
             dat <- NULL
             for(k in seq_len(num.periods)) {
-                from. <- as.character(periods[k])
-                to. <- as.character(if(k==num.periods) periods[k+1] else periods[k+1]-1)
-                if(verbose) cat("Getting", x, "from", from., "to", to., "\n")
-                dat. <- get_data(x, from=from., to=to., src=src, FUN=FUN, verbose=verbose, ...)
+                from <- as.character(periods[k])
+                to <- as.character(if(k==num.periods) periods[k+1] else periods[k+1]-1)
+                if(verbose) cat("Getting", x, "from", from, "to", to, "\n") # progress output
+                dat. <- get_data(x, from=from, to=to, src=src, FUN=FUN, verbose=verbose, ...) # recursion
                 if(!(length(dat.)==1 && is.na(dat.)))
                     dat <- rbind(dat, dat.) # exclude NAs (if no data available for that time period)
             }
-        } else { # get the data all at once
+            if(is.null(dat)) dat <- NA # as in case of an error -- also no data available
+        } else { # src != "oanda" or only one block (which we can get directly)
             if(!is.character(from)) from <- as.character(from)
             if(!is.character(to)) to <- as.character(to)
             dat <- tryCatch(getSymbols(x, from=from, to=to, src=src, auto.assign=FALSE, ...),
                             error=function(e) e)
+            if(is(dat, "simpleError")) dat <- NA
         }
-        ## Return NA in case of an error
-        if(is(dat, "simpleError")) {
-            NA
+
+        ## Applying FUN, naming
+        if(identical(dat, NA)) {
+            res <- NA
+            names(res) <- x # use ticker symbol as name
         } else { # getting the data worked fine
             ## Apply FUN
-            if(is.null(FUN)) { # if not given, apply a useful default
+            res <- if(is.null(FUN)) { # if not given, apply a useful default
                 if(src=="yahoo") {
                     Ad(dat) # does a grep on colnames(x)
                 } else if(src=="google") {
@@ -79,17 +84,18 @@ get_data <- function(x, from=NULL, to=NULL, src="yahoo", FUN=NULL,
                     stop("'FUN' has to return a single time series")
                 dat.
             }
+            colnames(res) <- x # use ticker symbol as name
         }
+
     } else { # d > 1
         res <- vector("list", length=d)
         for(j in 1:d) {
             if(verbose) cat("Getting", x[j], "\n")
-            res[[j]] <- get_data(x[j], from=from, to=to, src=src, FUN=FUN, verbose=verbose, ...)
+            res[[j]] <- get_data(x[j], from=from, to=to, src=src, FUN=FUN, verbose=verbose, ...) # recursion
         }
-        do.call(merge, res)
+        res <- do.call(merge, res)
     }
 
-    ## Use ticker symbols as column names
-    names(res) <- x
+    ## Return
     res
 }

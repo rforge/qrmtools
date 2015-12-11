@@ -61,5 +61,10 @@ plot.zoo(dat, screens=1, main="", xlab="Trading day", ylab="Value")
 ##       the normal limit of 5y of daily FX data from OANDA
 EUR_USD <- get_data("EUR/USD", from="2000-01-01", to="2015-12-11", src="oanda")
 plot(EUR_USD, xlab="Trading day", ylab="EUR/USD")
+## Getting an empty xts object (FX data in a period not available);
+\dontrun{ # Note: more time-consuming
+    EUR_USD <- get_data("EUR/USD", from="1990-01-01", to="1993-12-31", src="oanda") # < 5y
+    EUR_USD <- get_data("EUR/USD", from="1990-01-01", to="1995-12-31", src="oanda") # >= 5y
+}
 }
 \keyword{manip}
