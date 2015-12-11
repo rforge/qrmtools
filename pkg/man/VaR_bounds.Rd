@@ -19,7 +19,7 @@ rearrange(X, tol=0, tol.type=c("relative", "absolute"), max.ra=Inf,
           method=c("worst", "best"), sample=TRUE, is.sorted=FALSE, trace=FALSE)
 RA(alpha, qF, N, abstol=0, max.ra=Inf, method=c("worst", "best"),
    sample=TRUE)
-ARA(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0, 0.01),
+ARA(alpha, qF, N.exp=seq(8, 19, by=1), reltol=c(0, 0.01),
     max.ra=10*length(qF), method=c("worst", "best"), sample=TRUE)
 }
 \arguments{

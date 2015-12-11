@@ -435,14 +435,15 @@ num_of_opp_ordered_cols <- function(x) {
 ##' @note - We use "<= tol" to determine convergence instead of "< tol" as
 ##'         this then also nicely works with "= 0" (if tol=0) which stops in
 ##'         case the matrices are identical (no change at all).
-##'       - We conduct checks of convergence after rearranging each column
-##'         (not only after rearranging all d columns)
-##'       - The columns of X have to be given in increasing order if !is.sorted!
-##'       - No checking here due to speed!
+##'       - We conduct checks of convergence after rearranging each column after the
+##'         dth (not only after rearranging all d columns)
+##'       - The columns of X have to be given in increasing order if is.sorted=TRUE
+##'       - No checking here due to speed! Note that max.ra must be > ncol(X)
 rearrange <- function(X, tol=0, tol.type=c("relative", "absolute"),
                       max.ra=Inf, method=c("worst", "best"),
                       sample=TRUE, is.sorted=FALSE, trace=FALSE)
 {
+    ## Setup
     N <- nrow(X)
     d <- ncol(X)
     tol.type <- match.arg(tol.type)
@@ -484,7 +485,7 @@ rearrange <- function(X, tol=0, tol.type=c("relative", "absolute"),
     iter <- 0 # current iteration number
     j <- 0 # current column number
     num.cols.no.change <- 0 # number of consecutively rearranged columns with no change
-    m.row.sums <- optim.fun(X.rs) # vector of minimal/maximal row sums after each considered column (starting from the original matrix)
+    m.row.sums <- c() # vector of minimal/maximal row sums after each rearranged column
     is.null.tol <- is.null(tol)
     while (TRUE) {
 
@@ -530,7 +531,7 @@ rearrange <- function(X, tol=0, tol.type=c("relative", "absolute"),
         ##       simply contained in the original matrix X (if iter <= d)) the last time.
         ## Note: - This is a bit more elegant than the original RA which checked only
         ##         on j=d, not after rearranging *each* column.
-        ##       - Checking only two consecutive columns led to bad behavior for ARA()
+        ##       - Checking only *two* consecutive columns led to a bad behavior for ARA()
         ##         in some cases (e.g., real OpRisk data): Both the individual and the joint
         ##         relative tolerances were satisfied but far off (with reltol[1]=0.001).
         ##         Of course one could check d consecutive columns for *all* of them to
@@ -545,18 +546,21 @@ rearrange <- function(X, tol=0, tol.type=c("relative", "absolute"),
                 tol.reached <- TRUE # as we reached 'no change' in d consecutive steps (we don't care whether max.ra has been reached)
                 break
             } else { # check whether we have to stop due to max.ra
-                if(iter == max.ra) {
-                    m.rs.d.col.ago <- m.row.sums[max(iter-d, 0) + 1] # if iter <= d, use initial minimal/maximal row sum
+                if(iter == max.ra) { # need max.ra > d (as otherwise (*) is wrong)
+                    ## Note: iter = number of columns we have already rearranged
+                    m.rs.d.col.ago <- m.row.sums[iter-d] # (*)
                     tol. <- tol.fun(m.rs.cur.col, m.rs.d.col.ago) # compute the attained tolerance (in comparison to the last time the jth column was rearranged)
                     tol.reached <- FALSE # as num.cols.no.change < d
                     break
                 }
             }
         } else { # tol >= 0
-            m.rs.d.col.ago <- m.row.sums[max(iter-d, 0) + 1] # if iter <= d, use initial minimal/maximal row sum
-            tol. <- tol.fun(m.rs.cur.col, m.rs.d.col.ago) # compute the attained tolerance (in comparison to the last time the jth column was rearranged)
-            tol.reached <- tol. <= tol
-            if(iter == max.ra || tol.reached) break
+            if(iter > d) {
+                m.rs.d.col.ago <- m.row.sums[iter-d]
+                tol. <- tol.fun(m.rs.cur.col, m.rs.d.col.ago) # compute the attained tolerance (in comparison to the last time the jth column was rearranged)
+                tol.reached <- tol. <= tol
+                if(iter == max.ra || tol.reached) break # also here we need max.ra > d; see (*)
+            }
         }
 
         ## Updates for the next column rearrangement
@@ -602,9 +606,9 @@ RA <- function(alpha, qF, N, abstol=0, max.ra=Inf,
 {
     ## Checks and Step 1 (get N, abstol)
     stopifnot(0 < alpha, alpha < 1, is.null(abstol) || abstol >= 0,
-              length(N) >= 1, N >= 2, max.ra >= 1, is.logical(sample))
+              length(N) >= 1, N >= 2, is.logical(sample),
+              is.list(qF), sapply(qF, is.function), (d <- length(qF)) >= 2, max.ra > d)
     method <- match.arg(method)
-    stopifnot(is.list(qF), sapply(qF, is.function), (d <- length(qF)) >= 2)
 
     ## Compute lower bound
 
@@ -686,15 +690,15 @@ RA <- function(alpha, qF, N, abstol=0, max.ra=Inf,
 ##'          8) List of (N, d) input matrices X (for each bound)
 ##'          9) List of rearranged Xs (for each bound)
 ##' @author Marius Hofert
-ARA <- function(alpha, qF, N.exp=seq(8, 20, by=1), reltol=c(0, 0.01),
+ARA <- function(alpha, qF, N.exp=seq(8, 19, by=1), reltol=c(0, 0.01),
                 max.ra=10*length(qF), method=c("worst", "best"), sample=TRUE)
 {
     ## Checks and Step 1 (get N, reltol)
     lreltol <- length(reltol)
     stopifnot(0 < alpha, alpha < 1, lreltol==1 || lreltol==2, reltol >= 0,
-              length(N.exp) >= 1, N.exp >= 1, max.ra >= 1, is.logical(sample))
+              length(N.exp) >= 1, N.exp >= 1, is.logical(sample),
+              is.list(qF), sapply(qF, is.function), (d <- length(qF)) >= 2, max.ra > d)
     method <- match.arg(method)
-    stopifnot(is.list(qF), sapply(qF, is.function), (d <- length(qF)) >= 2)
 
     ## Determine tolerances
     itol <- if(lreltol == 2) reltol[1] else NULL # individual tolerance

@@ -843,9 +843,10 @@ res.up. <- rearrange(X.up, tol=NULL, sample=FALSE, is.sorted=TRUE)$bound # for t
 if(doPDF)
     pdf(file=(file <- paste0("fig_worst_VaR_bounds_application.pdf")),
         width=6, height=6)
+par(mar=c(5, 4+1, 4, 2) + 0.1) # increase space (for y axis label)
 plot(tol, res.low, type="b", log="y", ylim=range(res.low, res.low., res.up, res.up.),
      col="royalblue3", xlab="Relative tolerance tol of rearrange()",
-     ylab=substitute("Bounds on worst"~VaR[a], list(a=alpha)))
+     ylab=substitute("Bounds on"~bar(VaR)[a](L^{"+"}), list(a=alpha)))
 points(0, res.low., pch=3, col="royalblue3") # draw tol=NULL result at 0, too (as '+')
 lines(tol, res.up, type="b")
 points(0, res.up., pch=3) # draw tol=NULL result at 0, too (as '+')

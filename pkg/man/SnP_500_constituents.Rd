@@ -28,7 +28,8 @@ data("SnP_500_constituents") # use as.data.frame(SnP_500_constituents) for conve
 ## Plot NAs
 dat <- SnP_500_constituents
 z <- is.na(dat)
-image(seq_len(nrow(dat)), seq_len(ncol(dat)), z, col=c("white", "black"),
+require(zoo)
+image(index(dat), seq_len(ncol(dat)), z, col=c("white", "black"),
       xlab="Time t", ylab="Stock j",
       main="Plot of NAs among the S&P 500 constituents")
 mtext("Black: NA; White: Data available", side=4, line=1, adj=0)
