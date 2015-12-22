@@ -27,6 +27,7 @@ get_data <- function(x, from=NULL, to=NULL, src="yahoo", FUN=NULL,
                      verbose=TRUE, ...)
 {
     ## Checking
+    if(is.factor(x)) x <- as.character(x)
     if(is.data.frame(x)) x <- as.matrix(x)
     if(is.matrix(x)) x <- as.vector(x)
     stopifnot((d <- length(x)) >= 1)

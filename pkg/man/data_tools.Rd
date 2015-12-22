@@ -38,7 +38,8 @@ get_data(x, from=NULL, to=NULL, src="yahoo", FUN=NULL, verbose=TRUE, ...)
 }
 \value{
   An \code{\link{xts}} object containing the data with column name(s)
-  adjusted to be (close to) the ticker symbol.
+  adjusted to be (close to) the ticker symbol; \code{\link{NA}} if
+  data is not available.
 }
 \details{
   \code{FUN} is typically one of \pkg{quantmod}'s \code{\link{Op}},

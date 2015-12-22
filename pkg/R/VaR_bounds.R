@@ -527,8 +527,8 @@ rearrange <- function(X, tol=0, tol.type=c("relative", "absolute"),
         ## Idea: After a column has been rearranged, compute the tol (and thus
         ##       determine convergence) between the minimal/maximal row sum
         ##       after that rearrangement and from d steps before when that
-        ##       column was considered (either rearranged (if iter > d) or
-        ##       simply contained in the original matrix X (if iter <= d)) the last time.
+        ##       column was rearranged the last time. The earliest we check for
+        ##       convergence is when iter > d.
         ## Note: - This is a bit more elegant than the original RA which checked only
         ##         on j=d, not after rearranging *each* column.
         ##       - Checking only *two* consecutive columns led to a bad behavior for ARA()
