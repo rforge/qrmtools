@@ -23,8 +23,14 @@
 ##'       - In case of failure to get the data, note that we don't need to
 ##'         throw a warning, as getSymbols() produces them (unfortunately even
 ##'         if 'warnings=FALSE')
-get_data <- function(x, from=NULL, to=NULL, src="yahoo", FUN=NULL,
-                     verbose=TRUE, ...)
+##'       - getSymbols calls underlying methods getSymbols.yahoo etc.
+##'         Characters 'from' and 'to' are accepted by getSymbols.google,
+##'         getSymbols.oanda and getSymbols.yahoo, but not by getSymbols.FRED
+##'         => For FRED, we pick out the range separately (drawback: still the
+##'            whole data is downloaded first -- so only use this hack for FRED
+##'            (= Federal Reserve Economic Data) data)
+get_data <- function(x, from=NULL, to=NULL, src=c("yahoo", "oanda", "FRED", "google"),
+                     FUN=NULL, verbose=TRUE, ...)
 {
     ## Checking
     if(is.factor(x)) x <- as.character(x)
@@ -36,6 +42,7 @@ get_data <- function(x, from=NULL, to=NULL, src="yahoo", FUN=NULL,
     stopifnot(is.character(from) || inherits(from, "Date"),
               is.character(to) || inherits(to, "Date"),
               is.character(src), is.logical(verbose))
+    src <- match.arg(src)
 
     ## Distinguish univariate/multivariate data
     if(d == 1) {
@@ -58,7 +65,7 @@ get_data <- function(x, from=NULL, to=NULL, src="yahoo", FUN=NULL,
                     dat <- rbind(dat, dat.) # exclude NAs (if no data available for that time period)
             }
             if(is.null(dat)) dat <- NA # as in case of an error -- also no data available
-        } else { # src != "oanda" or only one block (which we can get directly)
+        } else { # if src != "oanda" or "oanda" but only one block, we can get it directly
             if(!is.character(from)) from <- as.character(from)
             if(!is.character(to)) to <- as.character(to)
             dat <- tryCatch(getSymbols(x, from=from, to=to, src=src, auto.assign=FALSE, ...),
@@ -98,5 +105,8 @@ get_data <- function(x, from=NULL, to=NULL, src="yahoo", FUN=NULL,
     }
 
     ## Return
-    res
+    if(src == "FRED") { # "FRED" doesn't accept the above 'from' and 'to' => pick out range manually
+        rows <- index(res)
+        res[from <= rows & rows <= to, ]
+    } else res
 }

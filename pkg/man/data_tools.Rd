@@ -5,7 +5,8 @@
   Download (and possibly) merge data from freely available databases.
 }
 \usage{
-get_data(x, from=NULL, to=NULL, src="yahoo", FUN=NULL, verbose=TRUE, ...)
+get_data(x, from=NULL, to=NULL, src=c("yahoo", "oanda", "FRED", "google"),
+         FUN=NULL, verbose=TRUE, ...)
 }
 \arguments{
   \item{x}{A vector of ticker symbols (e.g. \code{"^GSPC"} if
