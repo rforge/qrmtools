@@ -5,7 +5,7 @@
   Download (and possibly) merge data from freely available databases.
 }
 \usage{
-get_data(x, from=NULL, to=NULL, src=c("yahoo", "oanda", "FRED", "google"),
+get_data(x, from=NULL, to=NULL, src=c("yahoo", "quandl", "oanda", "FRED", "google"),
          FUN=NULL, verbose=TRUE, ...)
 }
 \arguments{
@@ -19,7 +19,7 @@ get_data(x, from=NULL, to=NULL, src=c("yahoo", "oanda", "FRED", "google"),
     the last date with available data is picked.}
   \item{src}{A character string specifying the data source
     (e.g. \code{"yahoo"} for stocks or \code{"oanda"} for FX data);
-    see \code{\link{getSymbols}()}.}
+    see \code{\link{getSymbols}()} and \code{\link{Quandl}()}.}
   \item{FUN}{A \code{\link{function}} to be applied to the data before
     being returned. This can be
     \describe{
@@ -35,11 +35,13 @@ get_data(x, from=NULL, to=NULL, src=c("yahoo", "oanda", "FRED", "google"),
   \item{verbose}{A \code{\link{logical}} indicating whether progress
     monitoring should be done.}
   \item{\dots}{Additional arguments passed to the underlying function
-    \code{\link{getSymbols}()} from \pkg{quantmod}.}
+    \code{\link{getSymbols}()} from \pkg{quantmod} or
+    \code{\link{Quandl}()} from \pkg{Quandl} (if \code{src="quandl"}).}
 }
 \value{
   An \code{\link{xts}} object containing the data with column name(s)
-  adjusted to be (close to) the ticker symbol; \code{\link{NA}} if
+  adjusted to be the ticker symbol (in case lengths match; otherwise the
+  column names are not adjusted); \code{\link{NA}} if
   data is not available.
 }
 \details{

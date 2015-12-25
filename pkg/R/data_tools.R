@@ -1,19 +1,19 @@
 ### Tools for working with data sets ###########################################
 
-##' @title Download data via quantmod's getSymbols()
+##' @title Download data via quantmod's getSymbols() or Quandl's Quandl()
 ##' @param x A vector of, for example, ticker symbols (if src="yahoo") or
 ##'        "EUR/USD" if (src="oanda")
 ##' @param from start date as character string (e.g. 2015-01-01); if NULL,
 ##'        the earliest available date is picked
 ##' @param to end date; today unless otherwise specified
-##' @param src The source of the data ("yahoo", "oanda", "google", etc.)
+##' @param src The source of the data
 ##' @param FUN A function to apply to the downloaded data:
 ##'        - if data is NA (could not be retrieved): none
 ##'        - if provided: the given function
 ##'        - if not provided: Ad() if src="yahoo"; Cl() if src="google";
 ##'          none otherwise (e.g. if src="oanda")
 ##' @param verbose A logical indicating whether progress monitoring is done
-##' @param ... Additional arguments passed to getSymbols()
+##' @param ... Additional arguments passed to getSymbols() or Quandl()
 ##' @return (n, d)-matrix of data (an xts object)
 ##' @author Marius Hofert
 ##' @note - One could do...
@@ -29,7 +29,7 @@
 ##'         => For FRED, we pick out the range separately (drawback: still the
 ##'            whole data is downloaded first -- so only use this hack for FRED
 ##'            (= Federal Reserve Economic Data) data)
-get_data <- function(x, from=NULL, to=NULL, src=c("yahoo", "oanda", "FRED", "google"),
+get_data <- function(x, from=NULL, to=NULL, src=c("yahoo", "quandl", "oanda", "FRED", "google"),
                      FUN=NULL, verbose=TRUE, ...)
 {
     ## Checking
@@ -68,8 +68,13 @@ get_data <- function(x, from=NULL, to=NULL, src=c("yahoo", "oanda", "FRED", "goo
         } else { # if src != "oanda" or "oanda" but only one block, we can get it directly
             if(!is.character(from)) from <- as.character(from)
             if(!is.character(to)) to <- as.character(to)
-            dat <- tryCatch(getSymbols(x, from=from, to=to, src=src, auto.assign=FALSE, ...),
-                            error=function(e) e)
+            dat <- if(src=="quandl") {
+                tryCatch(Quandl(x, type="xts", start_date=from, end_date=to, ...),
+                         error=function(e) e)
+            } else {
+                tryCatch(getSymbols(x, from=from, to=to, src=src, auto.assign=FALSE, ...),
+                         error=function(e) e)
+            }
             if(is(dat, "simpleError")) dat <- NA
         }
 
@@ -92,7 +97,9 @@ get_data <- function(x, from=NULL, to=NULL, src=c("yahoo", "oanda", "FRED", "goo
                     stop("'FUN' has to return a single time series")
                 dat.
             }
-            colnames(res) <- x # use ticker symbol as name
+            if(ncol(res) == length(x)) {
+                colnames(res) <- x # use ticker symbol as name
+            } # otherwise, don't rename columns automatically
         }
 
     } else { # d > 1

@@ -8,6 +8,7 @@ import("xts") # for xts namespace to be loaded (e.g., for working with data sets
 importFrom("quantmod", "getSymbols",
            "Op", "Hi", "Lo", "Cl", "Vo", "Ad",
            "OpCl", "ClCl", "HiCl", "LoCl", "LoHi", "OpHi", "OpLo", "OpOp")
+importFrom("Quandl", "Quandl")
 importFrom("zoo", "index")
 importFrom("methods", "hasArg")
 importFrom("stats", "dnorm", "dt", "integrate", "pnorm", "qnorm", "qt",
