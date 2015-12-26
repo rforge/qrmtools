@@ -29,6 +29,8 @@ export(
     "crude_VaR_bounds", "dual_bound", "VaR_bounds_hom",
     "rearrange", "RA", "ARA",
     ## working with data
-    "get_data"
+    "get_data",
+    ## Black--Scholes formula
+    "Black_Scholes", "Black_Scholes_Greeks"
 )
 
