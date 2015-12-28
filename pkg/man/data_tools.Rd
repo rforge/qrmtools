@@ -6,7 +6,7 @@
 }
 \usage{
 get_data(x, from=NULL, to=NULL, src=c("yahoo", "quandl", "oanda", "FRED", "google"),
-         FUN=NULL, verbose=TRUE, ...)
+         FUN=NULL, verbose=TRUE, warn=TRUE, ...)
 }
 \arguments{
   \item{x}{A vector of ticker symbols (e.g. \code{"^GSPC"} if
@@ -34,6 +34,8 @@ get_data(x, from=NULL, to=NULL, src=c("yahoo", "quandl", "oanda", "FRED", "googl
     }}
   \item{verbose}{A \code{\link{logical}} indicating whether progress
     monitoring should be done.}
+  \item{warn}{A \code{\link{logical}} indicating whether a warning
+    is given showing the error message when fetching \code{x} fails.}
   \item{\dots}{Additional arguments passed to the underlying function
     \code{\link{getSymbols}()} from \pkg{quantmod} or
     \code{\link{Quandl}()} from \pkg{Quandl} (if \code{src="quandl"}).}

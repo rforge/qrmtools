@@ -13,6 +13,8 @@
 ##'        - if not provided: Ad() if src="yahoo"; Cl() if src="google";
 ##'          none otherwise (e.g. if src="oanda")
 ##' @param verbose A logical indicating whether progress monitoring is done
+##' @param warn A logical indicating whether a warning is given showing the error
+##'        message when fetching x fails
 ##' @param ... Additional arguments passed to getSymbols() or Quandl()
 ##' @return (n, d)-matrix of data (an xts object)
 ##' @author Marius Hofert
@@ -30,7 +32,7 @@
 ##'            whole data is downloaded first -- so only use this hack for FRED
 ##'            (= Federal Reserve Economic Data) data)
 get_data <- function(x, from=NULL, to=NULL, src=c("yahoo", "quandl", "oanda", "FRED", "google"),
-                     FUN=NULL, verbose=TRUE, ...)
+                     FUN=NULL, verbose=TRUE, warn=TRUE, ...)
 {
     ## Checking
     if(is.factor(x)) x <- as.character(x)
@@ -75,7 +77,10 @@ get_data <- function(x, from=NULL, to=NULL, src=c("yahoo", "quandl", "oanda", "F
                 tryCatch(getSymbols(x, from=from, to=to, src=src, auto.assign=FALSE, ...),
                          error=function(e) e)
             }
-            if(is(dat, "simpleError")) dat <- NA
+            if(is(dat, "simpleError")) {
+                if(warn) warning("Error when fetching ",x,": ",conditionMessage(dat)," (will use NA instead)")
+                dat <- NA
+            }
         }
 
         ## Applying FUN, naming
