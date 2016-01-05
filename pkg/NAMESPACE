@@ -3,7 +3,8 @@ useDynLib(qrmtools, .registration=TRUE, .fixes="C_")
 
 ### Imports ####################################################################
 
-import("xts") # for xts namespace to be loaded (e.g., for working with data sets)
+## Not required anymore:
+## import("xts") # for xts namespace to be loaded (e.g., for working with data sets)
 
 importFrom("quantmod", "getSymbols",
            "Op", "Hi", "Lo", "Cl", "Vo", "Ad",
@@ -28,8 +29,6 @@ export(
     ## worst VaR
     "crude_VaR_bounds", "dual_bound", "VaR_bounds_hom",
     "rearrange", "RA", "ARA",
-    ## working with data
-    "get_data",
     ## Black--Scholes formula
     "Black_Scholes", "Black_Scholes_Greeks"
 )

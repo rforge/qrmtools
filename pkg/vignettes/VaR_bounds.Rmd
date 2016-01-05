@@ -15,6 +15,7 @@ require(sfsmisc)
 doPDF <- FALSE
 ```
 
+
 ## 1 Homogeneous case
 
 We start by considering the following setup in the homogeneous case, i.e., when
