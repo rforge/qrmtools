@@ -18,5 +18,6 @@ Suggests: combinat, copula, knitr, mvtnorm, QRM, rugarch, sfsmisc
 Enhances:
 License: GPL-2 | GPL-3
 NeedsCompilation: yes
+VignetteBuilder: knitr
 Repository: CRAN
 Date/Publication: 2014-03-25 15:26:50
