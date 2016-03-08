@@ -39,10 +39,9 @@ plot_NA <- function(x, xlab="Time", ylab="Component", main="",
 ##' @param ... Additional arguments passed to levelplot()
 ##' @return The level plot
 ##' @author Marius Hofert
-##' @note - Another option would be:
-##'         corrplot::corrplot(err, method="color", col=grey(seq(0.4, 1, length.out=200)),
-##'                            tl.col="black", is.corr=FALSE)
-##'       - To force a [-1,1]-scale, use at=seq(-1, 1, length.out=200)
+##' @note Another option would be:
+##'       corrplot::corrplot(err, method="color", col=grey(seq(0.4, 1, length.out=200)),
+##'                          tl.col="black", is.corr=FALSE)
 plot_matrix <- function(x, xlab="Column", ylab="Row",
                         scales=list(alternating=c(1,1), tck=c(1,0), x=list(rot=90)),
                         at=seq(min(x, na.rm=TRUE), max(x, na.rm=TRUE), length.out=200),
