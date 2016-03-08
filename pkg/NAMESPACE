@@ -15,6 +15,9 @@ importFrom("methods", "hasArg")
 importFrom("stats", "dnorm", "dt", "integrate", "pnorm", "qnorm", "qt",
            "runif", "uniroot")
 importFrom("grDevices", "dev.off")
+importFrom("graphics", "image", "mtext")
+importFrom("lattice", "levelplot")
+importFrom("grDevices", "colorRampPalette")
 
 
 ### Exports ####################################################################
@@ -30,6 +33,7 @@ export(
     "crude_VaR_bounds", "dual_bound", "VaR_bounds_hom",
     "rearrange", "RA", "ARA",
     ## Black--Scholes formula
-    "Black_Scholes", "Black_Scholes_Greeks"
+    "Black_Scholes", "Black_Scholes_Greeks",
+    ## Graphics
+    "plot_NA", "plot_matrix"
 )
-
