@@ -1,8 +1,8 @@
 \name{plot_matrix}
 \alias{plot_matrix}
-\title{Graphical Tool for Visualizing Square Matrices}
+\title{Graphical Tool for Visualizing Matrices}
 \description{
-  Plot square matrices.
+  Plot of a matrix.
 }
 \usage{
 plot_matrix(x, xlab="Column", ylab="Row",
@@ -14,7 +14,7 @@ plot_matrix(x, xlab="Column", ylab="Row",
             ...)
 }
 \arguments{
-  \item{x}{A square matrix.}
+  \item{x}{A matrix.}
   \item{xlab}{The x-axis label.}
   \item{ylab}{The y-axis label.}
   \item{scales}{See \code{\link{levelplot}()}; if \code{\link{NULL}},
@@ -29,7 +29,7 @@ plot_matrix(x, xlab="Column", ylab="Row",
   The plot, a Trellis object.
 }
 \details{
-  Plot of a square matrix.
+  Plot of a matrix.
 }
 \author{Marius Hofert}
 \examples{

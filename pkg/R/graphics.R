@@ -28,8 +28,8 @@ plot_NA <- function(x, xlab="Time", ylab="Component", main="",
     if(nchar(text) > 0) mtext(text, side=side, line=line, adj=adj)
 }
 
-##' @title Plot of a Square Matrix
-##' @param x A square Matrix
+##' @title Plot of a Matrix
+##' @param x A matrix
 ##' @param xlab x-axis label
 ##' @param ylab y-axis label
 ##' @param scales See levelplot(); if NULL, labels and ticks are omitted
@@ -50,7 +50,7 @@ plot_matrix <- function(x, xlab="Column", ylab="Row",
                                                      space="Lab")(200),
                         ...)
 {
-    stopifnot(is.matrix(x), (nr <- nrow(x)) >= 1, ncol(x) == nr,
+    stopifnot(is.matrix(x), (nr <- nrow(x)) >= 1,
               is.null(scales) || is.list(scales), is.numeric(at),
               is.list(colorkey))
     ran <- range(x, na.rm=TRUE)
