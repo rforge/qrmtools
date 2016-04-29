@@ -14,10 +14,14 @@ importFrom("zoo", "index")
 importFrom("methods", "hasArg")
 importFrom("stats", "dnorm", "dt", "integrate", "pnorm", "qnorm", "qt",
            "runif", "uniroot")
+importFrom("grDevices", "colorRampPalette")
 importFrom("grDevices", "dev.off")
 importFrom("graphics", "image", "mtext")
 importFrom("lattice", "levelplot")
-importFrom("grDevices", "colorRampPalette")
+importFrom("rugarch", "ugarchspec", "ugarchfit")
+importFrom("stats", "HoltWinters")
+importFrom("methods", "is")
+importFrom("utils", "setTxtProgressBar", "txtProgressBar")
 
 
 ### Exports ####################################################################
@@ -35,5 +39,9 @@ export(
     ## Black--Scholes formula
     "Black_Scholes", "Black_Scholes_Greeks",
     ## Graphics
-    "plot_NA", "plot_matrix"
+    "plot_NA", "plot_matrix",
+    ## Time Series
+    "fit_ARMA_GARCH",
+    ## Result/warning/error catching
+    "catch"
 )

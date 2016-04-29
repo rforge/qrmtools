@@ -2,9 +2,9 @@
 
 ##' @title Image displaying NAs in a data set
 ##' @param x A matrix (ideally an xts object)
+##' @param col The colors for NA and non-NA, respectively
 ##' @param xlab x-axis label
 ##' @param ylab y-axis label
-##' @param main Title
 ##' @param text See mtext()
 ##' @param side See mtext()
 ##' @param line See mtext()
@@ -12,8 +12,8 @@
 ##' @param ... Additional arguments passed to image()
 ##' @return invisible()
 ##' @author Marius Hofert
-plot_NA <- function(x, xlab="Time", ylab="Component", main="",
-                    text="Black: NA; White: Data available", side=4, line=1, adj=0,
+plot_NA <- function(x, col = c("black", "white"), xlab = "Time", ylab = "Component",
+                    text = "Black: NA; White: Available data", side = 4, line = 1, adj = 0,
                     ...)
 {
     stopifnot(is.matrix(x))
@@ -21,11 +21,13 @@ plot_NA <- function(x, xlab="Time", ylab="Component", main="",
         index(x) # use the time points
     } else {
         rn <- rownames(x)
-        if(!is.null(rn)) rn else seq_len(nrow(x)) # if available, use row names, otherwise numbers
+        if(is.null(rn)) seq_len(nrow(x)) else rn # if available, use row names, otherwise numbers
     }
-    image(x=x., y=seq_len(ncol(x)), z=is.na(x),
-          col=c("white", "black"), xlab=xlab, ylab=ylab, main=main)
-    if(nchar(text) > 0) mtext(text, side=side, line=line, adj=adj)
+    image(x = x., y = seq_len(ncol(x)), z = is.na(x),
+          col = rev(col), xlab = xlab, ylab = ylab, ...)
+    if(!is.null(text) && nchar(text) > 0)
+        mtext(text, side = side, line = line, adj = adj)
+    invisible()
 }
 
 ##' @title Plot of a Matrix
