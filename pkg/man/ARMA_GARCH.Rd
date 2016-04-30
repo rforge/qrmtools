@@ -28,23 +28,56 @@ fit_ARMA_GARCH(x, ugarchspec.list = ugarchspec(distribution.model = "std"),
 }
 \author{Marius Hofert}
 \examples{
-## Pick out data
+library(rugarch)
+library(copula)
+
+## Read the data, build -log-returns
 data(list = "SP500_const", package = "qrmdata")
+stocks <- c("AAPL", "MSFT", "GOOGL")
 ii <- zoo::index(SP500_const)
-x <- SP500_const["2005-01-01" <= ii & ii <= "2010-12-31", c("AAPL", "MSFT", "GOOGL")]
+x <- SP500_const["2005-01-01" <= ii & ii <= "2010-12-31", stocks]
 stopifnot(all(!is.na(x)))
+X <- -apply(x, 2, function(x.) diff(log(x.)))
+n <- nrow(X)
+d <- ncol(X)
 
-## Fit ARMA-GARCH models
-res <- fit_ARMA_GARCH(x)
-str(res, max.level = 1)
+## Fit ARMA-GARCH models to the -log-returns
+## See http://unstarched.net/wp-content/uploads/2013/06/an-example-in-rugarch.pdf
+uspec <- list(ugarchspec(), # ARMA(1,1)-GARCH(1,1) model for 1st component
+              ugarchspec(variance.model = list(model = "sGARCH", garchOrder = c(2,2))),
+              ugarchspec(variance.model = list(model = "sGARCH", garchOrder = c(2,1)),
+                         mean.model = list(armaOrder = c(1,2), include.mean = TRUE)))
+fitAG <- fit_ARMA_GARCH(X, ugarchspec.list = uspec)
+str(fitAG, max.level = 1) # list with components fit, warning, error
+stopifnot(sapply(fitAG$error, is.null)) # NULL = no error
+stopifnot(sapply(fitAG$warning, is.null)) # NULL = no warning
 
-## Check out the results
-!sapply(res$error, is.null) # indicate errors
-!sapply(res$warning, is.null) # indicate warnings
-res$warning[[1]]
+## Pick out the residuals and plot their pseudo-observations
+Z <- sapply(fitAG$fit, residuals)
+U <- pobs(Z)
+pairs(U, gap = 0, pch = ".")
 
-## Extract residuals (for components for which fitting worked)
-resi <- lapply(res$fit, function(z) residuals(z@fit))
-str(resi)
+## Fit a t copula to the residuals
+fitC <- fitCopula(tCopula(dim = d, dispstr="un"), data = U, method = "mpl")
+
+## Simulate from the fitted model overall
+set.seed(271)
+U. <- rCopula(n, fitC@copula) # simulate from the fitted copula
+Z. <- qnorm(U.) # transform back to the residuals
+## Note: coef(fitAG$fit[[.]]) contains the fitted parameters in case required
+##       (for a non-standard residual distribution)
+X. <- lapply(1:d, function(j)
+    ugarchsim(fitAG$fit[[j]], n.sim = n, m.sim = 1, # 1 simulation of size n
+              custom.dist=list(name = "sample", distfit = Z.[,j, drop=FALSE]))@simulation)
+str(X., max.level = 3)
+X.. <- sapply(X., `[[`, "seriesSim") # simulated time series; use 'residSim' for residuals
+
+## Plots original vs simulated -log-returns
+layout(matrix(1:(2*d), ncol = d)) # layout
+ran <- range(X, X..)
+for(j in 1:d) {
+    plot(X[,j],   type = "l", ylim = ran, ylab = paste(stocks[j], "-log-returns"))
+    plot(X..[,j], type = "l", ylim = ran, ylab = "Simulated")
+}
 }
 \keyword{ts}
