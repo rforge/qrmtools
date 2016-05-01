@@ -5,8 +5,7 @@
   Fail-safe componentwise fitting of univariate ARMA-GARCH processes.
 }
 \usage{
-fit_ARMA_GARCH(x, ugarchspec.list = ugarchspec(distribution.model = "std"),
-               verbose = TRUE, ...)
+fit_ARMA_GARCH(x, ugarchspec.list = ugarchspec(), verbose = TRUE, ...)
 }
 \arguments{
   \item{x}{A \code{\link{matrix}}-like data structure, possibly an

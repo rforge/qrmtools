@@ -9,8 +9,7 @@
 ##' @return A list of length equal to the number of columns of x containing
 ##'         the fitted objects
 ##' @author Marius Hofert
-fit_ARMA_GARCH <- function(x, ugarchspec.list = ugarchspec(distribution.model = "std"),
-                           verbose = TRUE, ...)
+fit_ARMA_GARCH <- function(x, ugarchspec.list = ugarchspec(), verbose = TRUE, ...)
 {
     ## Checking and expanding ugarchspec.list to a list of length d
     if(!is.matrix(x)) x <- cbind(x) # is.matrix() is also true for 'xts' objects
