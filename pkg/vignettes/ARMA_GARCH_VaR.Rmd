@@ -54,7 +54,6 @@ plot(eps, type="l", xlab="t", ylab=expression("Residuals"~epsilon[t]))
 
 ## 2 Fit an ARMA-GARCH model to the (simulated) data
 
-
 Fit an ARMA-GARCH process to `X` (with the correct, known orders here).
 ```{r}
 mod <- list(model="sGARCH", garchOrder=garchOrder)

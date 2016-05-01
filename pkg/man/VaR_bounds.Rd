@@ -475,4 +475,4 @@ print(format(res.best$bounds, scientific=TRUE), quote=FALSE) # close to first va
 res.worst <- RA(0.99, qF=qF.lst, N=N, abstol=eps)
 print(format(res.worst$bounds, scientific=TRUE), quote=FALSE) # close to last value of 1st row
 }
-\keyword{distribution}
+\keyword{programming}

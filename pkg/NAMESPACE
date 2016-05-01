@@ -43,5 +43,7 @@ export(
     ## Time Series
     "fit_ARMA_GARCH",
     ## Result/warning/error catching
-    "catch"
+    "catch",
+    ## Returns
+    log_returns
 )
