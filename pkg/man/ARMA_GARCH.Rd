@@ -36,7 +36,7 @@ stocks <- c("AAPL", "MSFT", "GOOGL")
 ii <- zoo::index(SP500_const)
 x <- SP500_const["2005-01-01" <= ii & ii <= "2010-12-31", stocks]
 stopifnot(all(!is.na(x)))
-X <- -apply(x, 2, function(x.) diff(log(x.)))
+X <- -log_returns(x)
 n <- nrow(X)
 d <- ncol(X)
 
