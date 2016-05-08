@@ -1,10 +1,10 @@
-### Graphics for displaying data ###############################################
+### Graphical tools ############################################################
 
-##' @title Image displaying NAs in a data set
+##' @title Image Indicating NAs in a Data Set
 ##' @param x A matrix (ideally an xts object)
 ##' @param col The colors for NA and non-NA, respectively
-##' @param xlab x-axis label
-##' @param ylab y-axis label
+##' @param xlab The x-axis label
+##' @param ylab The y-axis label
 ##' @param text See mtext()
 ##' @param side See mtext()
 ##' @param line See mtext()
@@ -25,7 +25,7 @@ plot_NA <- function(x, col = c("black", "white"), xlab = "Time", ylab = "Compone
     }
     image(x = x., y = seq_len(ncol(x)), z = is.na(x),
           col = rev(col), xlab = xlab, ylab = ylab, ...)
-    if(!is.null(text) && nchar(text) > 0)
+    if(gsub(pattern = " ", replacement = "", x = text) != "") # test for "", " ", "  ", ... (also allows 'calls'/substitute())
         mtext(text, side = side, line = line, adj = adj)
     invisible()
 }
@@ -77,4 +77,32 @@ plot_matrix <- function(x, xlab = "Column", ylab = "Row",
               col.regions=col.regions,
               scales=if(is.null(scales)) list(alternating=c(0,0), tck=c(0,0)) else scales,
               at=at, colorkey=if(is.null(colorkey)) list(at=at) else colorkey, ...)
+}
+
+##' @title Density Plot of the Values from a Lower Triangular Matrix
+##' @param x A matrix
+##' @param xlab The x-axis label
+##' @param main The title
+##' @param text See mtext()
+##' @param side See mtext()
+##' @param line See mtext()
+##' @param adj See mtext()
+##' @param ... Additional arguments passed to plot()
+##' @return invisible()
+##' @author Marius Hofert
+density_plot_matrix <- function(x, xlab = "Entries in the lower triangular matrix",
+                                main = "", text = NULL, side = 4, line = 1, adj = 0, ...)
+{
+    if(!is.matrix(x)) x <- rbind(x, deparse.level=0L)
+    d <- ncol(x)
+    x.vec <- x[lower.tri(x)] # grab out values from the lower triangular matrix
+    dens.x <- density(x.vec) # density
+    plot(dens.x, main = main, ...) # plot
+    rug(x.vec, col = "black") # rugs
+    if(is.null(text))
+        text <- substitute("Dimension: "*d.*"; Sample size: "*n.*"; Bandwidth: "*b.,
+                           list(d. = d, n. = dens.x$n, b. = dens.x$bw))
+    if(gsub(pattern = " ", replacement = "", x = text) != "") # test for "", " ", "  ", ... (also allows 'calls'/substitute())
+        mtext(text, side = side, line = line, adj = adj)
+    invisible()
 }

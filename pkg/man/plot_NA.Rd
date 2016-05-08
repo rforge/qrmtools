@@ -15,7 +15,7 @@ plot_NA(x, col = c("black", "white"), xlab = "Time", ylab = "Component",
     available data, respectively.}
   \item{xlab}{The x-axis label.}
   \item{ylab}{The y-axis label.}
-  \item{text}{See \code{\link{mtext}()}.}
+  \item{text}{See \code{\link{mtext}()}. The \code{text = ""}, it is omitted.}
   \item{side}{See \code{\link{mtext}()}.}
   \item{line}{See \code{\link{mtext}()}.}
   \item{adj}{See \code{\link{mtext}()}.}
