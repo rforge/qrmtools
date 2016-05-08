@@ -25,7 +25,7 @@ plot_NA <- function(x, col = c("black", "white"), xlab = "Time", ylab = "Compone
     }
     image(x = x., y = seq_len(ncol(x)), z = is.na(x),
           col = rev(col), xlab = xlab, ylab = ylab, ...)
-    if(gsub(pattern = " ", replacement = "", x = text) != "") # test for "", " ", "  ", ... (also allows 'calls'/substitute())
+    if(inherits(text, "call") || nchar(text) > 0)
         mtext(text, side = side, line = line, adj = adj)
     invisible()
 }
@@ -97,12 +97,12 @@ density_plot_matrix <- function(x, xlab = "Entries in the lower triangular matri
     d <- ncol(x)
     x.vec <- x[lower.tri(x)] # grab out values from the lower triangular matrix
     dens.x <- density(x.vec) # density
-    plot(dens.x, main = main, ...) # plot
+    plot(dens.x, main = main, xlab = xlab, ...) # plot
     rug(x.vec, col = "black") # rugs
     if(is.null(text))
         text <- substitute("Dimension: "*d.*"; Sample size: "*n.*"; Bandwidth: "*b.,
                            list(d. = d, n. = dens.x$n, b. = dens.x$bw))
-    if(gsub(pattern = " ", replacement = "", x = text) != "") # test for "", " ", "  ", ... (also allows 'calls'/substitute())
+    if(inherits(text, "call") || nchar(text) > 0)
         mtext(text, side = side, line = line, adj = adj)
     invisible()
 }
