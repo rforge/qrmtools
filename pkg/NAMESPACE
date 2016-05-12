@@ -20,7 +20,7 @@ importFrom("graphics", "image", "mtext", "plot", "rug")
 importFrom("lattice", "levelplot")
 importFrom("rugarch", "ugarchspec", "ugarchfit")
 importFrom("stats", "HoltWinters", "density")
-importFrom("methods", "is")
+importFrom("methods", "is", "existsFunction")
 importFrom("utils", "setTxtProgressBar", "txtProgressBar")
 
 
