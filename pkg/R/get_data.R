@@ -1,8 +1,8 @@
 ### Tools for working with data sets ###########################################
 
 ##' @title Download data via quantmod's getSymbols() or Quandl's Quandl()
-##' @param x A vector of, for example, ticker symbols (if src="yahoo") or
-##'        "EUR/USD" if (src="oanda")
+##' @param x A vector of, for example, ticker symbols (if src = "yahoo") or
+##'        "EUR/USD" if (src = "oanda")
 ##' @param from start date as character string (e.g. 2015-01-01); if NULL,
 ##'        the earliest available date is picked
 ##' @param to end date; today unless otherwise specified
@@ -10,8 +10,8 @@
 ##' @param FUN A function to apply to the downloaded data:
 ##'        - if data is NA (could not be retrieved): none
 ##'        - if provided: the given function
-##'        - if not provided: Ad() if src="yahoo"; Cl() if src="google";
-##'          none otherwise (e.g. if src="oanda")
+##'        - if not provided: Ad() if src="yahoo"; Cl() if src = "google";
+##'          none otherwise (e.g. if src = "oanda")
 ##' @param verbose A logical indicating whether progress monitoring is done
 ##' @param warn A logical indicating whether a warning is given showing the error
 ##'        message when fetching x fails
@@ -31,8 +31,9 @@
 ##'         => For FRED, we pick out the range separately (drawback: still the
 ##'            whole data is downloaded first -- so only use this hack for FRED
 ##'            (= Federal Reserve Economic Data) data)
-get_data <- function(x, from=NULL, to=NULL, src=c("yahoo", "quandl", "oanda", "FRED", "google"),
-                     FUN=NULL, verbose=TRUE, warn=TRUE, ...)
+get_data <- function(x, from = NULL, to = NULL,
+                     src = c("yahoo", "quandl", "oanda", "FRED", "google"),
+                     FUN = NULL, verbose = TRUE, warn = TRUE, ...)
 {
     ## Checking
     if(is.factor(x)) x <- as.character(x)
