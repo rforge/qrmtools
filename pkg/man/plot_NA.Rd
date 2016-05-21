@@ -30,7 +30,11 @@ plot_NA(x, col = c("black", "white"), xlab = "Time", ylab = "Component",
 }
 \author{Marius Hofert}
 \examples{
+## Grab out data
 data(list = "SP500_const", package = "qrmdata")
-plot_NA(SP500_const) # some seconds...
+x <- SP500_const
+x. <- x["2000-01-01/", SP500_const_info$Sector == "Financials"]
+## Plot NAs
+plot_NA(x.)
 }
 \keyword{hplot}

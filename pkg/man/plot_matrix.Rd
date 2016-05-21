@@ -35,8 +35,12 @@ plot_matrix(x, xlab = "Column", ylab = "Row",
 }
 \author{Marius Hofert}
 \examples{
+## Grab out data
 data(list = "SP500_const", package = "qrmdata")
-X <- log_returns(SP500_const)
+x <- SP500_const
+x. <- x["2000-01-01/", SP500_const_info$Sector == "Financials"]
+## Build log-returns
+X <- log_returns(x.)
 P <- cor(X, use = "na.or.complete")
 dimnames(P) <- NULL # not visible anyways
 ## Default
