@@ -6,7 +6,7 @@
   log-returns (the inverse transformation).
 }
 \usage{
-log_returns(x, inverse = FALSE, start.value)
+log_returns(x, inverse = FALSE, start.value, drop = TRUE)
 }
 \arguments{
   \item{x}{A matrix of values to be turned into log-returns (if \code{inverse = FALSE})
@@ -16,10 +16,13 @@ log_returns(x, inverse = FALSE, start.value)
     requires \code{start.value} to be specified).}
   \item{start.value}{If \code{inverse = TRUE}, the last available value
     of the time series to be constructed from the given log-returns \code{x}.}
+  \item{drop}{A \code{\link{logical}} indicating whether 1-column matrices (or vectors)
+   are returned as vectors.}
 }
 \value{
-  A \code{\link{matrix}} with the same number of columns as \code{x},
-  just one row less (if \code{inverse = FALSE}) or one row more (if \code{inverse = TRUE}).
+  A \code{\link{matrix}} with the same number of columns as \code{x}
+  (if one, then a \code{\link{vector}}), just one row less (if \code{inverse = FALSE})
+  or one row more (if \code{inverse = TRUE}).
 }
 \details{
   For negative log-returns, use -\code{log_returns(x)} or
@@ -27,18 +30,20 @@ log_returns(x, inverse = FALSE, start.value)
 }
 \author{Marius Hofert}
 \examples{
-library(qrmdata)
-data(list = "SP500", package = "qrmdata")
-x <- SP500
+## Generate some data
+n <- 1000
+set.seed(271)
+S <- cumsum(sample(c(-1,1), size = n, replace = TRUE))
+S <- if(any(S <= 0)) S <- 1 - min(S) + S
 
-## log-returns
-X <- log_returns(x) # build log-returns
-Y <- log_returns(X, inverse = TRUE, start.value = x[1]) # transform back (first date is lost then)
-stopifnot(all.equal(as.numeric(x), as.numeric(Y)))
+## Log-returns
+X <- log_returns(S) # build log-returns
+Y <- log_returns(X, inverse = TRUE, start.value = S[1]) # transform back (first date is lost)
+stopifnot(all.equal(S, Y))
 
-## -log-returns
-X <- -log_returns(x) # build -log-returns
-Y <- log_returns(-X, inverse = TRUE, start.value = x[1]) # transform back
-stopifnot(all.equal(as.numeric(x), as.numeric(Y)))
+## -Log-returns
+X <- -log_returns(S) # build -log-returns
+Y <- log_returns(-X, inverse = TRUE, start.value = S[1]) # transform back
+stopifnot(all.equal(S, Y))
 }
 \keyword{utilities}

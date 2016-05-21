@@ -31,7 +31,7 @@ library(rugarch)
 library(copula)
 
 ## Read the data, build -log-returns
-data(list = "SP500_const", package = "qrmdata")
+data(list = "SP500_const", package = "qrmdataConstSP")
 stocks <- c("AAPL", "MSFT", "GOOGL")
 ii <- zoo::index(SP500_const)
 x <- SP500_const["2005-01-01" <= ii & ii <= "2010-12-31", stocks]

@@ -29,9 +29,14 @@ density_plot_matrix(x, xlab = "Entries in the lower triangular matrix",
 }
 \author{Marius Hofert}
 \examples{
-data(list = "SP500_const", package = "qrmdata")
-X <- log_returns(SP500_const)
-P <- cor(X, use = "na.or.complete")
+## Generate a random correlation matrix
+d <- 50
+L <- diag(1:d)
+set.seed(271)
+L[lower.tri(L)] <- runif(choose(d,2))
+Sigma <- L %*% t(L) # ... real, symmetric, positive definite (covariance) matrix Sigma
+P <- cor(Sigma)
+## Density of its lower triangular entries
 density_plot_matrix(P)
 }
 \keyword{hplot}

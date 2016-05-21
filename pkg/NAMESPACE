@@ -45,5 +45,7 @@ export(
     ## Result/warning/error catching
     "catch",
     ## Returns
-    log_returns
+    log_returns,
+    ## Data related functions
+    get_data
 )

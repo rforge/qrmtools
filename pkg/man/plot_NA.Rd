@@ -30,11 +30,20 @@ plot_NA(x, col = c("black", "white"), xlab = "Time", ylab = "Component",
 }
 \author{Marius Hofert}
 \examples{
-## Grab out data
-data(list = "SP500_const", package = "qrmdata")
-x <- SP500_const
-x. <- x["2000-01-01/", SP500_const_info$Sector == "Financials"]
+## Generate some data
+n <- 1000 # sample size
+d <- 100 # dimension
+set.seed(271) # set seed
+x <- matrix(runif(n*d), ncol = d) # generate data
+
+## Assign missing data
+k <- ceiling(d/4) # fraction of columns with some NAs
+j <- sample(1:d, size = k) # columns j with NAs
+i <- sample(1:n, size = k) # 1:i will be NA in each column j
+X <- x
+for(k. in seq_len(k)) X[1:i[k.], j[k.]] <- NA # put in NAs
+
 ## Plot NAs
-plot_NA(x.)
+plot_NA(X) # indicate NAs
 }
 \keyword{hplot}

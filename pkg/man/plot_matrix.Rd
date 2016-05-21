@@ -35,14 +35,13 @@ plot_matrix(x, xlab = "Column", ylab = "Row",
 }
 \author{Marius Hofert}
 \examples{
-## Grab out data
-data(list = "SP500_const", package = "qrmdata")
-x <- SP500_const
-x. <- x["2000-01-01/", SP500_const_info$Sector == "Financials"]
-## Build log-returns
-X <- log_returns(x.)
-P <- cor(X, use = "na.or.complete")
-dimnames(P) <- NULL # not visible anyways
+## Generate a random correlation matrix
+d <- 50
+L <- diag(1:d)
+set.seed(271)
+L[lower.tri(L)] <- runif(choose(d,2))
+Sigma <- L %*% t(L) # ... real, symmetric, positive definite (covariance) matrix Sigma
+P <- cor(Sigma)
 ## Default
 plot_matrix(P)
 ## Default if nonnegative
