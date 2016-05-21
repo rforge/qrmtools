@@ -17,6 +17,7 @@ Imports: graphics, lattice, quantmod, Quandl, zoo, methods, grDevices, stats,
          rugarch, utils
 Suggests: qrmdata, combinat, copula, knitr, mvtnorm, QRM, sfsmisc
 Enhances:
+Additional_repositories: http://r-forge.r-project.org/
 License: GPL-2 | GPL-3
 NeedsCompilation: yes
 VignetteBuilder: knitr
