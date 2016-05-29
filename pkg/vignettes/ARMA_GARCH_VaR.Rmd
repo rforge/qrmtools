@@ -111,7 +111,7 @@ Compute VaR estimates.
 ## VaR estimates and check
 alpha <- 0.99
 VaR <- as.numeric(quantile(fit, probs = alpha)) # a vector (since fit is a rugarch object)
-nu. <- fit@model$pars["shape",1] # extract (fitted) d.o.f. nu
+nu. <- fit@fit$coef["shape"] # extract (fitted) d.o.f. nu
 VaR. <- as.numeric(mu + sig * sqrt((nu.-2)/nu.) * qt(alpha, df = nu.)) # VaR_alpha computed manually
 stopifnot(all.equal(VaR., VaR))
 ## => quantile(<rugarch object>, probs = alpha) provides VaR_alpha = hat{mu}_t + hat{sigma}_t * q_Z(alpha)

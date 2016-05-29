@@ -34,13 +34,15 @@ library(copula)
 data(SMI.12) # Swiss Market Index data
 stocks <- c("CSGN", "BAER", "UBSN", "SREN", "ZURN") # components we work with
 x <- SMI.12[, stocks]
-X <- -apply(x, 2, function(x.) diff(log(x.)))
+X <- -log_returns(x)
 n <- nrow(X)
 d <- ncol(X)
 
 ## Fit ARMA-GARCH models to the -log-returns
-## Note: Our choice here is purely for demonstration purposes. The models
-##       are not necessarily adequate
+## Note: - Our choice here is purely for demonstration purposes.
+##         The models are not necessarily adequate
+##       - The sample size n is *too* small here for properly capturing GARCH effects.
+##         Again, this is only for demonstration purposes here.
 uspec <- c(rep(list(ugarchspec(distribution.model = "std")), d-2), # ARMA(1,1)-GARCH(1,1)
            list(ugarchspec(variance.model = list(model = "sGARCH", garchOrder = c(2,2)),
                            distribution.model = "std")),
@@ -61,16 +63,17 @@ U <- pobs(Z)
 pairs(U, gap = 0)
 fitC <- fitCopula(tCopula(dim = d, dispstr = "un"), data = U, method = "mpl")
 
-## Simulate standardized residuals
+## Simulate (standardized) Z
 set.seed(271)
 U. <- rCopula(n, fitC@copula) # simulate from the fitted copula
-Z. <- sapply(1:d, function(j) qt(U.[,j], df = 3))
+nu <- sapply(1:d, function(j) fitAG$fit[[j]]@fit$coef["shape"]) # extract (fitted) d.o.f. nu
+Z. <- sapply(1:d, function(j) sqrt((nu[j]-2)/nu[j]) * qt(U.[,j], df = nu[j])) # Z
 
 ## Simulate from fitted model
 X. <- sapply(1:d, function(j)
     fitted(ugarchsim(fitAG$fit[[j]], n.sim = n, m.sim = 1, startMethod = "sample",
-                     custom.dist = list(name = "sample",
-                                        distfit = Z.[,j, drop = FALSE]))))
+                     rseed = 271, custom.dist = list(name = "sample",
+                                                     distfit = Z.[,j, drop = FALSE]))))
 
 ## Plots original vs simulated -log-returns
 opar <- par(no.readonly = TRUE)
@@ -78,7 +81,7 @@ layout(matrix(1:(2*d), ncol = d)) # layout
 ran <- range(X, X.)
 for(j in 1:d) {
     plot(X[,j],  type = "l", ylim = ran, ylab = paste(stocks[j], "-log-returns"))
-    plot(X.[,j], type = "l", ylim = ran, ylab = "Simulated")
+    plot(X.[,j], type = "l", ylim = ran, ylab = "Simulated -log-returns")
 }
 par(opar)
 }
