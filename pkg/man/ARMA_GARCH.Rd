@@ -31,52 +31,55 @@ library(rugarch)
 library(copula)
 
 ## Read the data, build -log-returns
-data(list = "SP500_const", package = "qrmdataConstSP")
-stocks <- c("AAPL", "MSFT", "GOOGL")
-ii <- zoo::index(SP500_const)
-x <- SP500_const["2005-01-01" <= ii & ii <= "2010-12-31", stocks]
-stopifnot(all(!is.na(x)))
-X <- -log_returns(x)
+data(SMI.12) # Swiss Market Index data
+stocks <- c("CSGN", "BAER", "UBSN", "SREN", "ZURN") # components we work with
+x <- SMI.12[, stocks]
+X <- -apply(x, 2, function(x.) diff(log(x.)))
 n <- nrow(X)
 d <- ncol(X)
 
 ## Fit ARMA-GARCH models to the -log-returns
-## See http://unstarched.net/wp-content/uploads/2013/06/an-example-in-rugarch.pdf
-uspec <- list(ugarchspec(), # ARMA(1,1)-GARCH(1,1) model for 1st component
-              ugarchspec(variance.model = list(model = "sGARCH", garchOrder = c(2,2))),
-              ugarchspec(variance.model = list(model = "sGARCH", garchOrder = c(2,1)),
-                         mean.model = list(armaOrder = c(1,2), include.mean = TRUE)))
+## Note: Our choice here is purely for demonstration purposes. The models
+##       are not necessarily adequate
+uspec <- c(rep(list(ugarchspec(distribution.model = "std")), d-2), # ARMA(1,1)-GARCH(1,1)
+           list(ugarchspec(variance.model = list(model = "sGARCH", garchOrder = c(2,2)),
+                           distribution.model = "std")),
+           list(ugarchspec(variance.model = list(model = "sGARCH", garchOrder = c(2,1)),
+                           mean.model = list(armaOrder = c(1,2), include.mean = TRUE),
+                           distribution.model = "std")))
 fitAG <- fit_ARMA_GARCH(X, ugarchspec.list = uspec)
 str(fitAG, max.level = 1) # list with components fit, warning, error
 stopifnot(sapply(fitAG$error, is.null)) # NULL = no error
 stopifnot(sapply(fitAG$warning, is.null)) # NULL = no warning
 
-## Pick out the residuals and plot their pseudo-observations
-Z <- sapply(fitAG$fit, residuals)
+## Pick out the standardized residuals, plot them and fit a t copula to them
+## Note: ugarchsim() needs the residuals to be standardized; so working with
+##       standardize = FALSE still requires to simulate them from the
+##       respective standardized marginal distribution functions.
+Z <- sapply(fitAG$fit, residuals, standardize = TRUE)
 U <- pobs(Z)
-pairs(U, gap = 0, pch = ".")
+pairs(U, gap = 0)
+fitC <- fitCopula(tCopula(dim = d, dispstr = "un"), data = U, method = "mpl")
 
-## Fit a t copula to the residuals
-fitC <- fitCopula(tCopula(dim = d, dispstr="un"), data = U, method = "mpl")
-
-## Simulate from the fitted model overall
+## Simulate standardized residuals
 set.seed(271)
 U. <- rCopula(n, fitC@copula) # simulate from the fitted copula
-Z. <- qnorm(U.) # transform back to the residuals
-## Note: coef(fitAG$fit[[.]]) contains the fitted parameters in case required
-##       (for a non-standard residual distribution)
-X. <- lapply(1:d, function(j)
-    ugarchsim(fitAG$fit[[j]], n.sim = n, m.sim = 1, # 1 simulation of size n
-              custom.dist=list(name = "sample", distfit = Z.[,j, drop=FALSE]))@simulation)
-str(X., max.level = 3)
-X.. <- sapply(X., `[[`, "seriesSim") # simulated time series; use 'residSim' for residuals
+Z. <- sapply(1:d, function(j) qt(U.[,j], df = 3))
+
+## Simulate from fitted model
+X. <- sapply(1:d, function(j)
+    fitted(ugarchsim(fitAG$fit[[j]], n.sim = n, m.sim = 1, startMethod = "sample",
+                     custom.dist = list(name = "sample",
+                                        distfit = Z.[,j, drop = FALSE]))))
 
 ## Plots original vs simulated -log-returns
+opar <- par(no.readonly = TRUE)
 layout(matrix(1:(2*d), ncol = d)) # layout
-ran <- range(X, X..)
+ran <- range(X, X.)
 for(j in 1:d) {
-    plot(X[,j],   type = "l", ylim = ran, ylab = paste(stocks[j], "-log-returns"))
-    plot(X..[,j], type = "l", ylim = ran, ylab = "Simulated")
+    plot(X[,j],  type = "l", ylim = ran, ylab = paste(stocks[j], "-log-returns"))
+    plot(X.[,j], type = "l", ylim = ran, ylab = "Simulated")
 }
+par(opar)
 }
 \keyword{ts}
