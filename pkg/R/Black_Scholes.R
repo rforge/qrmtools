@@ -11,7 +11,7 @@
 ##'        of a call or put option is to be computed
 ##' @return option price
 ##' @author Marius Hofert
-Black_Scholes <- function(t, S, r, sigma, K, T, type=c("call", "put"))
+Black_Scholes <- function(t, S, r, sigma, K, T, type = c("call", "put"))
 {
     d1 <- (log(S/K) + (r+sigma^2/2)*(T-t))/(sigma*sqrt(T-t))
     d2 <- d1-sigma*sqrt(T-t)

@@ -53,7 +53,7 @@ plot_matrix <- function(x, xlab = "Column", ylab = "Row",
     stopifnot(is.matrix(x), (nr <- nrow(x)) >= 1,
               is.null(scales) || is.list(scales), is.numeric(at) || is.null(at),
               is.list(colorkey) || is.null(colorkey), length(col) == 3)
-    ran <- range(x, na.rm=TRUE)
+    ran <- range(x, na.rm = TRUE)
     if(all(ran >= 0)) {
         if(is.null(at)) at <- seq(0, ran[2], length.out = 200)
         if(is.null(col.regions))
@@ -71,12 +71,12 @@ plot_matrix <- function(x, xlab = "Column", ylab = "Row",
             col.regions <- c(colorRampPalette(c(col[1], col[2]), space = "Lab")(floor(200*frac1)),
                              colorRampPalette(c(col[2], col[3]), space = "Lab")(ceiling(200*frac2)))
     }
-    if(min(x, na.rm=TRUE) < at[1] || max(x, na.rm=TRUE) > at[length(at)])
+    if(min(x, na.rm = TRUE) < at[1] || max(x, na.rm = TRUE) > at[length(at)])
         stop("'x' values outside the range spanned by 'at'. Choose 'at' appropriately.")
-    levelplot(t(x)[,nr:1], xlab=xlab, ylab=ylab,
-              col.regions=col.regions,
-              scales=if(is.null(scales)) list(alternating=c(0,0), tck=c(0,0)) else scales,
-              at=at, colorkey=if(is.null(colorkey)) list(at=at) else colorkey, ...)
+    levelplot(t(x)[,nr:1], xlab = xlab, ylab = ylab,
+              col.regions = col.regions,
+              scales = if(is.null(scales)) list(alternating = c(0,0), tck = c(0,0)) else scales,
+              at = at, colorkey = if(is.null(colorkey)) list(at = at) else colorkey, ...)
 }
 
 ##' @title Density Plot of the Values from a Lower Triangular Matrix
@@ -93,7 +93,7 @@ plot_matrix <- function(x, xlab = "Column", ylab = "Row",
 density_plot_matrix <- function(x, xlab = "Entries in the lower triangular matrix",
                                 main = "", text = NULL, side = 4, line = 1, adj = 0, ...)
 {
-    if(!is.matrix(x)) x <- rbind(x, deparse.level=0L)
+    if(!is.matrix(x)) x <- rbind(x, deparse.level = 0L)
     d <- ncol(x)
     x.vec <- x[lower.tri(x)] # grab out values from the lower triangular matrix
     dens.x <- density(x.vec) # density

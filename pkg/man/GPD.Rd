@@ -13,14 +13,14 @@
   generation for the (generalized) Pareto distribution (GPD).
 }
 \usage{
-dGPD(x, xi, beta, log=FALSE)
-pGPD(q, xi, beta, lower.tail=TRUE, log.p=FALSE)
-qGPD(p, xi, beta, lower.tail=TRUE, log.p=FALSE)
+dGPD(x, xi, beta, log = FALSE)
+pGPD(q, xi, beta, lower.tail = TRUE, log.p = FALSE)
+qGPD(p, xi, beta, lower.tail = TRUE, log.p = FALSE)
 rGPD(n, xi, beta)
 
-dPar(x, theta, log=FALSE)
-pPar(q, theta, lower.tail=TRUE, log.p=FALSE)
-qPar(p, theta, lower.tail=TRUE, log.p=FALSE)
+dPar(x, theta, log = FALSE)
+pPar(q, theta, lower.tail = TRUE, log.p = FALSE)
+qPar(p, theta, lower.tail = TRUE, log.p = FALSE)
 rPar(n, theta)
 }
 \arguments{
@@ -44,17 +44,18 @@ rPar(n, theta)
 }
 \details{
   The distribution function of the generalized Pareto distribution is given by
-  \deqn{F(x)=\cases{
+  \deqn{F(x) = \cases{
     1-(1+\xi x/\beta)^{-1/\xi},&if $\xi\neq 0$,\cr
-    1-\exp(-x/\beta),&if $\xi=0$,\cr}}{%
-    F(x)=1-(1+xi x/beta)^{-1/xi} if xi !=0 and
-    1-exp(-x/beta) if xi=0,}
-  where \eqn{\beta>0}{beta>0} and \eqn{x\ge0}{x>=0} if \eqn{\xi\ge 0}{xi>=0}
+    1-\exp(-x/\beta),&if $\xi = 0$,\cr}}{%
+    F(x) = 1-(1+xi x/beta)^{-1/xi} if xi != 0 and
+    1-exp(-x/beta) if xi = 0,}
+  where \eqn{\beta>0}{beta>0} and \eqn{x\ge0}{x >= 0} if \eqn{\xi\ge
+  0}{xi >= 0}
   and \eqn{x\in[0,-\beta/\xi]}{x in [0,-beta/xi]} if \eqn{\xi<0}{xi<0}.
 
   The distribution function of the (standard) Pareto distribution is given by
-  \deqn{F(x)=1-(1+x)^{-\theta},\ x\ge 0,}{F(x)=1-(1+x)^{-theta}, x>=0,}
-  where \eqn{\theta>0}{theta>0}.
+  \deqn{F(x) = 1-(1+x)^{-\theta},\ x\ge 0,}{F(x) = 1-(1+x)^{-theta}, x
+  >= 0,} where \eqn{\theta > 0}{theta > 0}.
 
   In contrast to \code{dGPD()}, \code{pGPD()}, \code{qGPD()} and
   \code{rGPD()}, the functions \code{dPar()}, \code{pPar()},
@@ -69,7 +70,7 @@ rPar(n, theta)
 }
 \examples{
 ## Basic sanity checks
-plot(pGPD(rGPD(1000, xi=0.5, beta=3), xi=0.5, beta=3)) # should be U[0,1]
-curve(dGPD(x, xi=0.5, beta=3), from=-1, to=5)
+plot(pGPD(rGPD(1000, xi = 0.5, beta = 3), xi = 0.5, beta = 3)) # should be U[0,1]
+curve(dGPD(x, xi = 0.5, beta = 3), from = -1, to = 5)
 }
 \keyword{distribution}

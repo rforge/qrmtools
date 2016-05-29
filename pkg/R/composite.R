@@ -96,7 +96,7 @@ composite <- function(x, cuts, distr, weights, method = c("d","p","q"))
 
         ## evaluate d/p/q on bucket i
         ind <- if(method == "d" || method == "p") {
-            if(i == 1) x <= cuts[i] else if(i==l) cuts[i-1] < x else
+            if(i == 1) x <= cuts[i] else if(i == l) cuts[i-1] < x else
             cuts[i-1] < x & x <= cuts[i] # logical indicating whether x is in bucket i
         } else  # method == "q"
             (if(i == 1) s[i] <= x else s[i] < x) & x <= s[i+1] # logical indicating whether F(x) is in F(<bucket i>)

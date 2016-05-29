@@ -5,12 +5,13 @@
   Download (and possibly) merge data from freely available databases.
 }
 \usage{
-get_data(x, from=NULL, to=NULL, src=c("yahoo", "quandl", "oanda", "FRED", "google"),
-         FUN=NULL, verbose=TRUE, warn=TRUE, ...)
+get_data(x, from = NULL, to = NULL,
+         src = c("yahoo", "quandl", "oanda", "FRED", "google"),
+         FUN = NULL, verbose = TRUE, warn = TRUE, ...)
 }
 \arguments{
   \item{x}{A vector of ticker symbols (e.g. \code{"^GSPC"} if
-    \code{src="yahoo"} or \code{"EUR/USD"} if \code{src="oanda"}).}
+    \code{src = "yahoo"} or \code{"EUR/USD"} if \code{src = "oanda"}).}
   \item{from}{start date as a \code{Date} object or character string
     (in international date format \code{"yyyy-mm-dd"}); if \code{NULL},
     the earliest date with available data is picked.}
@@ -26,11 +27,11 @@ get_data(x, from=NULL, to=NULL, src=c("yahoo", "quandl", "oanda", "FRED", "googl
       \item{the identity}{if the data could not be retrieved (and is
 	thus replaced by \code{\link{NA}});}
       \item{the given \code{FUN}}{if \code{FUN} has been provided;}
-      \item{a useful default}{if \code{FUN=NULL}; the default uses
+      \item{a useful default}{if \code{FUN = NULL}; the default uses
 	the adjusted close price \code{\link{Ad}()} if
-	\code{src="yahoo"},
+	\code{src = "yahoo"},
 	the close price \code{\link{Cl}()} if
-	\code{src="google"} and the identity otherwise.}
+	\code{src = "google"} and the identity otherwise.}
     }}
   \item{verbose}{A \code{\link{logical}} indicating whether progress
     monitoring should be done.}
@@ -38,7 +39,7 @@ get_data(x, from=NULL, to=NULL, src=c("yahoo", "quandl", "oanda", "FRED", "googl
     is given showing the error message when fetching \code{x} fails.}
   \item{\dots}{Additional arguments passed to the underlying function
     \code{\link{getSymbols}()} from \pkg{quantmod} or
-    \code{\link{Quandl}()} from \pkg{Quandl} (if \code{src="quandl"}).}
+    \code{\link{Quandl}()} from \pkg{Quandl} (if \code{src = "quandl"}).}
 }
 \value{
   An \code{\link{xts}} object containing the data with column name(s)

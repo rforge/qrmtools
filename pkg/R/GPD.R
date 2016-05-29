@@ -7,12 +7,12 @@
 ##' @param log logical indicating whether the log density is computed
 ##' @return density of the GPD(xi, beta) distribution
 ##' @author Marius Hofert
-dGPD <- function(x, xi, beta, log=FALSE)
+dGPD <- function(x, xi, beta, log = FALSE)
 {
     stopifnot(beta > 0)
     res <- if(log) rep(-Inf, length(x)) else rep(0, length(x)) # correctly extend
     if(xi == 0) { # xi == 0
-        ind <- x>=0
+        ind <- x >= 0
         if(any(ind))
             res[ind] <- if(log) -x[ind]/beta-log(beta) else exp(-x[ind]/beta)/beta
     } else { # xi != 0
@@ -32,7 +32,7 @@ dGPD <- function(x, xi, beta, log=FALSE)
 ##' @param log.p logical indicating whether probabilities are given as log()
 ##' @return distribution function of the GPD(xi, beta) distribution
 ##' @author Marius Hofert
-pGPD <- function(q, xi, beta, lower.tail=TRUE, log.p=FALSE)
+pGPD <- function(q, xi, beta, lower.tail = TRUE, log.p = FALSE)
 {
     stopifnot(beta > 0)
     if(xi == 0) { # xi == 0
@@ -56,7 +56,7 @@ pGPD <- function(q, xi, beta, lower.tail=TRUE, log.p=FALSE)
 ##' @param log.p logical indicating whether probabilities are given as log()
 ##' @return quantile function of the GPD(xi, beta) distribution
 ##' @author Marius Hofert
-qGPD <- function(p, xi, beta, lower.tail=TRUE, log.p=FALSE)
+qGPD <- function(p, xi, beta, lower.tail = TRUE, log.p = FALSE)
 {
     stopifnot(beta > 0)
     p <- if(log.p) pmin(p, 0) else pmin(pmax(p, 0), 1) # correctly extend
@@ -78,7 +78,7 @@ qGPD <- function(p, xi, beta, lower.tail=TRUE, log.p=FALSE)
 ##' @return n-vector containing GPD(xi, beta) random variates
 ##' @author Marius Hofert
 rGPD <- function(n, xi, beta)
-    qGPD(runif(n), xi=xi, beta=beta)
+    qGPD(runif(n), xi = xi, beta = beta)
 
 
 ### Par(theta) = GPD(1/theta, 1/theta), theta > 0 distribution #################
@@ -94,7 +94,7 @@ rGPD <- function(n, xi, beta)
 ##' @param log logical indicating whether the log density is computed
 ##' @return density of the Par(theta) distribution
 ##' @author Marius Hofert
-dPar <- function(x, theta, log=FALSE)
+dPar <- function(x, theta, log = FALSE)
 {
     stopifnot(theta > 0)
     if(log) log(theta)-(theta+1)*log1p(x) else theta*(1+x)^(-theta-1)
@@ -107,7 +107,7 @@ dPar <- function(x, theta, log=FALSE)
 ##' @param log.p logical indicating whether probabilities are given as log()
 ##' @return distribution function of the Par(theta) distribution
 ##' @author Marius Hofert
-pPar <- function(q, theta, lower.tail=TRUE, log.p=FALSE)
+pPar <- function(q, theta, lower.tail = TRUE, log.p = FALSE)
 {
     stopifnot(theta > 0)
     if(lower.tail) {
@@ -122,7 +122,7 @@ pPar <- function(q, theta, lower.tail=TRUE, log.p=FALSE)
 ##' @param log.p logical indicating whether probabilities are given as log()
 ##' @return quantile function of the Par(theta) distribution
 ##' @author Marius Hofert
-qPar <- function(p, theta, lower.tail=TRUE, log.p=FALSE)
+qPar <- function(p, theta, lower.tail = TRUE, log.p = FALSE)
 {
     stopifnot(0 <= p, p <= 1, theta > 0)
     if(lower.tail) {
@@ -138,7 +138,7 @@ qPar <- function(p, theta, lower.tail=TRUE, log.p=FALSE)
 rPar <- function(n, theta)
 {
     stopifnot(theta > 0)
-    qPar(runif(n), theta=theta)
+    qPar(runif(n), theta = theta)
 }
 
 ##' @title Primitive of the Par(theta) survival function
@@ -149,6 +149,6 @@ rPar <- function(n, theta)
 bar_pPar_primitive <- function(q, theta)
 {
     stopifnot(theta > 0)
-    if(theta==1) log1p(q) else (1+q)^(1-theta) / (1-theta)
+    if(theta == 1) log1p(q) else (1+q)^(1-theta) / (1-theta)
 }
 

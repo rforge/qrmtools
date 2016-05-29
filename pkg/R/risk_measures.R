@@ -32,7 +32,7 @@ ES_t <- function(alpha, mu = 0, sigma = 1, df = Inf)
 ##' @param theta Pareto parameter
 ##' @return Value-at-Risk
 ##' @author Marius Hofert
-##' @note For Pareto defined via F(x)=1-x^{-theta}, F^-(u)=(1-u)^{-1/theta}
+##' @note For Pareto defined via F(x) = 1-x^{-theta}, F^-(u) = (1-u)^{-1/theta}
 VaR_Par <- function(alpha, theta) qPar(alpha, theta = theta)
 
 ##' @title Expected shortfall for the Pareto distribution
@@ -40,7 +40,7 @@ VaR_Par <- function(alpha, theta) qPar(alpha, theta = theta)
 ##' @param theta Pareto parameter
 ##' @return Expected shortfall
 ##' @author Marius Hofert
-##' @note For Pareto defined via F(x)=1-x^{-theta}, omit the last '-1'
+##' @note For Pareto defined via F(x) = 1-x^{-theta}, omit the last '-1'
 ES_Par <- function(alpha, theta)
 {
     stopifnot(0 <= alpha, alpha <= 1, theta > 1)
