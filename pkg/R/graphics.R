@@ -12,7 +12,7 @@
 ##' @param ... Additional arguments passed to image()
 ##' @return invisible()
 ##' @author Marius Hofert
-plot_NA <- function(x, col = c("black", "white"), xlab = "Time", ylab = "Component",
+NA_plot <- function(x, col = c("black", "white"), xlab = "Time", ylab = "Component",
                     text = "Black: NA; White: Available data", side = 4, line = 1, adj = 0,
                     ...)
 {
@@ -45,7 +45,7 @@ plot_NA <- function(x, col = c("black", "white"), xlab = "Time", ylab = "Compone
 ##' @note Another option would be:
 ##'       corrplot::corrplot(err, method="color", col=grey(seq(0.4, 1, length.out=200)),
 ##'                          tl.col="black", is.corr=FALSE)
-plot_matrix <- function(x, xlab = "Column", ylab = "Row",
+matrix_plot <- function(x, xlab = "Column", ylab = "Row",
                         scales = list(alternating = c(1,1), tck = c(1,0), x = list(rot = 90)),
                         at = NULL, colorkey = NULL, col = c("royalblue3", "white", "maroon3"),
                         col.regions = NULL, ...)
@@ -90,7 +90,7 @@ plot_matrix <- function(x, xlab = "Column", ylab = "Row",
 ##' @param ... Additional arguments passed to plot()
 ##' @return invisible()
 ##' @author Marius Hofert
-density_plot_matrix <- function(x, xlab = "Entries in the lower triangular matrix",
+matrix_density_plot <- function(x, xlab = "Entries in the lower triangular matrix",
                                 main = "", text = NULL, side = 4, line = 1, adj = 0, ...)
 {
     if(!is.matrix(x)) x <- rbind(x, deparse.level = 0L)
@@ -104,5 +104,54 @@ density_plot_matrix <- function(x, xlab = "Entries in the lower triangular matri
                            list(d. = d, n. = dens.x$n, b. = dens.x$bw))
     if(inherits(text, "call") || nchar(text) > 0)
         mtext(text, side = side, line = line, adj = adj)
+    invisible()
+}
+
+##' @title P-P Plot
+##' @param x The data (a vector of convertible to such)
+##' @param FUN The hypothesized *distribution* function
+##' @param xlab The x-axis label
+##' @param ylab The y-axis label
+##' @param ... Additional arguments passed to the underlying plot()
+##' @return invisible()
+##' @author Marius Hofert
+##' @note as.vector() required since sort(x) == x for an 'xts' object!
+pp_plot <-  function(x, FUN, xlab = "Theoretical probabilities", ylab = "Sample probabilities",
+                     ...)
+{
+    p <- ppoints(length(x)) # theoretical probabilities of sorted data
+    y <- FUN(sort(as.vector(x))) # hypothesized quantiles of sorted data
+    plot(p, y, xlab = xlab, ylab = ylab, ...)
+    abline(a = 0, b = 1)
+    invisible()
+}
+
+##' @title Q-Q Plot
+##' @param x The data (a vector of convertible to such)
+##' @param FUN The hypothesized *quantile* function
+##' @param xlab The x-axis label
+##' @param ylab The y-axis label
+##' @param ... Additional arguments passed to the underlying plot()
+##' @return invisible()
+##' @author Marius Hofert
+##' @note - as.vector() required since sort(x) == x for an 'xts' object!
+##'       - This is a convenience function which does the same as
+##'         qqplot(FUN(ppoints(length(x))), x)
+##'         qqline(x, distribution = function(p) FUN(p))
+##'         ... but has nicer default labels, does the Q-Q line by default
+##'         and uses the *theoretical* Q-Q line, not an empirically estimated
+##'         based on
+##'         x <- FUN(probs)
+##'         y <- quantile(x, probs = c(0.25, 0.75))
+##'         slope <- diff(y) / diff(x)
+##'         int <- y[1] - slope * x[1]
+##'         abline(a = int, b = slope)
+qq_plot <-  function(x, FUN, xlab = "Theoretical quantiles", ylab = "Sample quantiles",
+                     ...)
+{
+    q <- FUN(ppoints(length(x))) # theoretical quantiles of sorted data
+    y <- sort(as.vector(x)) # compute order statistics (sample quantiles)
+    plot(q, y, xlab = xlab, ylab = ylab, ...)
+    abline(a = 0, b = 1)
     invisible()
 }

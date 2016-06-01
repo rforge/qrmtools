@@ -1,11 +1,11 @@
-\name{plot_matrix}
-\alias{plot_matrix}
+\name{matrix_plot}
+\alias{matrix_plot}
 \title{Graphical Tool for Visualizing Matrices}
 \description{
   Plot of a matrix.
 }
 \usage{
-plot_matrix(x, xlab = "Column", ylab = "Row",
+matrix_plot(x, xlab = "Column", ylab = "Row",
             scales = list(alternating = c(1,1), tck = c(1,0), x = list(rot = 90)),
             at = NULL, colorkey = NULL, col = c("royalblue3", "white", "maroon3"),
             col.regions = NULL, ...)
@@ -43,18 +43,18 @@ L[lower.tri(L)] <- runif(choose(d,2))
 Sigma <- L %*% t(L) # ... real, symmetric, positive definite (covariance) matrix Sigma
 P <- cor(Sigma)
 ## Default
-plot_matrix(P)
+matrix_plot(P)
 ## Default if nonnegative
-plot_matrix(abs(P))
+matrix_plot(abs(P))
 ## Without diagonal
 P. <- abs(P)
 diag(P.) <- NA
-plot_matrix(P.)
+matrix_plot(P.)
 ## Default if nonpositive
-plot_matrix(-abs(P))
+matrix_plot(-abs(P))
 ## Extending the color key to [-1,1] with darker color for |rho| >> 0
 ## Note: When specifying 'at', one most likely also wants to provide 'col.regions'
-plot_matrix(P, at = seq(-1, 1, length.out = 200),
+matrix_plot(P, at = seq(-1, 1, length.out = 200),
             col.regions = grey(c(seq(0, 1, length.out = 100), seq(1, 0, length.out = 100))))
 }
 \keyword{hplot}

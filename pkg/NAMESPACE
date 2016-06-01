@@ -13,10 +13,10 @@ importFrom("stats", "dnorm", "dt", "integrate", "pnorm", "qnorm", "qt",
            "runif", "uniroot")
 importFrom("grDevices", "colorRampPalette")
 importFrom("grDevices", "dev.off")
-importFrom("graphics", "image", "mtext", "plot", "rug")
+importFrom("graphics", "image", "mtext", "plot", "rug", "abline")
 importFrom("lattice", "levelplot")
 importFrom("rugarch", "ugarchspec", "ugarchfit")
-importFrom("stats", "HoltWinters", "density")
+importFrom("stats", "HoltWinters", "density", "ppoints")
 importFrom("methods", "is", "existsFunction")
 importFrom("utils", "setTxtProgressBar", "txtProgressBar")
 
@@ -36,7 +36,7 @@ export(
     ## Black--Scholes formula
     "Black_Scholes", "Black_Scholes_Greeks",
     ## Graphics
-    "plot_NA", "plot_matrix", "density_plot_matrix",
+    "NA_plot", "matrix_plot", "matrix_density_plot", "pp_plot", "qq_plot",
     ## Time Series
     "fit_ARMA_GARCH",
     ## Result/warning/error catching

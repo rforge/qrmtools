@@ -1,11 +1,11 @@
-\name{plot_NA}
-\alias{plot_NA}
+\name{NA_plot}
+\alias{NA_plot}
 \title{Graphical Tool for Visualizing NAs in a Data Set}
 \description{
   Plot NAs in a data set.
 }
 \usage{
-plot_NA(x, col = c("black", "white"), xlab = "Time", ylab = "Component",
+NA_plot(x, col = c("black", "white"), xlab = "Time", ylab = "Component",
         text = "Black: NA; White: Available data",
         side = 4, line = 1, adj = 0, ...)
 }
@@ -30,7 +30,7 @@ plot_NA(x, col = c("black", "white"), xlab = "Time", ylab = "Component",
 }
 \author{Marius Hofert}
 \examples{
-## Generate some data
+## Generate data
 n <- 1000 # sample size
 d <- 100 # dimension
 set.seed(271) # set seed
@@ -44,6 +44,6 @@ X <- x
 for(k. in seq_len(k)) X[1:i[k.], j[k.]] <- NA # put in NAs
 
 ## Plot NAs
-plot_NA(X) # indicate NAs
+NA_plot(X) # indicate NAs
 }
 \keyword{hplot}

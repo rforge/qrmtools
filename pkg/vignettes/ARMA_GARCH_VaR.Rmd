@@ -14,6 +14,7 @@ fitted and predicted based on an underlying ARMA-GARCH process (which of course
 also concerns QRM in the wider sense).
 
 ```{r, message = FALSE}
+require(qrmtools) # for qq_plot()
 require(rugarch)
 ```
 
@@ -45,9 +46,9 @@ sig <- sigma(x) # sigma_t (conditional standard deviations)
 eps <- x@path$residSim # epsilon_t = sigma_t * Z_t
 
 ## Sanity checks
-stopifnot(all.equal(X, x@path$seriesSim, check.attributes = FALSE),
-          all.equal(sig, x@path$sigmaSim, check.attributes = FALSE),
-          all.equal(eps, x@path$residSim, check.attributes = FALSE))
+stopifnot(all.equal(X,   x@path$seriesSim, check.attributes = FALSE),
+          all.equal(sig, x@path$sigmaSim,  check.attributes = FALSE),
+          all.equal(eps, x@path$residSim,  check.attributes = FALSE))
 ```
 
 As a sanity check, let's plot the simulated path, conditional
@@ -75,7 +76,7 @@ mu <- fitted(fit) # fitted hat{mu}_t (= hat{X}_t)
 sig <- sigma(fit) # fitted hat{sigma}_t
 
 ## Sanity checks
-stopifnot(all.equal(as.numeric(mu), fit@fit$fitted.values),
+stopifnot(all.equal(as.numeric(mu),  fit@fit$fitted.values),
           all.equal(as.numeric(sig), fit@fit$sigma))
 ```
 
@@ -97,10 +98,7 @@ plot(resi, type = "l", xlab = "t", ylab = expression(epsilon[t])) # check residu
 ## Plot Z_t
 Z <- fit@fit$z
 stopifnot(all.equal(Z, as.numeric(resi/sig)))
-qqplot(sqrt((nu-2)/nu) * qt(ppoints(length(Z)), df = nu), Z,
-       xlab = substitute("Standardized"~t[nu.]~"quantiles", list(nu. = nu)),
-       ylab = "Z quantiles") # check distribution of Z
-qqline(Z, distribution = function(p) sqrt((nu-2)/nu) * qt(p, df = nu))
+qq_plot(Z, FUN = function(p) sqrt((nu-2)/nu) * qt(p, df = nu))
 ```
 
 
