@@ -52,24 +52,29 @@ matrix_plot <- function(x, xlab = "Column", ylab = "Row",
 {
     stopifnot(is.matrix(x), (nr <- nrow(x)) >= 1,
               is.null(scales) || is.list(scales), is.numeric(at) || is.null(at),
-              is.list(colorkey) || is.null(colorkey), length(col) == 3)
+              is.list(colorkey) || is.null(colorkey))
     ran <- range(x, na.rm = TRUE)
     if(all(ran >= 0)) {
         if(is.null(at)) at <- seq(0, ran[2], length.out = 200)
         if(is.null(col.regions))
            col.regions <- colorRampPalette(c(col[2], col[3]), space = "Lab")(200)
     } else if(all(ran <= 0)) {
+        lcol <- length(col)
+        stopifnot(2 <= lcol, lcol <= 3)
         if(is.null(at)) at <- seq(ran[1], 0, length.out = 200)
         if(is.null(col.regions))
            col.regions <- colorRampPalette(c(col[1], col[2]), space = "Lab")(200)
     } else { # ran[1] < 0 && ran[2] > 0
+        lcol <- length(col)
+        stopifnot(2 <= lcol, lcol <= 3)
+        if(lcol == 2) col <- c(0, col)
         ## Scale so that 0 gets the 'middle' color col[2]
         frac1 <- -ran[1]/diff(ran)
         frac2 <- ran[2]/diff(ran) # => frac1 + frac2 = 1 (and both in [0,1])
         if(is.null(at)) at <- seq(ran[1], ran[2], length.out = 200)
         if(is.null(col.regions))
-            col.regions <- c(colorRampPalette(c(col[1], col[2]), space = "Lab")(floor(200*frac1)),
-                             colorRampPalette(c(col[2], col[3]), space = "Lab")(ceiling(200*frac2)))
+            col.regions <- c(colorRampPalette(col[1:2], space = "Lab")(floor(200*frac1)),
+                             colorRampPalette(col[2:3], space = "Lab")(ceiling(200*frac2)))
     }
     if(min(x, na.rm = TRUE) < at[1] || max(x, na.rm = TRUE) > at[length(at)])
         stop("'x' values outside the range spanned by 'at'. Choose 'at' appropriately.")

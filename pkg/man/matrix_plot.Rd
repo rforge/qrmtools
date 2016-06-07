@@ -20,7 +20,10 @@ matrix_plot(x, xlab = "Column", ylab = "Row",
     useful default is computed based on the given values in \code{x}.}
   \item{colorkey}{See \code{\link{levelplot}()}. If \code{\link{NULL}}, a
     useful default is computed based on \code{at}.}
-  \item{col}{A \code{\link{vector}} of length 3 providing the color
+  \item{col}{A \code{\link{vector}} of length two (if all values of
+    \code{x} are non-positive or all are non-negative; note that also a
+    vector of length three is allowed in this case) or three (if
+    \code{x} contains negative and positive values) providing the color
     key's default colors.}
   \item{col.regions}{See \code{\link{levelplot}()}. If \code{\link{NULL}}, a
     useful default is computed based on \code{at}.}
