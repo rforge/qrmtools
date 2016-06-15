@@ -42,7 +42,7 @@ get_data(x, from = NULL, to = NULL,
     \code{\link{Quandl}()} from \pkg{Quandl} (if \code{src = "quandl"}).}
 }
 \value{
-  An \code{\link{xts}} object containing the data with column name(s)
+  An \code{xts} object containing the data with column name(s)
   adjusted to be the ticker symbol (in case lengths match; otherwise the
   column names are not adjusted); \code{\link{NA}} if
   data is not available.

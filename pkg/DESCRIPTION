@@ -14,7 +14,7 @@ Author: Marius Hofert [aut, cre], Kurt Hornik [aut]
 Maintainer: Marius Hofert <marius.hofert@uwaterloo.ca>
 Depends: R (>= 3.2.0)
 Imports: graphics, lattice, quantmod, Quandl, zoo, methods, grDevices, stats,
-         rugarch, utils, xts
+         rugarch, utils
 Suggests: combinat, copula, knitr, mvtnorm, QRM, sfsmisc
 Enhances:
 License: GPL-2 | GPL-3

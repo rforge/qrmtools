@@ -16,8 +16,9 @@ log_returns(x, inverse = FALSE, start.value, drop = TRUE)
     requires \code{start.value} to be specified).}
   \item{start.value}{If \code{inverse = TRUE}, the last available value
     of the time series to be constructed from the given log-returns \code{x}.}
-  \item{drop}{A \code{\link{logical}} indicating whether 1-column matrices (or vectors)
-   are returned as vectors.}
+  \item{drop}{A \code{\link{logical}} indicating whether 1-column
+    matrices (or vectors) which are not \code{xts} objects are returned as
+    vectors.}
 }
 \value{
   A \code{\link{matrix}} with the same number of columns as \code{x}
@@ -27,6 +28,9 @@ log_returns(x, inverse = FALSE, start.value, drop = TRUE)
 \details{
   For negative log-returns, use -\code{log_returns(x)} or
   \code{log_returns(-x, inverse = TRUE, start.value = ...)}.
+
+  If \code{inverse = FALSE} and \code{x} is an \code{xts} object, the
+  returned object is an \code{xts} object as well.
 }
 \author{Marius Hofert}
 \examples{

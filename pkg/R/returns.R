@@ -8,8 +8,8 @@
 ##'        requires start.value to be specified)
 ##' @param start.value If inverse = TRUE, the last available value of the time
 ##'        series
-##' @param drop A logical indicating whether 1-column matrices (or vectors)
-##'        are returned as vectors
+##' @param drop A logical indicating whether 1-column matrices which are not xts
+##'        objects are returned as vectors
 ##' @return A matrix containing the log-returns or their 'inverses'
 ##' @author Marius Hofert
 ##' @note For *negative* log-returns, use -log_returns(x) or
@@ -17,18 +17,25 @@
 log_returns <- function(x, inverse = FALSE, start.value, drop = TRUE)
 {
     if(!is.matrix(x)) x <- cbind(x)
-    res <- if(inverse) {
+    if(inverse) {
         ## Note:
-        ## X_t = log(S_t/S_{t-1}) [or -X_t if negative = TRUE]
+        ## X_t = log(S_t/S_{t-1})
         ## => S_t = S_{t-1} * exp(X_t) = ... = S_{last index} * exp(X_1 + X_2 + .. + X_t)
         d <- ncol(x)
         stopifnot(!missing(start.value), length(start.value) == d)
         x.csum <- rbind(rep(0, d),
                         apply(x, 2, cumsum)) # 'xts' lost here
         start.value.factors <- matrix(rep(start.value, each = nrow(x.csum)), ncol = d)
-        start.value.factors * exp(x.csum)
+        r <- start.value.factors * exp(x.csum)
+        if(drop && ncol(r) == 1) as.vector(r) else r
+        ## Note: We didn't incorporate inherits(..., "zoo") here as a zoo object
+        ##       would get lost due to the apply() anyways
     } else {
-        apply(x, 2, function(x.) diff(log(x.)))
+        if(inherits(x, "zoo")) {
+            diff(log(x))[-1,] # diff() works componentwise here; leaves the first row in there as NA (remove it here to be consistent)
+        } else {
+            r <- apply(x, 2, function(x.) diff(log(x.)))
+            if(drop && ncol(r) == 1) as.vector(r) else r
+        }
     }
-    if(drop & ncol(res) == 1) as.vector(res) else res
 }
