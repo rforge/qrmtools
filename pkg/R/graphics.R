@@ -121,7 +121,8 @@ matrix_density_plot <- function(x, xlab = "Entries in the lower triangular matri
 ##' @return invisible()
 ##' @author Marius Hofert
 ##' @note as.vector() required since sort(x) == x for an 'xts' object!
-pp_plot <-  function(x, FUN, xlab = "Theoretical probabilities", ylab = "Sample probabilities",
+pp_plot <-  function(x, FUN = pnorm,
+                     xlab = "Theoretical probabilities", ylab = "Sample probabilities",
                      ...)
 {
     p <- ppoints(length(x)) # theoretical probabilities of sorted data
@@ -136,6 +137,24 @@ pp_plot <-  function(x, FUN, xlab = "Theoretical probabilities", ylab = "Sample 
 ##' @param FUN The hypothesized *quantile* function
 ##' @param xlab The x-axis label
 ##' @param ylab The y-axis label
+##' @param method The method used to construct the Q-Q line:
+##'        "theoretical": The theoretically true line which helps
+##'                       deciding whether x comes from exactly
+##'                       the distribution specified by FUN
+##'        "empirical": qqline() which interpolates
+##'                     (F^-(0.25), F_n^-(0.25)) and (F^-(0.75)), F_n^-(0.75))
+##'                     and which helps deciding whether x comes from
+##'                     a location-scale transformed distribution
+##'                     specified by FUN.
+##'        Example:
+##'        z <- rnorm(1000)
+##'        qq_plot(z, qnorm) # fine
+##'        mu <- 3
+##'        sig <- 2
+##'        z. <- mu+sig*z
+##'        qq_plot(z., qnorm) # not fine
+##'        qq_plot((z.-mean(z.))/sd(z.), qnorm) # fine again
+##'        qq_plot(z., qnorm, method = "empirical") # fine again
 ##' @param ... Additional arguments passed to the underlying plot()
 ##' @return invisible()
 ##' @author Marius Hofert
@@ -144,19 +163,28 @@ pp_plot <-  function(x, FUN, xlab = "Theoretical probabilities", ylab = "Sample 
 ##'         qqplot(FUN(ppoints(length(x))), x)
 ##'         qqline(x, distribution = function(p) FUN(p))
 ##'         ... but has nicer default labels, does the Q-Q line by default
-##'         and uses the *theoretical* Q-Q line, not an empirically estimated
-##'         based on
+##'         and uses the *theoretical* Q-Q line by default, not an
+##'         empirically estimated one via
 ##'         x <- FUN(probs)
 ##'         y <- quantile(x, probs = c(0.25, 0.75))
 ##'         slope <- diff(y) / diff(x)
 ##'         int <- y[1] - slope * x[1]
 ##'         abline(a = int, b = slope)
-qq_plot <-  function(x, FUN, xlab = "Theoretical quantiles", ylab = "Sample quantiles",
+qq_plot <-  function(x, FUN = qnorm, method = c("theoretical", "empirical"),
+                     xlab = "Theoretical quantiles", ylab = "Sample quantiles",
                      ...)
 {
     q <- FUN(ppoints(length(x))) # theoretical quantiles of sorted data
     y <- sort(as.vector(x)) # compute order statistics (sample quantiles)
     plot(q, y, xlab = xlab, ylab = ylab, ...)
-    abline(a = 0, b = 1)
+    method <- match.arg(method)
+    switch(method,
+    "theoretical" = {
+        abline(a = 0, b = 1) # intercept 0, slope 1
+    },
+    "empirical" = {
+        qqline(x, distribution = FUN) # estimates intercept and slope
+    },
+    stop("Wrong 'method'"))
     invisible()
 }

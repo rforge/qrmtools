@@ -8,7 +8,8 @@
 \usage{
 pp_plot(x, FUN, xlab = "Theoretical probabilities",
         ylab = "Sample probabilities", ...)
-qq_plot(x, FUN, xlab = "Theoretical quantiles", ylab = "Sample quantiles", ...)
+qq_plot(x, FUN, method = c("theoretical", "empirical"),
+        xlab = "Theoretical quantiles", ylab = "Sample quantiles", ...)
 }
 \arguments{
   \item{x}{The data \code{\link{vector}}.}
@@ -17,6 +18,14 @@ qq_plot(x, FUN, xlab = "Theoretical quantiles", ylab = "Sample quantiles", ...)
       \item{\code{pp_plot()}:}{The distribution function.}
       \item{\code{qq_plot()}:}{The quantile function.}
   }}
+  \item{method}{The method used to construct the Q-Q line. If
+    \code{"theoretical"}, the theoretically true line with intercept 0
+    and slope 1 is displayed; if \code{"empirical"}, the intercept
+    and slope are determined with \code{\link{qqline}()}. The former
+    helps deciding whether \code{x} comes from the distribution
+    specified by \code{FUN} exactly, the latter whether \code{x}
+    comes from a location-scale transformed distribution specified by
+    \code{FUN}.}
   \item{xlab}{The x-axis label.}
   \item{ylab}{The y-axis label.}
   \item{\dots}{Additional arguments passed to the underlying function
@@ -50,5 +59,18 @@ qq_plot(x, FUN = qF)
 ## A comparison with R's qqplot() and qqline()
 qqplot(qF(ppoints(length(x))), x) # the same (except labels)
 qqline(x, distribution = qF) # slightly different (since *estimated*)
+
+## Difference of the two methods
+set.seed(271)
+z <- rnorm(1000)
+## Standardized data
+qq_plot(z, qnorm) # fine
+qq_plot(z, qnorm, method = "empirical") # fine
+## Location-scale transformed data
+mu <- 3
+sig <- 2
+z. <- mu+sig*z
+qq_plot(z., qnorm) # not fine (z. comes from N(mu, sig^2), not N(0,1))
+qq_plot(z., qnorm, method = "empirical") # fine (as intercept and slope are estimated)
 }
 \keyword{hplot}

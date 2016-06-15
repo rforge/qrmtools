@@ -10,7 +10,7 @@ importFrom("Quandl", "Quandl")
 importFrom("zoo", "index")
 importFrom("methods", "hasArg")
 importFrom("stats", "dnorm", "dt", "integrate", "pnorm", "qnorm", "qt",
-           "runif", "uniroot")
+           "runif", "uniroot", "qqline")
 importFrom("grDevices", "colorRampPalette")
 importFrom("grDevices", "dev.off")
 importFrom("graphics", "image", "mtext", "plot", "rug", "abline")
