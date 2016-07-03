@@ -32,6 +32,7 @@ NA_plot <- function(x, col = c("black", "white"), xlab = "Time", ylab = "Compone
 
 ##' @title Plot of a Matrix
 ##' @param x A matrix
+##' @param ylim The y-axis limits in reverse order (for the rows to appear 'top down')
 ##' @param xlab x-axis label
 ##' @param ylab y-axis label
 ##' @param scales See levelplot(); if NULL, labels and ticks are omitted
@@ -42,29 +43,34 @@ NA_plot <- function(x, col = c("black", "white"), xlab = "Time", ylab = "Compone
 ##' @param ... Additional arguments passed to levelplot()
 ##' @return The level plot
 ##' @author Marius Hofert
-##' @note Another option would be:
-##'       corrplot::corrplot(err, method="color", col=grey(seq(0.4, 1, length.out=200)),
-##'                          tl.col="black", is.corr=FALSE)
-matrix_plot <- function(x, xlab = "Column", ylab = "Row",
-                        scales = list(alternating = c(1,1), tck = c(1,0), x = list(rot = 90)),
+##' @note - Another option would be:
+##'         corrplot::corrplot(err, method = "color", col = grey(seq(0.4, 1, length.out = 200)),
+##'                            tl.col = "black", is.corr = FALSE)
+##'       - Check via example on ?matrix_plot
+matrix_plot <- function(x, ylim = rev(c(0.5, nrow(x) + 0.5)),
+                        xlab = "Column", ylab = "Row",
+                        scales = list(alternating = c(1,1), tck = c(1,0),
+                                      x = list(at = pretty(1:ncol(x)), rot = 90),
+                                      y = list(at = pretty(1:nrow(x)))),
                         at = NULL, colorkey = NULL, col = c("royalblue3", "white", "maroon3"),
                         col.regions = NULL, ...)
 {
     stopifnot(is.matrix(x), (nr <- nrow(x)) >= 1,
               is.null(scales) || is.list(scales), is.numeric(at) || is.null(at),
               is.list(colorkey) || is.null(colorkey))
+    ## Determine colors for the color key
     ran <- range(x, na.rm = TRUE)
-    if(all(ran >= 0)) {
+    if(all(ran >= 0)) { # all non-NA entries >= 0
         if(is.null(at)) at <- seq(0, ran[2], length.out = 200)
         if(is.null(col.regions))
            col.regions <- colorRampPalette(c(col[2], col[3]), space = "Lab")(200)
-    } else if(all(ran <= 0)) {
+    } else if(all(ran <= 0)) { # all non-NA entries <= 0
         lcol <- length(col)
         stopifnot(2 <= lcol, lcol <= 3)
         if(is.null(at)) at <- seq(ran[1], 0, length.out = 200)
         if(is.null(col.regions))
            col.regions <- colorRampPalette(c(col[1], col[2]), space = "Lab")(200)
-    } else { # ran[1] < 0 && ran[2] > 0
+    } else { # entries < 0 && entries > 0
         lcol <- length(col)
         stopifnot(2 <= lcol, lcol <= 3)
         if(lcol == 2) col <- c(0, col)
@@ -78,8 +84,8 @@ matrix_plot <- function(x, xlab = "Column", ylab = "Row",
     }
     if(min(x, na.rm = TRUE) < at[1] || max(x, na.rm = TRUE) > at[length(at)])
         stop("'x' values outside the range spanned by 'at'. Choose 'at' appropriately.")
-    levelplot(t(x)[,nr:1], xlab = xlab, ylab = ylab,
-              col.regions = col.regions,
+    levelplot(x, ylim = ylim, # correct (x-axis = column; y-axis = row (and decreasing))
+              xlab = xlab, ylab = ylab, col.regions = col.regions,
               scales = if(is.null(scales)) list(alternating = c(0,0), tck = c(0,0)) else scales,
               at = at, colorkey = if(is.null(colorkey)) list(at = at) else colorkey, ...)
 }
@@ -137,6 +143,7 @@ pp_plot <-  function(x, FUN = pnorm,
 ##' @param FUN The hypothesized *quantile* function
 ##' @param xlab The x-axis label
 ##' @param ylab The y-axis label
+##' @param do.qqline A logical indicating whether a Q-Q line is plotted
 ##' @param method The method used to construct the Q-Q line:
 ##'        "theoretical": The theoretically true line which helps
 ##'                       deciding whether x comes from exactly
@@ -155,6 +162,8 @@ pp_plot <-  function(x, FUN = pnorm,
 ##'        qq_plot(z., qnorm) # not fine
 ##'        qq_plot((z.-mean(z.))/sd(z.), qnorm) # fine again
 ##'        qq_plot(z., qnorm, method = "empirical") # fine again
+##' @param qqline.args A list containing additional arguments passed to the
+##'        underlying abline() functions
 ##' @param ... Additional arguments passed to the underlying plot()
 ##' @return invisible()
 ##' @author Marius Hofert
@@ -170,21 +179,25 @@ pp_plot <-  function(x, FUN = pnorm,
 ##'         slope <- diff(y) / diff(x)
 ##'         int <- y[1] - slope * x[1]
 ##'         abline(a = int, b = slope)
-qq_plot <-  function(x, FUN = qnorm, method = c("theoretical", "empirical"),
-                     xlab = "Theoretical quantiles", ylab = "Sample quantiles",
-                     ...)
+qq_plot <-  function(x, FUN = qnorm, xlab = "Theoretical quantiles", ylab = "Sample quantiles",
+                     do.qqline = TRUE, method = c("theoretical", "empirical"),
+                     qqline.args = list(), ...)
 {
     q <- FUN(ppoints(length(x))) # theoretical quantiles of sorted data
     y <- sort(as.vector(x)) # compute order statistics (sample quantiles)
     plot(q, y, xlab = xlab, ylab = ylab, ...)
-    method <- match.arg(method)
-    switch(method,
-    "theoretical" = {
-        abline(a = 0, b = 1) # intercept 0, slope 1
-    },
-    "empirical" = {
-        qqline(x, distribution = FUN) # estimates intercept and slope
-    },
-    stop("Wrong 'method'"))
+    if(do.qqline) {
+        method <- match.arg(method)
+        switch(method,
+            "theoretical" = { # intercept 0, slope 1
+            arg.lst <- c(list(a = 0, b = 1), qqline.args)
+            do.call(abline, arg.lst)
+        },
+        "empirical" = { # estimates intercept and slope
+            arg.lst <- c(list(x, distribution = FUN), qqline.args)
+            do.call(qqline, arg.lst)
+        },
+        stop("Wrong 'method'"))
+    }
     invisible()
 }

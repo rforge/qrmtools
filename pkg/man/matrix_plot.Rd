@@ -5,13 +5,17 @@
   Plot of a matrix.
 }
 \usage{
-matrix_plot(x, xlab = "Column", ylab = "Row",
-            scales = list(alternating = c(1,1), tck = c(1,0), x = list(rot = 90)),
+matrix_plot(x, ylim = rev(c(0.5, nrow(x) + 0.5)),
+            xlab = "Column", ylab = "Row",
+            scales = list(alternating = c(1,1), tck = c(1,0),
+                          x = list(at = pretty(1:ncol(x)), rot = 90),
+                          y = list(at = pretty(1:nrow(x)))),
             at = NULL, colorkey = NULL, col = c("royalblue3", "white", "maroon3"),
             col.regions = NULL, ...)
 }
 \arguments{
   \item{x}{A \code{\link{matrix}}-like object.}
+  \item{ylim}{The y-axis limits in reverse order (for the rows to appear 'top down').}
   \item{xlab}{The x-axis label.}
   \item{ylab}{The y-axis label.}
   \item{scales}{See \code{\link{levelplot}()}; if \code{\link{NULL}},
@@ -45,19 +49,32 @@ set.seed(271)
 L[lower.tri(L)] <- runif(choose(d,2))
 Sigma <- L %*% t(L) # ... real, symmetric, positive definite (covariance) matrix Sigma
 P <- cor(Sigma)
+
 ## Default
 matrix_plot(P)
+
 ## Default if nonnegative
 matrix_plot(abs(P))
+
 ## Without diagonal
 P. <- abs(P)
 diag(P.) <- NA
 matrix_plot(P.)
+
 ## Default if nonpositive
 matrix_plot(-abs(P))
+
 ## Extending the color key to [-1,1] with darker color for |rho| >> 0
 ## Note: When specifying 'at', one most likely also wants to provide 'col.regions'
 matrix_plot(P, at = seq(-1, 1, length.out = 200),
             col.regions = grey(c(seq(0, 1, length.out = 100), seq(1, 0, length.out = 100))))
+
+## An example with overlaid lines
+library(lattice)
+my_panel <- function(...) {
+    panel.levelplot(...)
+    panel.abline(h = c(10, 20), v = c(10, 20), lty = 2)
+}
+matrix_plot(P, panel = my_panel)
 }
 \keyword{hplot}
