@@ -651,7 +651,6 @@ RA <- function(alpha, qF, N, abstol = 0, max.ra = Inf,
                         sample = sample, is.sorted = TRUE)
 
     ## Return
-    optim.fun <- if(method == "worst") min else max
     list(bounds = c(low = res.low$bound, up = res.up$bound), # (\underline{s}_N, \overline{s}_N)
          rel.ra.gap = abs((res.up$bound-res.low$bound)/res.up$bound), # relative RA gap
          ind.abs.tol = c(low = res.low$tol, up = res.up$tol), # individual absolute tolerances
@@ -755,7 +754,6 @@ ARA <- function(alpha, qF, N.exp = seq(8, 19, by = 1), reltol = c(0, 0.01),
     }
 
     ## Return
-    optim.fun <- if(method == "worst") min else max
     list(bounds = c(low = res.low$bound, up = res.up$bound), # (\underline{s}_N, \overline{s}_N)
          rel.ra.gap = abs((res.up$bound-res.low$bound)/res.up$bound), # relative RA gap
          rel.tol = c(low = res.low$tol, up = res.up$tol, joint = joint.tol), # individual and joint relative tolerances

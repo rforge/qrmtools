@@ -30,7 +30,7 @@ export(
     "dPar", "pPar", "qPar", "rPar",
     ## Risk measures
     "VaR_t", "ES_t", "VaR_Par", "ES_Par",
-    ## Worst VaR
+    ## Worst/best VaR
     "crude_VaR_bounds", "dual_bound", "VaR_bounds_hom",
     "rearrange", "RA", "ARA",
     ## Black--Scholes formula

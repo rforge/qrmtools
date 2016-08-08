@@ -112,7 +112,7 @@ matrix_density_plot <- function(x, xlab = "Entries in the lower triangular matri
     rug(x.vec, col = "black") # rugs
     if(is.null(text))
         text <- substitute("Dimension: "*d.*"; Sample size: "*n.*"; Bandwidth: "*b.,
-                           list(d. = d, n. = dens.x$n, b. = dens.x$bw))
+                           list(d. = d, n. = dens.x$n, b. = format(dens.x$bw, digits = 3, scientific = TRUE)))
     if(inherits(text, "call") || nchar(text) > 0)
         mtext(text, side = side, line = line, adj = adj)
     invisible()
@@ -139,7 +139,7 @@ pp_plot <-  function(x, FUN = pnorm,
 }
 
 ##' @title Q-Q Plot
-##' @param x The data (a vector of convertible to such)
+##' @param x The data (a vector or convertible to such)
 ##' @param FUN The hypothesized *quantile* function
 ##' @param xlab The x-axis label
 ##' @param ylab The y-axis label
@@ -181,20 +181,22 @@ pp_plot <-  function(x, FUN = pnorm,
 ##'         abline(a = int, b = slope)
 qq_plot <-  function(x, FUN = qnorm, xlab = "Theoretical quantiles", ylab = "Sample quantiles",
                      do.qqline = TRUE, method = c("theoretical", "empirical"),
-                     qqline.args = list(), ...)
+                     qqline.args = NULL, ...)
 {
-    q <- FUN(ppoints(length(x))) # theoretical quantiles of sorted data
-    y <- sort(as.vector(x)) # compute order statistics (sample quantiles)
+    x. <- x[!is.na(x)] # grab out non-NA data
+    q <- FUN(ppoints(length(x.))) # theoretical quantiles of sorted data
+    y <- sort(as.vector(x.)) # compute order statistics (sample quantiles)
     plot(q, y, xlab = xlab, ylab = ylab, ...)
     if(do.qqline) {
         method <- match.arg(method)
         switch(method,
-            "theoretical" = { # intercept 0, slope 1
-            arg.lst <- c(list(a = 0, b = 1), qqline.args)
-            do.call(abline, arg.lst)
+        "theoretical" = { # intercept 0, slope 1
+            if(is.null(qqline.args)) qqline.args <- list(a = 0, b = 1) # defaults
+            do.call(abline, qqline.args)
         },
         "empirical" = { # estimates intercept and slope
-            arg.lst <- c(list(x, distribution = FUN), qqline.args)
+            if(is.null(qqline.args)) qqline.args <- list()
+            arg.lst <- c(list(x., distribution = FUN), qqline.args)
             do.call(qqline, arg.lst)
         },
         stop("Wrong 'method'"))

@@ -756,10 +756,10 @@ generates the same output matrix for all inputs.
 We now consider the task of computing best and worst Value-at-Risk (VaR) at
 confidence level 99.9% for a real data set. To illustrate the ideas, we simply
 consider the negative log-returns of the constituents of the SMI from 2011-09-12
-to 2012-03-28. In a more realistic example (where the marginal loss
-distributions typically come from different business lines (in an Operational
-Risk context) and there is less information about the dependence (or no hope to
-estimate it)), one would consider real Operational Risk losses.
+to 2012-03-28. In a more realistic example where the marginal loss
+distributions typically come from different business lines or sub-units and
+there is less information about the dependence (or no hope to
+estimate it), one would consider real losses.
 
 First, let's compute the losses.
 ```{r}
@@ -855,13 +855,10 @@ points(0, res.low., pch = 3, col = "royalblue3") # draw tol = NULL result at 0, 
 lines(tol, res.up, type = "b")
 points(0, res.up., pch = 3) # draw tol = NULL result at 0, too (as '+')
 legend("topright", bty = "n", lty = rep(1,2),
-       col = c("black", "royalblue3"), legend = c("upper bound", "lower bound"))
+       col = c("black", "royalblue3"), legend = c("Upper bound", "Lower bound"))
 if(doPDF) dev.off()
 ```
 
 As we see, the results for `tol = NULL` (i.e., all columns oppositely ordered with
 respect to the sum of all others; indicated by '+') are identical to the
 results for `tol = 0` here; the latter are typically much faster to compute.
-However, we also see that choosing a too large `tol` can lead to the wrong
-bounds (although the bounds themselves are close). We thus see that there
-is a precision/run time trade-off.

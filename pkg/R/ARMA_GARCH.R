@@ -4,12 +4,16 @@
 ##' @param x A matrix-like data structure
 ##' @param ugarchspec.list An object of class uGARCHspec (as returned by
 ##'        ugarchspec()) or a list of such
+##' @param solver A string indicating the solver used; see ?ugarchfit
 ##' @param verbose A logical indicating whether verbose output is given
 ##' @param ... Additional arguments passed to the underlying ugarchfit() or HoltWinters()
 ##' @return A list of length equal to the number of columns of x containing
 ##'         the fitted objects
 ##' @author Marius Hofert
-fit_ARMA_GARCH <- function(x, ugarchspec.list = ugarchspec(), verbose = TRUE, ...)
+##' @note The default ugarchspec.list fits an ARMA(1,1)-GARCH(1,1) with N(0,1)
+##'       standardized residuals
+fit_ARMA_GARCH <- function(x, ugarchspec.list = ugarchspec(), solver = "hybrid",
+                           verbose = TRUE, ...)
 {
     ## Checking and expanding ugarchspec.list to a list of length d
     if(!is.matrix(x)) x <- cbind(x) # is.matrix() is also true for 'xts' objects

@@ -10,7 +10,7 @@ pp_plot(x, FUN, xlab = "Theoretical probabilities",
         ylab = "Sample probabilities", ...)
 qq_plot(x, FUN = qnorm, xlab = "Theoretical quantiles", ylab = "Sample quantiles",
         do.qqline = TRUE, method = c("theoretical", "empirical"),
-        qqline.args = list(), ...)
+        qqline.args = NULL, ...)
 }
 \arguments{
   \item{x}{The data \code{\link{vector}}.}
@@ -32,7 +32,9 @@ qq_plot(x, FUN = qnorm, xlab = "Theoretical quantiles", ylab = "Sample quantiles
     comes from a location-scale transformed distribution specified by
     \code{FUN}.}
   \item{qqline.args}{A \code{\link{list}} containing additional arguments
-    passed to the underlying \code{\link{abline}()} functions.}
+    passed to the underlying \code{\link{abline}()} functions. Defaults to
+    \code{list(a = 0, b = 1)} if \code{method = "theoretical"} and \code{list()}
+    if \code{method = "empirical"}.}
   \item{\dots}{Additional arguments passed to the underlying function
     \code{\link{plot}()}.}
 }

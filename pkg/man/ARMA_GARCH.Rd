@@ -5,7 +5,8 @@
   Fail-safe componentwise fitting of univariate ARMA-GARCH processes.
 }
 \usage{
-fit_ARMA_GARCH(x, ugarchspec.list = ugarchspec(), verbose = TRUE, ...)
+fit_ARMA_GARCH(x, ugarchspec.list = ugarchspec(), solver = "hybrid",
+               verbose = TRUE, ...)
 }
 \arguments{
   \item{x}{A \code{\link{matrix}}-like data structure, possibly an
@@ -15,6 +16,7 @@ fit_ARMA_GARCH(x, ugarchspec.list = ugarchspec(), verbose = TRUE, ...)
     length has to be equal to the number of columns of
     \code{x}. \code{ugarchspec.list} provides the ARMA-GARCH
     specifications for each of the time series (columns of \code{x}).}
+  \item{solver}{A string indicating the solver used; see \code{?ugarchfit}.}
   \item{verbose}{A \code{\link{logical}} indicating whether verbose
     output is given.}
   \item{\dots}{Additional arguments passed to the underlying
