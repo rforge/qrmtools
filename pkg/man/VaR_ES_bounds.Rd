@@ -1,4 +1,4 @@
-\name{VaR_bounds}
+\name{VaR_ES_bounds}
 \alias{crude_VaR_bounds}
 \alias{VaR_bounds_hom}
 \alias{dual_bound}
