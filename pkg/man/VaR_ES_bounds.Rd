@@ -161,7 +161,7 @@ ARA(alpha, qF, N.exp = seq(8, 19, by = 1), reltol = c(0, 0.01),
       \item{\code{rearrange():}}{Additional arguments passed to the underlying
        optimization function. Currently, this is only used if
        \code{method = "best.ES"} in which case the required confidence
-       level \code{\alpha} must be provided.}
+       level \eqn{\alpha}{alpha} must be provided as argument \code{alpha}.}
     }}
 }
 \value{
@@ -393,7 +393,8 @@ N <- 1e5
 set.seed(271)
 system.time(RA.worst.VaR <- RA(alpha, qF = qF, N = N, method = "worst.VaR"))
 RA.worst.VaR$bounds
-stopifnot(all.equal(RA.worst.VaR$bounds[["low"]],
+stopifnot(RA.worst.VaR$converged,
+          all.equal(RA.worst.VaR$bounds[["low"]],
                     RA.worst.VaR$bounds[["up"]], tol = 1e-4))
 
 ## Best VaR
@@ -401,7 +402,8 @@ N <- 1e5
 set.seed(271)
 system.time(RA.best.VaR <- RA(alpha, qF = qF, N = N, method = "best.VaR"))
 RA.best.VaR$bounds
-stopifnot(all.equal(RA.best.VaR$bounds[["low"]],
+stopifnot(RA.best.VaR$converged,
+          all.equal(RA.best.VaR$bounds[["low"]],
                     RA.best.VaR$bounds[["up"]], tol = 1e-4))
 
 ## Best ES
@@ -409,7 +411,8 @@ N <- 2e5 # actually, we need a (much larger) N here (but that's time consuming)
 set.seed(271)
 system.time(RA.best.ES <- RA(alpha, qF = qF, N = N, method = "best.ES"))
 RA.best.ES$bounds
-stopifnot(all.equal(RA.best.ES$bounds[["low"]],
+stopifnot(RA.best.ES$converged,
+          all.equal(RA.best.ES$bounds[["low"]],
                     RA.best.ES$bounds[["up"]], tol = 5e-1))
 
 

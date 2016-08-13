@@ -701,7 +701,7 @@ RA <- function(alpha, qF, N, abstol = 0, max.ra = Inf,
          ind.abs.tol = c(low = res.low$tol, up = res.up$tol), # individual absolute tolerances
          converged = c(low = res.low$converged, up = res.up$converged), # converged?
          num.ra = c(low = length(res.low$opt.row.sums), up = length(res.up$opt.row.sums)), # number of considered column rearrangements (low, up)
-         opt.row.sums = list(low = res.low$m.row.sum, up = res.up$opt.row.sums), # optimized row sums (low, up)
+         opt.row.sums = list(low = res.low$opt.row.sum, up = res.up$opt.row.sums), # optimized row sums (low, up)
          X = list(low = X.low, up = X.up), # input matrices X (low, up)
          X.rearranged = list(low = res.low$X.rearranged, up = res.up$X.rearranged)) # rearranged Xs (low, up)
 }
