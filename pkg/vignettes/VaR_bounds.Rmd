@@ -588,7 +588,7 @@ A straightforward (but inefficient) implementation of a basic
 `rearrange(, sample = FALSE, is.sorted = TRUE)` is the following. Note that our
 implementation in `qrmtools` allows for much greater functionality *and* is faster.
 ```{r}
-rearrange_ <- function(X, tol = 0)
+basic_rearrange_worst_VaR <- function(X, tol = 0)
 {
     N <- nrow(X)
     d <- ncol(X)
@@ -596,7 +596,7 @@ rearrange_ <- function(X, tol = 0)
     while (TRUE) {
         Y <- X
         for(j in 1:d)
-            Y[,j] <- sort(Y[,j])[N+1-rank(rowSums(Y[,-j, drop = FALSE]), ties.method = "first")]
+            Y[,j] <- sort(Y[,j], decreasing = TRUE)[rank(rowSums(Y[,-j, drop = FALSE]), ties.method = "first")]
         Y.rs <- rowSums(Y)
         m.rs.new <- min(Y.rs)
         tol. <- abs((m.rs.new - m.rs.old)/m.rs.old)
@@ -610,28 +610,29 @@ rearrange_ <- function(X, tol = 0)
             X <- Y
         }
     }
+    min(rowSums(Y))
 }
 ```
 
 We now compare this to the actual implementation (`rearrange(,
 sample = FALSE, is.sorted = TRUE)`). To this end, we consider the following setup.
 ```{r}
-## Build the input matrix (note that the columns have to be sorted in increasing order!)
+## Build the input matrix (for worst VaR)
 alpha <- 0.99 # confidence level
 N <- 2^9 # 512
 p <- alpha + (1-alpha)*0:(N-1)/N
 if(FALSE)
     d <- 2^(4:10) # 16, ..., 1024
 d <- 2^(4:8) # 16, ..., 256 (to save time here)
-res <- matrix(, nrow = length(d), ncol = 2)
-colnames(res) <- c("slow", "fast")
-qF <- function(p, theta = 2) (1-p)^(-1/theta)-1
+res <- matrix(, nrow = length(d), ncol = 2) # matrix containing run time results
+colnames(res) <- c("basic", "sophisticated")
+qF <- function(p, th = 2) qPar(p, theta = th) # Pareto quantile function
 
 ## For each d, measure the run time
 for(i in seq_along(d)) {
     ## cat("Working on d =",d[i],"\n")
     X <- sapply(rep(list(qF), d[i]), function(qF.) qF.(p))
-    res[i,] <- c(system.time(rearrange_(X))[["elapsed"]],
+    res[i,] <- c(system.time(basic_rearrange_worst_VaR(X))[["elapsed"]],
                  system.time(rearrange(X, sample = FALSE, is.sorted = TRUE))[["elapsed"]])
 }
 ```
