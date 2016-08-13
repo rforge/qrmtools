@@ -512,15 +512,23 @@ rearrange <- function(X, tol = 0, tol.type = c("relative", "absolute"), max.ra =
         Y.rs <- X.rs # row sum of Y (= row sum of X)
 
         ## Oppositely order the jth column to the sum of all others
-        yj <- Y.lst[[j]] # pick out jth column
-        rs <- Y.rs - yj # sum over all other columns (but the jth)
+        yj <- Y.lst[[j]] # pick out jth column (could contain -/+Inf)
+        rs.mj <- Y.rs - yj # sum over all other columns (but the jth)
+        ## Note: Consider a specific row and suppose Y.rs = -/+Inf.
+        ##       If yj = -/+Inf, rs.mj contains NaN (as Inf - Inf = NaN).
+        ##       Now it depends whether yj is the only -/+Inf in that row
+        ##       (=> rs.mj should be finite, but we can't recover it from Y.rs)
+        ##       or not (=> rs.mj should be -/+Inf).
+        ##       => rearrange() should only be called with finite values;
+        ##          the speed-up idea (and working on columns only) does not
+        ##          easily seem to allow for an extension to -/+Inf values.
+        yj. <- X.lst.sorted[[j]][indices_opp_ordered_to(rs.mj)] # oppositely reorder Y_j
         ## Note: The elements of X.lst.sorted are sorted in increasing order
         ##       which is required for oppositely reordering them
-        yj. <- X.lst.sorted[[j]][indices_opp_ordered_to(rs)] # oppositely reorder Y_j
 
         ## Update the working 'matrix'
         Y.lst[[j]] <- yj. # update with rearranged jth column
-        Y.rs <- rs + yj. # update row sum of Y
+        Y.rs <- rs.mj + yj. # update row sum of Y
 
         ## Tracing
         if(trace) {
@@ -528,7 +536,7 @@ rearrange <- function(X, tol = 0, tol.type = c("relative", "absolute"), max.ra =
             colnames(B) <- rep("", d)
             no.change <- identical(yj, yj.)
             colnames(B)[j] <- if(no.change) "=" else "|"
-            B <- cbind(B, rs, sum = .rowSums(B, m = N, n = d))
+            B <- cbind(B, rs.mj, sum = .rowSums(B, m = N, n = d))
             colnames(B)[d+1] <- paste0("-",j)
             print(B)
         }
