@@ -104,7 +104,8 @@ qq_plot(Z, FUN = function(p) sqrt((nu-2)/nu) * qt(p, df = nu))
 
 ## 3 Calculate the VaR time series
 
-Compute VaR estimates.
+Compute VaR estimates. Note that we could have also used the GPD-based
+estimators here.
 ```{r}
 ## VaR estimates and check
 alpha <- 0.99 # VaR confidence level we consider here

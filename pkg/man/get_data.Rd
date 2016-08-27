@@ -56,10 +56,12 @@ get_data(x, from = NULL, to = NULL,
 }
 \author{Marius Hofert}
 \examples{
-## Get stock and volatility data (for all available trading days)
-dat <- get_data(c("^GSPC", "^VIX")) # note: this needs a working internet connection
-## Plot them (Alternative: plot.xts() from xtsExtra)
-library(zoo)
-plot.zoo(dat, screens = 1, main = "", xlab = "Trading day", ylab = "Value")
+if(FALSE) {
+    ## Get stock and volatility data (for all available trading days)
+    dat <- get_data(c("^GSPC", "^VIX")) # note: this needs a working internet connection
+    ## Plot them (Alternative: plot.xts() from xtsExtra)
+    library(zoo)
+    plot.zoo(dat, screens = 1, main = "", xlab = "Trading day", ylab = "Value")
+}
 }
 \keyword{manip}

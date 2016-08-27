@@ -76,6 +76,24 @@ SEXP col_split(SEXP x)
     		}
     	}
     	break;
+    case LGLSXP:
+    	for(j = 0; j < d; j++) {
+    		SET_VECTOR_ELT(res, j, allocVector(LGLSXP, n));
+    		int *e = LOGICAL(VECTOR_ELT(res, j));
+    		for(k = 0 ; k < n ; i++, k++) {
+    			e[k] = LOGICAL(x)[i];
+    		}
+    	}
+    	break;
+    case STRSXP: /* TODO: "Error: STRING_ELT() can only be applied to a 'character vector', not a 'list'" */
+    	for(j = 0; j < d; j++) {
+    		SET_VECTOR_ELT(res, j, allocVector(STRSXP, n));
+    		char *e = CHAR(STRING_ELT(res, j));
+    		for(k = 0 ; k < n ; i++, k++) {
+    			e[k] = CHAR(x)[i];
+    		}
+    	}
+    	break;
     default: error("Wrong type of 'x': %s", CHAR(type2str_nowarn(TYPEOF(x))));
     }
 
