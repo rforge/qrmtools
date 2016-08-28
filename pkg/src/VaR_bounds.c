@@ -54,6 +54,7 @@ SEXP col_split(SEXP x)
     int *dims = INTEGER(getAttrib(x, R_DimSymbol));
     int n = dims[0], d = dims[1];
     SEXP res = PROTECT(allocVector(VECSXP, d));
+    SEXP ref;
     int i = 0, j, k; /* i runs globally, j runs over all cols, k runs over all rows */
 
     /* Distinguish int/real matrices */
@@ -85,12 +86,13 @@ SEXP col_split(SEXP x)
     		}
     	}
     	break;
-    case STRSXP: /* TODO: "Error: STRING_ELT() can only be applied to a 'character vector', not a 'list'" */
+    case STRSXP:
     	for(j = 0; j < d; j++) {
-    		SET_VECTOR_ELT(res, j, allocVector(STRSXP, n));
-    		char *e = CHAR(STRING_ELT(res, j));
+		ref = allocVector(STRSXP, n); /* needs to be here (otherwise the last column is replicated) */
+    		SET_VECTOR_ELT(res, j, ref);
+    		ref = VECTOR_ELT(res, j);
     		for(k = 0 ; k < n ; i++, k++) {
-    			e[k] = CHAR(x)[i];
+    			SET_STRING_ELT(ref, k, STRING_ELT(x, i));
     		}
     	}
     	break;
