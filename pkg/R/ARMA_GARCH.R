@@ -33,7 +33,8 @@ fit_ARMA_GARCH <- function(x, ugarchspec.list = ugarchspec(), solver = "hybrid",
         on.exit(close(pb)) # on exit, close progress bar
     }
     for(j in seq_len(d)) {
-        res <- catch(ugarchfit(ugarchspec.list[[j]], data = x[,j], ...)) # fitting
+        res <- catch(ugarchfit(ugarchspec.list[[j]], data = x[,j], solver = solver,
+                               ...)) # fitting
         if(!is.null(res$value)) fit[[j]] <- res$value
         if(!is.null(res$warning)) warn[[j]] <- res$warning
         if(!is.null(res$error)) err[[j]]  <- res$error
