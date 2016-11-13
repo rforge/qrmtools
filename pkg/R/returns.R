@@ -5,16 +5,19 @@
 ##'        or log-returns to be turned into data (if inverse = TRUE)
 ##' @param inverse A logical indicating whether the inverse transformation
 ##'        (data from given log-returns) is to be computed (if TRUE, this
-##'        requires start.value to be specified)
-##' @param start.value If inverse = TRUE, the last available value of the time
+##'        requires start to be specified)
+##' @param start If inverse = TRUE, the last available value of the time
 ##'        series
+##' @param include.start If inverse = TRUE, a logical indicating whether the
+##'        last available value is included
 ##' @param drop A logical indicating whether 1-column matrices which are not xts
 ##'        objects are returned as vectors
 ##' @return A matrix containing the log-returns or their 'inverses'
 ##' @author Marius Hofert
 ##' @note For *negative* log-returns, use -log_returns(x) or
-##'       log_returns(-x, inverse = TRUE, start.value = ...)
-log_returns <- function(x, inverse = FALSE, start.value, drop = TRUE)
+##'       log_returns(-x, inverse = TRUE, start = ...)
+log_returns <- function(x, inverse = FALSE, start, include.start = FALSE,
+                        drop = TRUE)
 {
     if(!is.matrix(x)) x <- cbind(x)
     if(inverse) {
@@ -22,11 +25,11 @@ log_returns <- function(x, inverse = FALSE, start.value, drop = TRUE)
         ## X_t = log(S_t/S_{t-1})
         ## => S_t = S_{t-1} * exp(X_t) = ... = S_{last index} * exp(X_1 + X_2 + .. + X_t)
         d <- ncol(x)
-        stopifnot(!missing(start.value), length(start.value) == d)
-        x.csum <- rbind(rep(0, d),
-                        apply(x, 2, cumsum)) # 'xts' lost here
-        start.value.factors <- matrix(rep(start.value, each = nrow(x.csum)), ncol = d)
-        r <- start.value.factors * exp(x.csum)
+        stopifnot(!missing(start), length(start) == d)
+        x.csum <- apply(x, 2, cumsum) # 'xts' lost here
+        if(include.start) x.csum <- rbind(rep(0, d), x.csum) # include S_t
+        start.factors <- matrix(rep(start, each = nrow(x.csum)), ncol = d)
+        r <- start.factors * exp(x.csum)
         if(drop && ncol(r) == 1) as.vector(r) else r
         ## Note: We didn't incorporate inherits(..., "zoo") here as a zoo object
         ##       would get lost due to the apply() anyways
