@@ -492,12 +492,13 @@ rearrange <- function(X, tol = 0, tol.type = c("relative", "absolute"), max.ra =
     iter <- 0 # current iteration number
     j <- 0 # current column number
     num.cols.no.change <- 0 # number of consecutively rearranged columns with no change
-    opt.row.sums <- c() # vector of optimized (minimal/maximal/ES) row sums after each rearranged column
+    len.opt.row.sums <- 64 # length of vector of optimized (minimal/maximal/ES) row sums after each rearranged column
+    opt.row.sums <- numeric(len.opt.row.sums) # vector (will be doubled in size if necessary; faster than c()ing to it all the time)
     is.null.tol <- is.null(tol)
     while (TRUE) {
 
         ## Update the running indices
-        iter <- iter+1 # current iteration number (in IN)
+        iter <- iter + 1 # current iteration number (in IN)
         j <- if(j >= d) 1 else j+1 # current column
 
         ## Update the working 'matrix'
@@ -536,7 +537,9 @@ rearrange <- function(X, tol = 0, tol.type = c("relative", "absolute"), max.ra =
 
         ## Update the vector of computed optimal row sums
         opt.rs.cur.col <- optim.fun(Y.rs) # compute new optimized row sum
-        opt.row.sums <- c(opt.row.sums, opt.rs.cur.col) # append it
+        if((iter > 64) && (log2(iter) %% 1 == 0)) # if iter in {128, 256, 512,...} => double the size
+            opt.row.sums <- c(opt.row.sums, numeric(length(opt.row.sums)))
+        opt.row.sums[iter] <- opt.rs.cur.col # append it
 
         ## Check convergence
         ## Idea: After a column has been rearranged, compute the tol (and thus
@@ -588,7 +591,7 @@ rearrange <- function(X, tol = 0, tol.type = c("relative", "absolute"), max.ra =
     list(bound = opt.rs.cur.col, # computed bound (\underline{s}_N or \overline{s}_N)
          tol = tol., # tolerance for the computed bound
          converged = tol.reached, # indicating whether converged
-         opt.row.sums = opt.row.sums, # the computed optimized row sums after each column rearrangement
+         opt.row.sums = opt.row.sums[1:iter], # the computed optimized row sums after each column rearrangement
          X.rearranged = do.call(cbind, Y.lst)) # the rearranged matrix X
 }
 
