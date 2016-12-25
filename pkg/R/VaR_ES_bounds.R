@@ -478,22 +478,15 @@ rearrange <- function(X, tol = 0, tol.type = c("relative", "absolute"), max.ra =
         print(B)
     }
 
-    ## Keep the sorted X
+    ## Determine X as a list (X.lst), its row sums (X.rs) and sorted version (X.lst.sorted)
+    X.lst <- .Call(C_col_split, X)
     X.lst.sorted <- if(is.sorted) {
-        .Call(C_col_split, X)
+        X.lst # split the given X (since it's already sorted) into columns
     } else {
-        .Call(C_col_split, apply(X, 2, sort)) # need to sort first
+        lapply(X.lst, sort) # list of (resampled) columns of X
     }
-
-    ## Sample the columns (if chosen), compute the initial row sum
-    ## and the corresponding min/max row sum
-    if(sample) {
-        X.lst <- lapply(X.lst.sorted, sample) # list of (resampled) columns of X
-        X.rs <- .rowSums(do.call(cbind, X.lst), N, d) # row sums of X
-    } else {
-        X.lst <- X.lst.sorted # list of columns of X
-        X.rs <- .rowSums(X, m = N, n = d) # initial row sum
-    }
+    if(sample) X.lst <- lapply(X.lst, sample) # list of (resampled) columns of X
+    X.rs <- .rowSums(do.call(cbind, X.lst), N, d) # row sums of X
 
     ## Go through the columns and rearrange one at a time
     iter <- 0 # current iteration number
