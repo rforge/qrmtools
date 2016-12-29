@@ -33,7 +33,7 @@ dim <- 8 # variable dimension (we use 8 or 100 here)
 ### 1.1 Checks for method = "dual"
 
 Investigate helper function $h(s,t)$ (the function for the inner
-root-finding to compute $D(s)$; see `dual_bound()`.
+root-finding to compute $D(s)$; see `dual_bound()`).
 ```{r, fig.align = "center", fig.width = 6, fig.height = 6}
 d <- 8 # dimension
 s <- c(1, 5, 10, 100, 500, 1000)
@@ -430,7 +430,7 @@ for(i in seq_len(n.th)) {
     res[i,"Wang.Par"] <- VaR_bounds_hom(alpha, d = d, method = "Wang.Par", theta = th[i])[2]
     ## "dual" (with uniroot()'s default tolerance)
     res[i,"dual"] <- VaR_bounds_hom(alpha, d = d, method = "dual",
-                                    interval = crude_VaR_bounds(alpha, qF = rep(qFs[i], d)),
+                                    interval = crude_VaR_bounds(alpha, qF = qFs[[i]], d = d),
                                     pF = pFs[[i]])[2]
     ## Rearrangement Algorithm
     set.seed(271) # use the same random permutation for each theta

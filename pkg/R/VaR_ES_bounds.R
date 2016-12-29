@@ -5,18 +5,30 @@
 ##' @title Crude bounds for any VaR_alpha
 ##' @param alpha confidence level
 ##' @param qF (list of) marginal quantile functions
+##' @param d if qF is a function, dimension for the homogeneous case; ignored
+##'        otherwise
 ##' @param ... ellipsis argument passed to qF()
 ##' @return 2-vector containing crude VaR_alpha bounds
 ##' @author Marius Hofert
-crude_VaR_bounds <- function(alpha, qF, ...)
+crude_VaR_bounds <- function(alpha, qF, d = NULL, ...)
 {
     ## ... are passed to *all* qF()
-    if(!is.list(qF))
-        stop("qF has to be a list of (quantile) functions")
-    d <- length(qF)
-    qF.low <- sapply(qF, function(qF.) qF.(alpha/d, ...))
-    qF.up  <- sapply(qF, function(qF.) qF.((d-1+alpha)/d, ...))
-    d * c(min(qF.low), max(qF.up))
+    if(is.list(qF)) { # inhomogeneous case
+        if(!all(unlist(lapply(qF, is.function))))
+            stop("qF has to be a (quantile) function or list of such")
+        d <- length(qF)
+        qF.low <- sapply(qF, function(qF.) qF.(alpha/d, ...))
+        qF.up  <- sapply(qF, function(qF.) qF.((d-1+alpha)/d, ...))
+        d * c(min(qF.low), max(qF.up))
+    } else { # homogeneous case
+        if(!is.function(qF))
+            stop("qF has to be a (quantile) function or list of such")
+        if(is.null(d))
+            stop("if qF is a single function, d has to be a positive integer")
+        qF.low <- qF(alpha, ...) # => lower bound d * VaR_alpha(F)
+        qF.up  <- qF((d-1+alpha)/d, ...)
+        d * c(qF.low, qF.up)
+    }
 }
 
 
@@ -75,7 +87,7 @@ dual_bound <- function(s, d, pF, tol = .Machine$double.eps^0.25, ...)
         ## h(s, t)
         h <- function(t) dual_bound_2(s, t = t, d = d, pF = pF, ...) -
             dual_bound_2_deriv_term(s, t = t, d = d, pF = pF)
-        ## Note: h(t) -> 0 for h -> s/d- which is bad for uniroot() as the
+        ## Note: h(t) -> 0 for t -> s/d- which is bad for uniroot() as the
         ##       latter will simply stop with the root t = s/d => we thus set f.upper > 0
         h.up <- -h(0) # guarantee that uniroot() doesn't fail due to root s/d
         t. <- uniroot(h, interval = c(0, s/d), f.upper = h.up, tol = tol)$root # optimal t in Equation (12) [= arginf]
@@ -351,7 +363,7 @@ VaR_bounds_hom <- function(alpha, d, method = c("Wang", "Wang.Par", "dual"),
                    stop("Method 'dual' requires the distribution function pF")
                if(!hasArg(interval))
                    stop("Method 'dual' requires an initial interval c(s_l, s_u) to be given")
-               uniroot(function(s) dual_bound(s, d = d, tol = tol, ...)-(1-alpha),
+               uniroot(function(s) dual_bound(s, d = d, tol = tol, ...) - (1-alpha),
                        interval = interval, tol = tol)$root # s interval
                ## Note: We can't pass arguments to the inner root-finding
 

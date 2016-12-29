@@ -12,7 +12,7 @@
   shortfall (ES) for given marginal distributions.
 }
 \usage{
-crude_VaR_bounds(alpha, qF, ...)
+crude_VaR_bounds(alpha, qF, d = NULL, ...)
 VaR_bounds_hom(alpha, d, method = c("Wang", "Wang.Par", "dual"),
                interval = NULL, tol = NULL, ...)
 dual_bound(s, d, pF, tol = .Machine$double.eps^0.25, ...)
@@ -28,7 +28,9 @@ ARA(alpha, qF, N.exp = seq(8, 19, by = 1), reltol = c(0, 0.01),
 }
 \arguments{
   \item{alpha}{Confidence level for VaR and ES (e.g., 0.99).}
-  \item{d}{Dimension (number of risk factors; \eqn{\ge 2}{ >= 2}).}
+  \item{d}{Dimension (number of risk factors; \eqn{\ge 2}{ >= 2}). For
+    \code{crude_VaR_bounds()}, \code{d} only needs to be given in
+    the homogeneous case in which \code{qF()} is a \code{\link{function}}.}
   \item{qF}{The marginal quantile function (in the homogeneous case) or
     a \code{d}-list containing the marginal quantile functions (in the
     general case).}
@@ -454,7 +456,7 @@ stopifnot(all.equal(c(ARAworst$bounds[1], ARAworst$bounds[2],
 d <- 8 # dimension
 
 ## Compute VaR bounds with various methods
-I <- crude_VaR_bounds(alpha, qF = rep(list(qF), d)) # crude bound
+I <- crude_VaR_bounds(alpha, qF = qF, d = d) # crude bound
 VaR.W     <- VaR_bounds_hom(alpha, d = d, method = "Wang", qF = qF)
 VaR.W.Par <- VaR_bounds_hom(alpha, d = d, method = "Wang.Par", theta = th)
 VaR.dual  <- VaR_bounds_hom(alpha, d = d, method = "dual", interval = I, pF = pF)
