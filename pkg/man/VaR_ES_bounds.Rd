@@ -6,6 +6,7 @@
 \alias{block_rearrange}
 \alias{RA}
 \alias{ARA}
+\alias{ABRA}
 \title{Worst and Best Value-at-Risk and Best Expected Shortfall
        for Given Marginals}
 \description{
@@ -27,17 +28,25 @@ rearrange(X, tol = 0, tol.type = c("relative", "absolute"),
           n.lookback = ncol(X), max.ra = Inf,
           method = c("worst.VaR", "best.VaR", "best.ES"),
 	  sample = TRUE, is.sorted = FALSE, trace = FALSE, ...)
-block_rearrange(X, tol = 0, tol.type = c("absolute", "relative"),
+block_rearrange(X, tol = 0, tol.type = c("relative", "absolute"),
                 n.lookback = ncol(X), max.ra = Inf,
                 method = c("worst.VaR", "best.VaR", "best.ES"),
                 sample = TRUE, trace = FALSE, ...)
 
 ## User interfaces
-RA(alpha, qF, N, abstol = 0, max.ra = Inf,
+## Rearrangement Algorithm
+RA(alpha, qF, N, abstol = 0, n.lookback = length(qF), max.ra = Inf,
    method = c("worst.VaR", "best.VaR", "best.ES"), sample = TRUE)
+## Adaptive Rearrangement Algorithm
 ARA(alpha, qF, N.exp = seq(8, 19, by = 1), reltol = c(0, 0.01),
-    max.ra = 10*length(qF), method = c("worst.VaR", "best.VaR", "best.ES"),
+    n.lookback = length(qF), max.ra = 10*length(qF),
+    method = c("worst.VaR", "best.VaR", "best.ES"),
     sample = TRUE)
+## Adaptive Block Rearrangement Algorithm
+ABRA(alpha, qF, N.exp = seq(8, 19, by = 1), abstol = c(0, 0.01),
+     n.lookback = NULL, max.ra = Inf,
+     method = c("worst.VaR", "best.VaR", "best.ES"),
+     sample = TRUE)
 }
 \arguments{
   \item{alpha}{Confidence level for VaR and ES (e.g., 0.99).}
@@ -119,8 +128,8 @@ ARA(alpha, qF, N.exp = seq(8, 19, by = 1), reltol = c(0, 0.01),
   \item{N.exp}{The exponents of the number of discretization points
     (a \code{\link{vector}}) over which the algorithm iterates to find
     the smallest number of discretization points for which the desired
-    accuracy (specified by \code{reltol}) is attained; for each number
-    of discretization points, at most \code{max.ra}-many
+    accuracy (specified by \code{abstol} and \code{reltol}) is attained;
+    for each number of discretization points, at most \code{max.ra}-many
     column rearrangements are of the underlying matrix of quantiles
     are considered.}
   \item{abstol}{Absolute convergence tolerance \eqn{\epsilon}{epsilon}
@@ -129,7 +138,8 @@ ARA(alpha, qF, N.exp = seq(8, 19, by = 1), reltol = c(0, 0.01),
     row sums (for \code{method = "best.VaR"}) or expected shortfalls (for
     \code{method = "best.ES"}) for the lower bound \eqn{\underline{s}_N}
     and the upper bound \eqn{\overline{s}_N}. \code{abstol} is typically
-    \eqn{\ge0}{>= 0}; it can also be \code{\link{NULL}}, see \code{tol} above.}
+    \eqn{\ge0}{>= 0}; it can also be \code{\link{NULL}}, see \code{tol}
+    above.}
   \item{reltol}{A \code{\link{vector}} of length one or two containing the
     relative convergence tolerances. If \code{reltol} is of length two,
     the first component is the the individual relative tolerance
@@ -571,12 +581,21 @@ res.worst <- RA(0.99, qF = qF.lst, N = N, abstol = eps)
 print(format(res.worst$bounds, scientific = TRUE), quote = FALSE) # close to last value of 1st row
 
 
-### 3.3 Calling the workhorses directly ########################################
+### 4 Further checks ###########################################################
 
+## Calling the workhorses directly
 set.seed(271)
 ra <- rearrange(X)
 bra <- block_rearrange(X)
 stopifnot(ra$converged, bra$converged,
           all.equal(ra$bound, bra$bound, tolerance = 5e-4))
+
+## Checking ABRA against ARA
+set.seed(271)
+ara  <- ARA (alpha, qF = qPar)
+abra <- ABRA(alpha, qF = qPar)
+stopifnot(ara$converged, abra$converged,
+          all.equal(ara$bound[["low"]], abra$bound[["low"]], tolerance = 1e-3),
+          all.equal(ara$bound[["up"]],  abra$bound[["up"]],  tolerance = 5e-3))
 }
 \keyword{programming}
