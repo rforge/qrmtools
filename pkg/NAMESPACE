@@ -10,7 +10,7 @@ importFrom("Quandl", "Quandl")
 importFrom("zoo", "index")
 importFrom("methods", "hasArg")
 importFrom("stats", "dnorm", "dt", "integrate", "pnorm", "qnorm", "qt",
-           "runif", "uniroot", "qqline")
+           "runif", "uniroot", "qqline", "var")
 importFrom("grDevices", "colorRampPalette")
 importFrom("grDevices", "dev.off")
 importFrom("graphics", "image", "mtext", "plot", "rug", "abline")
@@ -33,6 +33,7 @@ export(
     ## Worst/best VaR
     "crude_VaR_bounds", "dual_bound", "VaR_bounds_hom",
     "rearrange", "RA", "ARA",
+    "block_rearrange",
     ## Black--Scholes formula
     "Black_Scholes", "Black_Scholes_Greeks",
     ## Graphics

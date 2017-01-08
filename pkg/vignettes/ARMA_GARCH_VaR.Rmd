@@ -8,6 +8,7 @@ output:
 vignette: >
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteIndexEntry{Fitting and Predicting VaR based on an ARMA-GARCH Process}
+  %\VignetteEncoding{UTF-8}
 ---
 This vignette does not use *qrmtools*, but shows how Value-at-Risk (VaR) can be
 fitted and predicted based on an underlying ARMA-GARCH process (which of course

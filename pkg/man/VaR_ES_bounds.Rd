@@ -3,6 +3,7 @@
 \alias{VaR_bounds_hom}
 \alias{dual_bound}
 \alias{rearrange}
+\alias{block_rearrange}
 \alias{RA}
 \alias{ARA}
 \title{Worst and Best Value-at-Risk and Best Expected Shortfall
@@ -12,14 +13,26 @@
   shortfall (ES) for given marginal distributions.
 }
 \usage{
+## Homogeneous case
 crude_VaR_bounds(alpha, qF, d = NULL, ...)
 VaR_bounds_hom(alpha, d, method = c("Wang", "Wang.Par", "dual"),
                interval = NULL, tol = NULL, ...)
 dual_bound(s, d, pF, tol = .Machine$double.eps^0.25, ...)
 
-rearrange(X, tol = 0, tol.type = c("relative", "absolute"), max.ra = Inf,
+
+## Inomogeneous case
+
+## Workhorses
+rearrange(X, tol = 0, tol.type = c("relative", "absolute"),
+          n.lookback = ncol(X), max.ra = Inf,
           method = c("worst.VaR", "best.VaR", "best.ES"),
 	  sample = TRUE, is.sorted = FALSE, trace = FALSE, ...)
+block_rearrange(X, tol = 0, tol.type = c("absolute", "relative"),
+                n.lookback = ncol(X), max.ra = Inf,
+                method = c("worst.VaR", "best.VaR", "best.ES"),
+                sample = TRUE, trace = FALSE, ...)
+
+## User interfaces
 RA(alpha, qF, N, abstol = 0, max.ra = Inf,
    method = c("worst.VaR", "best.VaR", "best.ES"), sample = TRUE)
 ARA(alpha, qF, N.exp = seq(8, 19, by = 1), reltol = c(0, 0.01),
@@ -48,15 +61,16 @@ ARA(alpha, qF, N.exp = seq(8, 19, by = 1), reltol = c(0, 0.01),
          for computing worst VaR (no value for the best
          VaR can be obtained with this approach and thus
           \code{\link{NA}} is returned for the best VaR).}
-      \item{\code{rearrange()}, \code{RA()}, \code{ARA()}:}{
-	\code{method} indicates whether bounds for the worst/best VaR
-	or the best ES should be computed.
-	These bounds are termed \eqn{\underline{s}_N} and \eqn{\overline{s}_N}
-	in the literature (and below) and are theoretically not guaranteed
-        bounds of worst/best VaR or best ES;
-	however, they are treated as such in practice and are typically in
-	line with results from \code{VaR_bounds_hom()} in the homogeneous
-	case, for example.}
+	\item{\code{rearrange()}, \code{block_rearrange()}, \code{RA()},
+	  \code{ARA()}:}{
+	  \code{method} indicates whether bounds for the worst/best VaR
+	  or the best ES should be computed.
+	  These bounds are termed \eqn{\underline{s}_N} and \eqn{\overline{s}_N}
+	  in the literature (and below) and are theoretically not guaranteed
+          bounds of worst/best VaR or best ES;
+	  however, they are treated as such in practice and are typically in
+	  line with results from \code{VaR_bounds_hom()} in the homogeneous
+	  case, for example.}
   }}
   \item{interval}{Initial interval (a \code{\link{numeric}(2)}) for
     computing worst VaR. If not provided, these are the defaults chosen:
@@ -82,15 +96,18 @@ ARA(alpha, qF, N.exp = seq(8, 19, by = 1), reltol = c(0, 0.01),
 	default \code{.Machine$double.eps^0.25} otherwise. Note that for
 	\code{method = "dual"}, \code{tol} is used for both the outer
 	and the inner root-finding procedure.}
-      \item{\code{rearrange()}:}{(Absolute or relative) tolerance to
-	determine (the individual) convergence. This should normally be
-        a number greater than or equal to 0, but we also allow
-	\code{tol = NULL} which rearranges the columns until all columns
-	are oppositely ordered to the sum of all other columns.}
+      \item{\code{rearrange()}, \code{block_rearrange()}:}{(Absolute or
+	relative) tolerance to determine (the individual) convergence.
+	This should normally be a number greater than or equal to 0,
+	but \code{rearrange()} also allows for \code{tol = NULL}
+	which means that columns are rearranged until each column
+	is oppositely ordered to the sum of all other columns.}
   }}
   \item{tol.type}{\code{\link{character}} string indicating the
     type of convergence tolerance function to be used (\code{"relative"}
     for relative tolerance and \code{"absolute"} for absolute tolerance).}
+  \item{n.lookback}{Number of rearrangements to look back for deciding
+    about numerical convergence. Use this option with care.}
   \item{s}{Dual bound evaluation point.}
   \item{pF}{The marginal loss distribution function.}
   \item{X}{An (\code{N}, \code{d})-matrix of quantiles (to be
@@ -131,7 +148,8 @@ ARA(alpha, qF, N.exp = seq(8, 19, by = 1), reltol = c(0, 0.01),
     Algorithm in Embrechts et al. (2013))
     are randomly permuted before the rearrangements begin. This typically has
     quite a positive effect on run time (as most of the time is spent
-    (oppositely) ordering columns).}
+    (oppositely) ordering columns (for \code{rearrange()}) or blocks
+    (for \code{block_rearrange()})).}
   \item{is.sorted}{A \code{\link{logical}} indicating whether the columns of
     \code{X} are sorted in increasing order.}
   \item{trace}{A \code{\link{logical}} indicating whether the underlying
@@ -180,7 +198,8 @@ ARA(alpha, qF, N.exp = seq(8, 19, by = 1), reltol = c(0, 0.01),
   given in Embrechts, Puccetti, \enc{Rüschendorf}{Rueschendorf}
   (2013, Eq. (12)).
 
-  \code{rearrange()} returns a \code{\link{list}} containing
+  \code{rearrange()} and \code{block_rearrange()} return a
+  \code{\link{list}} containing
   \describe{
     \item{\code{bound}:}{The computed \eqn{\underline{s}_N}
       or \eqn{\overline{s}_N}.}
@@ -188,7 +207,7 @@ ARA(alpha, qF, N.exp = seq(8, 19, by = 1), reltol = c(0, 0.01),
       relative) change of the minimal row sum (for
       \code{method = "worst.VaR"}) or maximal row sum
       (for \code{method = "best.VaR"}) or expected shortfall (for
-      \code{method = "best.ES"}) after the last rearranged column).}
+      \code{method = "best.ES"}) after the last rearrangement).}
     \item{\code{converged}:}{A \code{\link{logical}} indicating whether
       the desired (absolute or relative) tolerance \code{tol} has been
       reached.}
@@ -196,7 +215,7 @@ ARA(alpha, qF, N.exp = seq(8, 19, by = 1), reltol = c(0, 0.01),
       computed optima (minima for \code{method = "worst.VaR"}; maxima
       for \code{method = "best.VaR"}; expected shortfalls for
       \code{method = "best.ES"}) for the row sums after each (considered)
-      column rearrangement.}
+      rearrangement.}
     \item{\code{X.rearranged}:}{An (\code{N}, \code{d})-\code{\link{matrix}}
       containing the rearranged \code{X}.}
   }
@@ -307,16 +326,30 @@ ARA(alpha, qF, N.exp = seq(8, 19, by = 1), reltol = c(0, 0.01),
 
 
   Concerning the inhomogeneous case, \code{rearrange()} is an auxiliary
-  function which is called by \code{RA()} and \code{ARA()}.
-  After a column of \code{X} has been rearranged, the tolerance between
-  the minimal row sum (for the worst VaR) or maximal row sum (for the best
-  VaR) or expected shortfall (obtained from the row sums; for the best ES)
-  after this rearrangement and the one of \eqn{d} steps before (so typically
-  when that column was rearranged the last time) is computed and convergence
-  determined.
-  For performance reasons, no checking is done and \code{rearrange()}
-  can change in future versions to (futher) improve run time. Overall
-  it should only be used by experts.
+  function (workhorse). It is called by \code{RA()} and \code{ARA()}.
+  After a column rearrangement of \code{X}, the tolerance between the
+  minimal row sum (for the worst VaR) or maximal row sum (for the best
+  VaR) or expected shortfall (obtained from the row sums; for the best
+  ES) after this rearrangement and the one of \eqn{n.lookback}
+  rearrangement steps before is computed and convergence determined.
+  For performance reasons, no input checking is done for
+  \code{rearrange()} and it can change in future versions to (futher)
+  improve run time. Overall it should only be used by experts.
+
+  \code{block_rearrange()} is similar to \code{rearrange()} in that it
+  checks whether convergence has occurred after every rearrangement by
+  comparing the change to the row sum variance from \code{n.lookback}
+  rearrangement steps back. \code{block_rearrange()} differs from
+  \code{rearrange} in the following ways. First, instead of single columns,
+  whole (randomly chosen) blocks (two at a time) are chosen and
+  oppositely ordered. Since some of the ideas for improving the speed of
+  \code{rearrange()} do not carry over to \code{block_rearrange()}, the
+  latter should in general not be as fast as the former.
+  Second, instead of using minimal or maximal row
+  sums or expected shortfall to determine numerical convergence,
+  \code{block_rearrange()} uses the variance of the vector of row sums
+  to determine numerical convergence. By default, it targets a variance
+  of 0 (which is also why the default \code{tol.type} is \code{"absolute"}).
 
   For the Rearrangement Algorithm \code{RA()}, convergence of
   \eqn{\underline{s}_N} and \eqn{\overline{s}_N} is determined if the
@@ -346,8 +379,9 @@ ARA(alpha, qF, N.exp = seq(8, 19, by = 1), reltol = c(0, 0.01),
   is computed for such margins (if the 0-quantile or the 1-quantile is
   finite, no adjustment is made).
 
-  \code{rearrange()}, \code{RA()} and \code{ARA()} compute
-  \eqn{\underline{s}_N} and \eqn{\overline{s}_N} which are, from a practical
+  \code{rearrange()}, \code{block_rearrange()}, \code{RA()} and
+  \code{ARA()} compute \eqn{\underline{s}_N} and
+  \eqn{\overline{s}_N} which are, from a practical
   point of view, treated as bounds for the worst (i.e., largest) or the
   best (i.e., smallest) VaR or the best (i.e., smallest ES), but which are
   not known to be such bounds from a theoretical point of view; see also above.
@@ -370,10 +404,18 @@ ARA(alpha, qF, N.exp = seq(8, 19, by = 1), reltol = c(0, 0.01),
   \emph{Quantitative Risk Management: Concepts, Techniques, Tools}.
   Princeton University Press.
 
-  Hofert, M., Memartoluie, A., Saunders, D., Wirjanto, T. (2015).
+  Hofert, M., Memartoluie, A., Saunders, D., Wirjanto, T. (2016).
   Improved Algorithms for Computing Worst Value-at-Risk:
   Numerical Challenges and the Adaptive Rearrangement Algorithm.
-  See http://arxiv.org/abs/1505.02281.
+  See \url{http://arxiv.org/abs/1505.02281}.
+
+  Bernard, C., \enc{Rüschendorf}{Rueschendorf}, L., Vanduffel,
+  S. (2013). Value-at-Risk bounds with variance constraints.
+  See \url{http://papers.ssrn.com/sol3/papers.cfm?abstract_id=2342068}.
+
+  Bernard, C. and McLeish, D. (2014). Algorithms for Finding Copulas
+  Minimizing Convex Functions of Sums.
+  See \url{http://arxiv.org/abs/1502.02130v3}.
 }
 \seealso{
   \code{vignette("VaR_bounds", package = "qrmtools")}
@@ -527,5 +569,14 @@ res.best <- RA(0.99, qF = qF.lst, N = N, abstol = eps, method = "best.VaR")
 print(format(res.best$bounds, scientific = TRUE), quote = FALSE) # close to first value of 1st row
 res.worst <- RA(0.99, qF = qF.lst, N = N, abstol = eps)
 print(format(res.worst$bounds, scientific = TRUE), quote = FALSE) # close to last value of 1st row
+
+
+### 3.3 Calling the workhorses directly ########################################
+
+set.seed(271)
+ra <- rearrange(X)
+bra <- block_rearrange(X)
+stopifnot(ra$converged, bra$converged,
+          all.equal(ra$bound, bra$bound, tolerance = 5e-4))
 }
 \keyword{programming}

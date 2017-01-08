@@ -8,6 +8,7 @@ output:
 vignette: >
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteIndexEntry{Worst Value-at-Risk under Known Margins}
+  %\VignetteEncoding{UTF-8}
 ---
 ```{r, message = FALSE}
 require(qrmtools)
@@ -812,7 +813,7 @@ We can now apply the (Adaptive) Rearrangement Algorithm.
 ```{r}
 xi. <- sapply(res, function(x) x$xi) # all fitted xi's
 beta. <- sapply(res, function(x) x$beta) # all fitted beta's
-alpha <- 0.999 # confidence level
+alpha <- 0.99 # confidence level
 qF <- lapply(res, function(r) { function(p) qGPD(p, xi = r$xi, beta = r$beta) }) # list quantile functions
 set.seed(271) # set a seed (for reproducibility)
 res.ARA <- ARA(alpha, qF = qF) # apply ARA()
@@ -836,7 +837,7 @@ X.up[N,] <- sapply(1:d, function(j) if(is.infinite(X.up[N,j]))
                    qF[[j]](alpha+(1-alpha)*(1-1/(2*N))) else X.up[N,j])
 
 ## Apply rearrange() for various tolerances (incl. NULL)
-tol <- seq(0, 0.02, length.out = 21) # considered tolerances
+tol <- seq(0, 0.5, length.out = 21) # considered tolerances
 res.low  <- sapply(tol, function(t) rearrange(X.low,  tol = t, sample = FALSE, is.sorted = TRUE)$bound)
 res.low. <- rearrange(X.low, tol = NULL, sample = FALSE, is.sorted = TRUE)$bound # for tol = NULL
 res.up  <- sapply(tol, function(t) rearrange(X.up, tol = t, sample = FALSE, is.sorted = TRUE)$bound)

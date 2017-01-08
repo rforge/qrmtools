@@ -377,6 +377,8 @@ VaR_bounds_hom <- function(alpha, d, method = c("Wang", "Wang.Par", "dual"),
 
 ### 3) Worst/best VaR, best ES in the inhomogeneous case #######################
 
+### 3.1) Rearrangement and Adaptive Rearrangement Algorithm ####################
+
 ##' @title Determine the indices which order any increasing (!) vector y
 ##'        oppositely to x
 ##' @param x A vector
@@ -420,30 +422,34 @@ num_of_opp_ordered_cols <- function(x) {
 
 ##' @title Basic rearrangement function for (A)RA
 ##' @param X (N, d)-matrix \underline{X}^\alpha or \overline{X}^\alpha
-##' @param tol Tolerance to determine (the individual) convergence;
+##' @param tol tolerance to determine (the individual) convergence;
 ##'        if NULL, column rearrangements are done until the matrix doesn't
-##'        change anymore d consecutive times
-##' @param tol.type Character string indicating the tolerance function used
+##'        change anymore n.lookback consecutive times
+##' @param tol.type character string indicating the tolerance function used
 ##'        ("relative" or "absolute")
-##' @param max.ra Maximal number of column rearrangements
-##' @param method Character indicating which VaR is approximated (worst/best)
-##'        determines optimizing function (min for worst VaR; max
-##'        for best VaR)
-##' @param sample A logical indicating whether each column of the working
+##' @param n.lookback number of column rearrangements to look back for deciding
+##'        about 'convergence' (must be a number in {1,.., max.ra-1}, typically
+##'        around d.
+##' @param max.ra maximal number of column rearrangements considered
+##' @param method character indicating whether worst VaR, best VaR or best ES
+##'        is approximated (determines optimizing function)
+##' @param sample logical indicating whether each column of the working
 ##'        matrix is randomly permuted before the rearrangements begin
-##' @param is.sorted A logical indicating whether X is columnwise sorted in
+##' @param is.sorted logical indicating whether X is columnwise sorted in
 ##'        increasing order
-##' @param trace A logical indicating whether the underlying matrix is
+##' @param trace logical indicating whether the underlying matrix is
 ##'        printed after each rearrangement step
-##' @param ... Additional arguments passed to the underlying optimization
+##' @param ... additional arguments passed to the internal optimization
 ##'        function optim.fun()
 ##' @return List containing the
 ##'         1) Computed (lower or upper [depending on X]) bound for (worst or
-##'            best [depending on method]) VaR
-##'         2) (Individual) tolerance reached
+##'            best [depending on method]) VaR or best ES
+##'         2) (Individual) tolerance reached (i.e., the absolute/relative change
+##'            of the row sum when looking back n.lookback column rearrangements)
 ##'         3) Logical indicating whether the algorithm has converged
 ##'         4) Vectors of optimized (minimal for worst VaR; maximal for best VaR;
-##'            ES_alpha for best ES) row sums after each considered column rearrangement
+##'            ES_alpha for best ES) row sums after each considered column
+##'            rearrangement
 ##'         5) The (optimally) rearranged (N, d)-matrix
 ##' @author Marius Hofert and Kurt Hornik
 ##' @note - We use "<= tol" to determine convergence instead of "< tol" as
@@ -453,7 +459,8 @@ num_of_opp_ordered_cols <- function(x) {
 ##'         dth (not only after rearranging all d columns)
 ##'       - The columns of X have to be given in increasing order if is.sorted = TRUE
 ##'       - No checking here due to speed! Note that max.ra must be > ncol(X)
-rearrange <- function(X, tol = 0, tol.type = c("relative", "absolute"), max.ra = Inf,
+rearrange <- function(X, tol = 0, tol.type = c("relative", "absolute"),
+                      n.lookback = ncol(X), max.ra = Inf,
                       method = c("worst.VaR", "best.VaR", "best.ES"),
                       sample = TRUE, is.sorted = FALSE, trace = FALSE, ...)
 {
@@ -500,13 +507,15 @@ rearrange <- function(X, tol = 0, tol.type = c("relative", "absolute"), max.ra =
     if(sample) X.lst <- lapply(X.lst, sample) # list of (resampled) columns of X
     X.rs <- .rowSums(do.call(cbind, X.lst), N, d) # row sums of X
 
-    ## Go through the columns and rearrange one at a time
-    iter <- 0 # current iteration number
-    j <- 0 # current column number
+    ## Setup for iteration
     num.cols.no.change <- 0 # number of consecutively rearranged columns with no change
     len.opt.row.sums <- 64 # length of vector of optimized (minimal/maximal/ES) row sums after each rearranged column
     opt.row.sums <- numeric(len.opt.row.sums) # vector (will be doubled in size if necessary; faster than c()ing to it all the time)
     is.null.tol <- is.null(tol)
+
+    ## Rearrange columns one at a time
+    iter <- 0 # current iteration number
+    j <- 0 # current column number
     while (TRUE) {
 
         ## Update the running indices
@@ -531,8 +540,7 @@ rearrange <- function(X, tol = 0, tol.type = c("relative", "absolute"), max.ra =
         yj. <- X.lst.sorted[[j]][indices_opp_ordered_to(rs.mj)] # oppositely reorder Y_j
         ## Note: The elements of X.lst.sorted are sorted in increasing order
         ##       which is required for oppositely reordering them
-
-        ## Update the working 'matrix'
+        ## Update the working 'matrix' and vector of row sums
         Y.lst[[j]] <- yj. # update with rearranged jth column
         Y.rs <- rs.mj + yj. # update row sum of Y
 
@@ -543,53 +551,55 @@ rearrange <- function(X, tol = 0, tol.type = c("relative", "absolute"), max.ra =
             no.change <- identical(yj, yj.)
             colnames(B)[j] <- if(no.change) "=" else "|"
             B <- cbind(B, rs.mj, sum = .rowSums(B, m = N, n = d))
-            colnames(B)[d+1] <- paste0("-",j)
+            colnames(B)[d+1] <- "-col" # paste0("-",j)
             print(B)
         }
 
         ## Update the vector of computed optimal row sums
         opt.rs.cur.col <- optim.fun(Y.rs) # compute new optimized row sum
-        if((iter > 64) && (log2(iter) %% 1 == 0)) # if iter in {128, 256, 512,...} => double the size
-            opt.row.sums <- c(opt.row.sums, numeric(length(opt.row.sums)))
+        if(iter > len.opt.row.sums) { # if iter in {128 + 1, 256 + 1, ...} => double the size
+            opt.row.sums <- c(opt.row.sums, numeric(len.opt.row.sums))
+            len.opt.row.sums <- 2 * len.opt.row.sums
+        }
         opt.row.sums[iter] <- opt.rs.cur.col # append it
 
         ## Check convergence
         ## Idea: After a column has been rearranged, compute the tol (and thus
         ##       determine convergence) between the optimal row sum
-        ##       after that rearrangement and from d steps before when that
-        ##       column was rearranged the last time. The earliest we check for
+        ##       after that rearrangement and from n.lookback steps before (for the default:
+        ##       when that column was rearranged the last time). The earliest we check for
         ##       convergence is when iter > d.
         ## Note: - This is a bit more elegant than the original RA which checked only
         ##         on j = d, not after rearranging *each* column.
         ##       - Checking only *two* consecutive columns led to a bad behavior for ARA()
         ##         in some cases (e.g., real OpRisk data): Both the individual and the joint
         ##         relative tolerances were satisfied but far off (with reltol[1] = 0.001).
-        ##         Of course one could check d consecutive columns for *all* of them to
-        ##         fulfill the 'convergence' criterion, but then what's the reached
+        ##         Of course one could check n.lookback consecutive columns for *all of them
+        ##         together* to fulfill the 'convergence' criterion, but then what's the reached
         ##         tolerance tol if more than two columns are involved? Maybe the maximum
-        ##         tolerance computed over all previous d many rearranged columns?
+        ##         tolerance computed over all previous n.lookback-many rearranged columns?
         ##         There's probably no gain in doing that.
         if(is.null.tol) { # tol = NULL
             num.cols.no.change <- if(identical(yj, yj.)) num.cols.no.change + 1 else 0
-            if(num.cols.no.change == d) { # => matrix has not changed in d consecutive col rearrangements
+            if(num.cols.no.change == n.lookback) { # => matrix has not changed in n.lookback consecutive col rearrangements
                 tol. <- 0 # as there was no change
-                tol.reached <- TRUE # as we reached 'no change' in d consecutive steps (we don't care whether max.ra has been reached)
+                tol.reached <- TRUE # as we reached 'no change' in n.lookback consecutive steps (we don't care whether max.ra has been reached)
                 break
             } else { # check whether we have to stop due to max.ra
-                if(iter == max.ra) { # need max.ra > d (as otherwise (*) is wrong)
+                if(iter == max.ra) { # need max.ra > n.lookback (as otherwise (*) is wrong)
                     ## Note: iter = number of columns we have already rearranged
-                    opt.rs.d.col.ago <- opt.row.sums[iter-d] # (*)
-                    tol. <- tol.fun(opt.rs.cur.col, opt.rs.d.col.ago) # compute the attained tolerance (in comparison to the last time the jth column was rearranged)
-                    tol.reached <- FALSE # as num.cols.no.change < d
+                    opt.rs.n.lookback.col.ago <- opt.row.sums[iter-n.lookback] # (*)
+                    tol. <- tol.fun(opt.rs.cur.col, opt.rs.n.lookback.col.ago) # compute the attained tolerance (in comparison to n.lookback column rearrangements ago)
+                    tol.reached <- FALSE # as num.cols.no.change < n.lookback
                     break
                 }
             }
-        } else { # tol >= 0
-            if(iter > d) {
-                opt.rs.d.col.ago <- opt.row.sums[iter-d]
-                tol. <- tol.fun(opt.rs.cur.col, opt.rs.d.col.ago) # compute the attained tolerance (in comparison to the last time the jth column was rearranged)
+        } else { # tol numeric >= 0
+            if(iter > n.lookback) { # ... now we can look back n.lookback rearrangements
+                opt.rs.n.lookback.col.ago <- opt.row.sums[iter-n.lookback]
+                tol. <- tol.fun(opt.rs.cur.col, opt.rs.n.lookback.col.ago) # compute the attained tolerance (in comparison to n.lookback rearrangements ago)
                 tol.reached <- tol. <= tol
-                if(iter == max.ra || tol.reached) break # also here we need max.ra > d; see (*)
+                if(iter == max.ra || tol.reached) break # also here we need max.ra > n.lookback; see (*)
             }
         }
 
@@ -856,4 +866,162 @@ ARA <- function(alpha, qF, N.exp = seq(8, 19, by = 1), reltol = c(0, 0.01),
                              up = res.up$opt.row.sums), # optimized row sums (low, up) for the N used
          X = list(low = X.low, up = X.up), # input matrices X (low, up)
          X.rearranged = list(low = res.low$X.rearranged, up = res.up$X.rearranged)) # rearranged Xs (low, up)
+}
+
+
+### 3.2) Block Rearrangement Algorithm #########################################
+
+##' @title Basic rearrangement function for (A)BRA
+##' @param X see rearrange()
+##' @param tol see rearrange() but can't be NULL (has to be >= 0) as we would
+##'        need to check after each block rearrangement whether all columns are
+##'        oppositely ordered to the sum of all others (or whether all possible
+##'        blocks are oppositely ordered to all others) -- too time-consuming.
+##' @param tol.type character string indicating the tolerance function used
+##'        ("relative" or "absolute"); the default "absolute" typically makes
+##'        a bit more sense since we optimize the variance of row sums and
+##'        since, in the optimal case, that becomes 0.
+##' @param n.lookback number of block rearrangements to look back for deciding
+##'        about 'convergence' (via considering the absolute/relative change
+##'        in the row sum variance; must be in {1,.., max.ra-1})
+##' @param max.ra Maximal number of block rearrangements considered
+##' @param method Character indicating whether worst VaR, best VaR or best ES
+##'        is approximated (determines optimizing function)
+##' @param sample see rearrange()
+##' @param ... additional arguments passed to the internal optimization
+##'        function optim.fun()
+##' @return List containing the
+##'         1) Computed (lower or upper [depending on X]) bound for (worst or
+##'            best [depending on method]) VaR or best ES
+##'         2) (Individual) tolerance reached (i.e., the absolute/relative change
+##'            of the row sum variance when looking back n.lookback block
+##'            rearrangements
+##'         3) Logical indicating whether the algorithm has converged
+##'         4) Vectors of optimized (minimal for worst VaR; maximal for best VaR;
+##'            ES_alpha for best ES) row variances after each considered block
+##'            rearrangement
+##'         5) The (optimally) rearranged (N, d)-matrix
+##' @author Marius Hofert and Martin Stefanik
+##' @note This is a modified version of Bernard and McLeish (2014)
+block_rearrange <- function(X, tol = 0, tol.type = c("absolute", "relative"),
+                            n.lookback = ncol(X), max.ra = Inf,
+                            method = c("worst.VaR", "best.VaR", "best.ES"),
+                            sample = TRUE, trace = FALSE, ...)
+{
+    ## Setup
+    N <- nrow(X)
+    d <- ncol(X)
+    tol.type <- match.arg(tol.type)
+    method <- match.arg(method)
+
+    ## Define helper functions
+    optim.fun <- switch(method,
+    "worst.VaR" = {
+        min
+    },
+    "best.VaR" = {
+        max
+    },
+    "best.ES" = {
+        alpha <- NULL # make CRAN check happy
+        stopifnot(hasArg(alpha)) # check if the confidence level 'alpha' has been provided (via '...')
+        function(x) ES_np(x, alpha = list(...)$alpha)
+    },
+    stop("Wrong 'method'"))
+    tol.fun <- if(tol.type == "absolute") {
+        function(x, y) abs(x-y)
+    } else {
+        function(x, y) abs((x-y)/y)
+    }
+
+    ## Tracing
+    if(trace) {
+        B <- X
+        colnames(B) <- rep("", d)
+        print(B)
+    }
+
+    ## Sample, row sums, row sum variance
+    if(sample) X <- apply(X, 2, sample)
+    X.rs <- .rowSums(X, m = N, n = d)
+
+    ## Setup for iteration
+    len.opt.row.sums <- 64
+    opt.row.sums <- numeric(len.opt.row.sums) # vector (will be doubled in size if necessary; faster than c()ing to it all the time)
+    rs.var <- numeric(n.lookback) # variances over the last n.lookback column rearrangements
+
+    ## Rearrange blocks one at a time
+    iter <- 0 # current iteration number
+    opt.row.vars <- numeric(n.lookback)
+    while (TRUE) {
+
+        ## Update the running indices
+        iter <- iter + 1
+
+        ## Sample a random two-set partition
+        bsize <- sample(seq_len(d-1), size = 1) # draw a number from {1,..,d-1} (block size)
+        block <- sample(seq_len(d), size = bsize) # draw bsize numbers from {1,..,d} (actual block of size bsize)
+        rs.block <- .rowSums(X[, block], m = N, n = bsize) # row sum of the block
+        rs.complement.block <- X.rs - rs.block # row sum of the complement block (= set of remaining columns)
+
+        ## Oppositely order all columns belonging to block 'block' to the row
+        ## sums of the complement block
+        if(trace) B <- X # grab out matrix before rearranging
+        X.block.ordered <- X[order(rs.block), block, drop = FALSE] # (*)
+        X[, block] <- X.block.ordered[indices_opp_ordered_to(rs.complement.block),]
+        ## Concerning (*): - In rearrange() we could work with X.lst.sorted and thus use
+        ##                   presorted columns. Avoiding X[order(rs.block), block]
+        ##                   doesn't seem possible here as rs.block can change all the time.
+        ##                   This is one reason why block_rearrange() is slower than rearrange().
+        ##                 - Another reason is that we work with matrices here, not lists
+        ##                   (the effect of this is probably rather minor given the sorting)
+        ## Update the vector of row sums
+        X.rs <- rs.complement.block + .rowSums(X[, block], m = N, n = bsize)
+
+        ## Tracing
+        if(trace) {
+            colnames(B) <- rep("", d)
+            colnames(B)[block] <- vapply(block, function(j)
+                if(identical(X[,j], B[,j])) "=" else "|", character(0))
+            B <- cbind(B, rs.complement.block, sum = .rowSums(B, m = N, n = d))
+            colnames(B)[d+1] <- "-block"
+            print(B)
+        }
+
+        ## Update the vector of computed optimal row sums
+        opt.rs.cur.col <- optim.fun(X.rs) # compute new optimized row sum
+        if(iter > len.opt.row.sums) { # if iter in {128 + 1, 256 + 1, ...} => double the size
+            opt.row.sums <- c(opt.row.sums, numeric(len.opt.row.sums))
+            len.opt.row.sums <- 2 * len.opt.row.sums
+        }
+        opt.row.sums[iter] <- opt.rs.cur.col # append it
+
+        ## Assess convergence
+        var.X.rs <- var(X.rs)
+        if(iter == max.ra) {
+            tol. <- tol.fun(var.X.rs, opt.row.vars.old)
+            tol.reached <- FALSE
+            break
+        } else if(iter > n.lookback) {
+            ii <- (iter %% n.lookback) + 1
+            opt.row.vars.cur <- var.X.rs
+            opt.row.vars.old <- opt.row.vars[ii]
+            opt.row.vars[ii] <- opt.row.vars.cur
+            tol. <- tol.fun(opt.row.vars.cur, opt.row.vars.old)
+            if(tol. <= tol) {
+                tol.reached <- TRUE
+                break
+            }
+        } else {
+            ii <- (iter %% n.lookback) + 1
+            opt.row.vars[ii] <- var.X.rs
+        }
+    }
+
+    ## Return
+    list(bound = optim.fun(X.rs), # computed bound (\underline{s}_N or \overline{s}_N)
+         tol = tol., # tolerance for the computed bound
+         converged = tol.reached, # indicating whether converged
+         opt.row.sums = opt.row.sums[1:iter], # the computed optimized row sums after each block rearrangement
+         X.rearranged = X) # the block-rearranged matrix
 }
