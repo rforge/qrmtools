@@ -1,15 +1,15 @@
 ### Graphical tools ############################################################
 
 ##' @title Image Indicating NAs in a Data Set
-##' @param x A matrix (ideally an xts object)
-##' @param col The colors for NA and non-NA, respectively
-##' @param xlab The x-axis label
-##' @param ylab The y-axis label
-##' @param text See mtext()
-##' @param side See mtext()
-##' @param line See mtext()
-##' @param adj See mtext()
-##' @param ... Additional arguments passed to image()
+##' @param x matrix (ideally an xts object)
+##' @param col colors for NA and non-NA, respectively
+##' @param xlab x-axis label
+##' @param ylab y-axis label
+##' @param text see mtext()
+##' @param side see mtext()
+##' @param line see mtext()
+##' @param adj see mtext()
+##' @param ... additional arguments passed to image()
 ##' @return invisible()
 ##' @author Marius Hofert
 NA_plot <- function(x, col = c("black", "white"), xlab = "Time", ylab = "Component",
@@ -31,17 +31,17 @@ NA_plot <- function(x, col = c("black", "white"), xlab = "Time", ylab = "Compone
 }
 
 ##' @title Plot of a Matrix
-##' @param x A matrix
-##' @param ylim The y-axis limits in reverse order (for the rows to appear 'top down')
+##' @param x matrix
+##' @param ylim y-axis limits in reverse order (for the rows to appear 'top down')
 ##' @param xlab x-axis label
 ##' @param ylab y-axis label
-##' @param scales See levelplot(); if NULL, labels and ticks are omitted
-##' @param at See levelplot()
-##' @param colorkey See levelplot()
-##' @param col The default colors for the color key
-##' @param col.regions See levelplot()
-##' @param ... Additional arguments passed to levelplot()
-##' @return The level plot
+##' @param scales see levelplot(); if NULL, labels and ticks are omitted
+##' @param at see levelplot()
+##' @param colorkey see levelplot()
+##' @param col default colors for the color key
+##' @param col.regions see levelplot()
+##' @param ... additional arguments passed to levelplot()
+##' @return level plot
 ##' @author Marius Hofert
 ##' @note - Another option would be:
 ##'         corrplot::corrplot(err, method = "color", col = grey(seq(0.4, 1, length.out = 200)),
@@ -91,14 +91,14 @@ matrix_plot <- function(x, ylim = rev(c(0.5, nrow(x) + 0.5)),
 }
 
 ##' @title Density Plot of the Values from a Lower Triangular Matrix
-##' @param x A matrix
-##' @param xlab The x-axis label
-##' @param main The title
-##' @param text See mtext()
-##' @param side See mtext()
-##' @param line See mtext()
-##' @param adj See mtext()
-##' @param ... Additional arguments passed to plot()
+##' @param x matrix
+##' @param xlab x-axis label
+##' @param main title
+##' @param text see mtext()
+##' @param side see mtext()
+##' @param line see mtext()
+##' @param adj see mtext()
+##' @param ... additional arguments passed to plot()
 ##' @return invisible()
 ##' @author Marius Hofert
 matrix_density_plot <- function(x, xlab = "Entries in the lower triangular matrix",
@@ -119,11 +119,11 @@ matrix_density_plot <- function(x, xlab = "Entries in the lower triangular matri
 }
 
 ##' @title P-P Plot
-##' @param x The data (a vector of convertible to such)
-##' @param FUN The hypothesized *distribution* function
-##' @param xlab The x-axis label
-##' @param ylab The y-axis label
-##' @param ... Additional arguments passed to the underlying plot()
+##' @param x data (a vector of convertible to such)
+##' @param FUN hypothesized *distribution* function
+##' @param xlab x-axis label
+##' @param ylab y-axis label
+##' @param ... additional arguments passed to the underlying plot()
 ##' @return invisible()
 ##' @author Marius Hofert
 ##' @note as.vector() required since sort(x) == x for an 'xts' object!
@@ -139,13 +139,13 @@ pp_plot <-  function(x, FUN = pnorm,
 }
 
 ##' @title Q-Q Plot
-##' @param x The data (a vector or convertible to such)
-##' @param FUN The hypothesized *quantile* function
-##' @param xlab The x-axis label
-##' @param ylab The y-axis label
-##' @param do.qqline A logical indicating whether a Q-Q line is plotted
-##' @param method The method used to construct the Q-Q line:
-##'        "theoretical": The theoretically true line which helps
+##' @param x data (a vector or convertible to such)
+##' @param FUN hypothesized *quantile* function
+##' @param xlab x-axis label
+##' @param ylab y-axis label
+##' @param do.qqline logical indicating whether a Q-Q line is plotted
+##' @param method method used to construct the Q-Q line:
+##'        "theoretical": theoretically true line which helps
 ##'                       deciding whether x comes from exactly
 ##'                       the distribution specified by FUN
 ##'        "empirical": qqline() which interpolates
@@ -162,9 +162,9 @@ pp_plot <-  function(x, FUN = pnorm,
 ##'        qq_plot(z., qnorm) # not fine
 ##'        qq_plot((z.-mean(z.))/sd(z.), qnorm) # fine again
 ##'        qq_plot(z., qnorm, method = "empirical") # fine again
-##' @param qqline.args A list containing additional arguments passed to the
+##' @param qqline.args list containing additional arguments passed to the
 ##'        underlying abline() functions
-##' @param ... Additional arguments passed to the underlying plot()
+##' @param ... additional arguments passed to the underlying plot()
 ##' @return invisible()
 ##' @author Marius Hofert
 ##' @note - as.vector() required since sort(x) == x for an 'xts' object!

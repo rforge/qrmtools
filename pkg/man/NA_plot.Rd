@@ -10,16 +10,16 @@ NA_plot(x, col = c("black", "white"), xlab = "Time", ylab = "Component",
         side = 4, line = 1, adj = 0, ...)
 }
 \arguments{
-  \item{x}{A matrix (ideally an \code{xts} object).}
-  \item{col}{A bivariate vector containing the colors for missing and
+  \item{x}{matrix (ideally an \code{xts} object).}
+  \item{col}{bivariate vector containing the colors for missing and
     available data, respectively.}
-  \item{xlab}{The x-axis label.}
-  \item{ylab}{The y-axis label.}
-  \item{text}{See \code{\link{mtext}()}. The \code{text = ""}, it is omitted.}
-  \item{side}{See \code{\link{mtext}()}.}
-  \item{line}{See \code{\link{mtext}()}.}
-  \item{adj}{See \code{\link{mtext}()}.}
-  \item{\dots}{Additional arguments passed to the underlying function
+  \item{xlab}{x-axis label.}
+  \item{ylab}{y-axis label.}
+  \item{text}{see \code{\link{mtext}()}. The \code{text = ""}, it is omitted.}
+  \item{side}{see \code{\link{mtext}()}.}
+  \item{line}{see \code{\link{mtext}()}.}
+  \item{adj}{see \code{\link{mtext}()}.}
+  \item{\dots}{additional arguments passed to the underlying function
     \code{\link{image}()}.}
 }
 \value{

@@ -381,7 +381,7 @@ VaR_bounds_hom <- function(alpha, d, method = c("Wang", "Wang.Par", "dual"),
 
 ##' @title Determine the indices which order any increasing (!) vector y
 ##'        oppositely to x
-##' @param x A vector
+##' @param x vector
 ##' @return order(order(x, decreasing = TRUE)) (= N+1-rank(x))
 ##' @author Marius Hofert
 ##' @note For convergence of rearrange() it is crucial to have a stable sorting
@@ -404,7 +404,7 @@ indices_opp_ordered_to <- function(x) order(order(x, decreasing = TRUE))
 
 ##' @title Compute the number of columns oppositely ordered to the sum of all others
 ##' @param x (N, d)-matrix
-##' @return Number of columns oppositely ordered to the sum of all others
+##' @return number of columns oppositely ordered to the sum of all others
 ##' @author Marius Hofert
 ##' @note Same time-saving tricks as behind rearrange(), RA() and ARA() (work
 ##'       with list of columns of x)
@@ -441,7 +441,7 @@ num_of_opp_ordered_cols <- function(x) {
 ##'        printed after each rearrangement step
 ##' @param ... additional arguments passed to the internal optimization
 ##'        function optim.fun()
-##' @return List containing the
+##' @return list containing the
 ##'         1) Computed (lower or upper [depending on X]) bound for (worst or
 ##'            best [depending on method]) VaR or best ES
 ##'         2) (Individual) tolerance reached (i.e., the absolute/relative change
@@ -459,6 +459,9 @@ num_of_opp_ordered_cols <- function(x) {
 ##'         dth (not only after rearranging all d columns)
 ##'       - The columns of X have to be given in increasing order if is.sorted = TRUE
 ##'       - No checking here due to speed! Note that max.ra must be > ncol(X)
+##'       - Idea: The column rearrangements should provide the maximal minimal
+##'               row sum (for worst VaR), the minimal maximal row sum
+##'               (for best VaR) or the minimal ES (for best ES).
 rearrange <- function(X, tol = 0, tol.type = c("relative", "absolute"),
                       n.lookback = ncol(X), max.ra = Inf,
                       method = c("worst.VaR", "best.VaR", "best.ES"),
@@ -624,17 +627,19 @@ rearrange <- function(X, tol = 0, tol.type = c("relative", "absolute"),
 ##'        oppositely ordered to the sum of all others (or whether all possible
 ##'        blocks are oppositely ordered to all others) -- too time-consuming.
 ##' @param tol.type character string indicating the tolerance function used
-##'        ("relative" or "absolute")
+##'        ("absolute" or "relative"); here the default is "absolute" as we
+##'        minimize the variance of the row sums and this variance can be 0
+##'        (we would thus divide by 0 for the relative variance)
 ##' @param n.lookback number of block rearrangements to look back for deciding
 ##'        about 'convergence' (via considering the absolute/relative change
 ##'        in the row sum variance; must be in {1,.., max.ra-1})
-##' @param max.ra Maximal number of block rearrangements considered
-##' @param method Character indicating whether worst VaR, best VaR or best ES
+##' @param max.ra maximal number of block rearrangements considered
+##' @param method character indicating whether worst VaR, best VaR or best ES
 ##'        is approximated (determines optimizing function)
 ##' @param sample see rearrange()
 ##' @param ... additional arguments passed to the internal optimization
 ##'        function optim.fun()
-##' @return List containing the
+##' @return list containing the
 ##'         1) Computed (lower or upper [depending on X]) bound for (worst or
 ##'            best [depending on method]) VaR or best ES
 ##'         2) (Individual) tolerance reached (i.e., the absolute/relative change
@@ -646,8 +651,11 @@ rearrange <- function(X, tol = 0, tol.type = c("relative", "absolute"),
 ##'            rearrangement
 ##'         5) The (optimally) rearranged (N, d)-matrix
 ##' @author Marius Hofert and Martin Stefanik
-##' @note This is a modified version of Bernard and McLeish (2014)
-block_rearrange <- function(X, tol = 0, tol.type = c("relative", "absolute"),
+##' @note - This is a modified version of Bernard and McLeish (2014)
+##'       - Idea: The variance of the row sums is minimized through block rearrangements,
+##'               which should provide the maximal minimal row sum (for worst VaR), the
+##'               minimal maximal row sum (for best VaR) or the minimal ES (for best ES).
+block_rearrange <- function(X, tol = 0, tol.type = c("absolute", "relative"),
                             n.lookback = ncol(X), max.ra = Inf,
                             method = c("worst.VaR", "best.VaR", "best.ES"),
                             sample = TRUE, trace = FALSE, ...)
@@ -774,18 +782,18 @@ block_rearrange <- function(X, tol = 0, tol.type = c("relative", "absolute"),
 ### 3.2 Rearrangement Algorithm ################################################
 
 ##' @title Computing lower/upper bounds for the worst/best VaR or best ES with the RA
-##' @param alpha Confidence level
+##' @param alpha confidence level
 ##' @param qF d-list of marginal quantile functions
-##' @param N Number of discretization points
-##' @param abstol Absolute convergence tolerance (to determine convergence)
+##' @param N number of discretization points
+##' @param abstol absolute convergence tolerance (to determine convergence)
 ##' @param n.lookback number of column rearrangements to look back for deciding
 ##'        about 'convergence' (must be a number in {1,.., max.ra-1}, typically
 ##'        around d).
-##' @param max.ra Maximal number of column rearrangements
-##' @param method Character indicating which risk measure is approximated
-##' @param sample Logical indicating whether each column of the two working
+##' @param max.ra maximal number of column rearrangements
+##' @param method character indicating which risk measure is approximated
+##' @param sample logical indicating whether each column of the two working
 ##'        matrices is randomly permuted before the rearrangements begin
-##' @return List containing the
+##' @return list containing the
 ##'         1) Computed lower and upper bound for (worst or best) risk measure
 ##'         2) The relative rearrangement gap
 ##'            "|(upper bound - lower bound) / upper bound|"
@@ -892,25 +900,27 @@ RA <- function(alpha, qF, N, abstol = 0, n.lookback = length(qF),
 ### 3.3 Adaptive Rearrangement Algorithm #######################################
 
 ##' @title Computing lower/upper bounds for the worst/best VaR or best ES with the ARA
-##' @param alpha Confidence level
+##' @param alpha confidence level
 ##' @param qF d-list of marginal quantile functions
-##' @param N.exp Vector of exponents of 2 used as discretization points
-##' @param reltol 2-vector of relative convergence tolerances
-##'        for determining the individual relative tolerance and
-##'        the joint relative tolerance.
+##' @param N.exp vector of exponents of 2 used as discretization points
+##' @param reltol vector of length 2 containing the relative convergence tolerances
+##'        for determining the individual and joint convergence; can also be of
+##'        length 1 in which case it provides the relative joint convergence
+##'        tolerance and the relative individual convergence tolerance is taken
+##'        as NULL in this case.
 ##' @param n.lookback number of column rearrangements to look back for deciding
 ##'        about 'convergence' (must be a number in {1,.., max.ra-1}, typically
 ##'        around d).
-##' @param max.ra Maximal number of column rearrangements per N
-##' @param method Character indicating which risk measure is approximated
-##' @param sample Logical indicating whether each column of the two working
+##' @param max.ra maximal number of column rearrangements per N
+##' @param method character indicating which risk measure is approximated
+##' @param sample logical indicating whether each column of the two working
 ##'        matrices is randomly permuted before the rearrangements begin
-##' @return List containing the
+##' @return list containing the
 ##'         1) Computed lower and upper bound for (worst or best) risk measure
 ##'         2) The relative rearrangement gap
 ##'            "|(upper bound - lower bound) / upper bound|"
-##'         3) Relative tolerances reached (individually for each bound and jointly
-##'            between the bounds)
+##'         3) Relative individual tolerances reached (for each bound) and
+##'            relative joint tolerance between the bounds
 ##'         4) 3-vector of logicals indicating whether the individual bounds and
 ##'            the two bounds jointly reached the desired tolerances (=> convergence)
 ##'         5) The number of discretization points used
@@ -1015,7 +1025,7 @@ ARA <- function(alpha, qF, N.exp = seq(8, 19, by = 1), reltol = c(0, 0.01),
     ## Return
     list(bounds = c(low = res.low$bound, up = res.up$bound), # (\underline{s}_N, \overline{s}_N)
          rel.ra.gap = abs((res.up$bound - res.low$bound) / res.up$bound), # relative RA gap
-         rel.tol = c(low = res.low$tol, up = res.up$tol, joint = joint.tol), # individual and joint relative tolerances
+         tol = c(low = res.low$tol, up = res.up$tol, joint = joint.tol), # individual and joint relative tolerances
          converged = c(low = res.low$converged, up = res.up$converged,
                        joint = joint.tol.reached), # converged?
          N.used = N, # number of discretization points used
@@ -1030,25 +1040,27 @@ ARA <- function(alpha, qF, N.exp = seq(8, 19, by = 1), reltol = c(0, 0.01),
 ### 3.4 Adaptive Block Rearrangement Algorithm #################################
 
 ##' @title Computing lower/upper bounds for the worst/best VaR or best ES with the ABRA
-##' @param alpha Confidence level
+##' @param alpha confidence level
 ##' @param qF d-list of marginal quantile functions
-##' @param N.exp Vector of exponents of 2 used as discretization points
-##' @param abstol 2-vector of absolute convergence tolerances
-##'        for determining the individual absolute tolerance and
-##'        the joint absolute tolerance.
+##' @param N.exp vector of exponents of 2 used as discretization points
+##' @param absreltol vector of length 2 containing the absolute and relative
+##'        convergence tolerances for determining the individual and joint
+##'        convergences, respectively; can also be of length 1 in which case
+##'        it provides the relative joint convergence tolerance and the
+##'        absolute individual convergence tolerance is taken as 0 in this case.
 ##' @param n.lookback number of column rearrangements to look back for deciding
 ##'        about 'convergence' (must be a number in {1,.., max.ra-1}, typically
 ##'        around d) according to the row sum variance.
-##' @param max.ra Maximal number of column rearrangements per N
-##' @param method Character indicating which risk measure is approximated
-##' @param sample Logical indicating whether each column of the two working
+##' @param max.ra maximal number of column rearrangements per N
+##' @param method character indicating which risk measure is approximated
+##' @param sample logical indicating whether each column of the two working
 ##'        matrices is randomly permuted before the rearrangements begin
-##' @return List containing the
+##' @return list containing the
 ##'         1) Computed lower and upper bound for (worst or best) risk measure
 ##'         2) The relative rearrangement gap
 ##'            "|(upper bound - lower bound) / upper bound|"
-##'         3) Absolute tolerances reached (individually for each bound and jointly
-##'            between the bounds)
+##'         3) Absolute tolerances reached (for each bound) and
+##'            relative joint tolerance between the bounds
 ##'         4) 3-vector of logicals indicating whether the individual bounds and
 ##'            the two bounds jointly reached the desired tolerances (=> convergence)
 ##'         5) The number of discretization points used
@@ -1058,21 +1070,21 @@ ARA <- function(alpha, qF, N.exp = seq(8, 19, by = 1), reltol = c(0, 0.01),
 ##'         8) List of (N, d) input matrices X (for each bound)
 ##'         9) List of rearranged Xs (for each bound)
 ##' @author Marius Hofert and Martin Stefanik
-ABRA <- function(alpha, qF, N.exp = seq(8, 19, by = 1), abstol = c(0, 0.01),
+ABRA <- function(alpha, qF, N.exp = seq(8, 19, by = 1), absreltol = c(0, 0.01),
                  n.lookback = NULL, max.ra = Inf,
                  method = c("worst.VaR", "best.VaR", "best.ES"),
                  sample = TRUE)
 {
     ## Checks and Step 1 (get N, abstol)
-    labstol <- length(abstol)
-    stopifnot(0 < alpha, alpha < 1, labstol == 1 || labstol == 2, abstol >= 0,
+    labsreltol <- length(absreltol)
+    stopifnot(0 < alpha, alpha < 1, labsreltol == 1 || labsreltol == 2, absreltol >= 0,
               length(N.exp) >= 1, N.exp >= 1, is.logical(sample),
               is.list(qF), sapply(qF, is.function), (d <- length(qF)) >= 2)
     method <- match.arg(method)
 
     ## Determine tolerances
-    itol <- if(labstol == 2) abstol[1] else 0 # individual tolerance
-    jtol <- if(labstol == 2) abstol[2] else abstol[1] # joint tolerance
+    itol <- if(labsreltol == 2) absreltol[1] else 0 # individual tolerance
+    jtol <- if(labsreltol == 2) absreltol[2] else absreltol[1] # joint tolerance
 
     ## Function to compute the optimal n.lookback
     m.opt <- function(N, d, col.var) {
@@ -1110,12 +1122,12 @@ ABRA <- function(alpha, qF, N.exp = seq(8, 19, by = 1), abstol = c(0, 0.01),
         n.lookback.cur <- if(is.null(n.lookback))
                               m.opt(N, d = d, col.var = mean(apply(X.low, 2, var))) else n.lookback
         res.low <- if(method == "best.ES") {
-            block_rearrange(X.low, tol = itol, tol.type = "relative",
+            block_rearrange(X.low, tol = itol, tol.type = "absolute",
                             n.lookback = n.lookback.cur, max.ra = max.ra,
                             method = method, sample = sample,
                             alpha = alpha) # need to pass 'alpha'
         } else {
-            block_rearrange(X.low, tol = itol, tol.type = "relative",
+            block_rearrange(X.low, tol = itol, tol.type = "absolute",
                             n.lookback = n.lookback.cur, max.ra = max.ra,
                             method = method, sample = sample)
         }
@@ -1144,12 +1156,12 @@ ABRA <- function(alpha, qF, N.exp = seq(8, 19, by = 1), abstol = c(0, 0.01),
         n.lookback.cur <- if(is.null(n.lookback))
                               m.opt(N, d = d, col.var = mean(apply(X.up, 2, var))) else n.lookback
         res.up <- if(method == "best.ES") {
-            block_rearrange(X.up, tol = itol, tol.type = "relative",
+            block_rearrange(X.up, tol = itol, tol.type = "absolute",
                             n.lookback = n.lookback.cur, max.ra = max.ra,
                             method = method, sample = sample,
                             alpha = alpha) # need to pass 'alpha'
         } else {
-            block_rearrange(X.up, tol = itol, tol.type = "relative",
+            block_rearrange(X.up, tol = itol, tol.type = "absolute",
                             n.lookback = n.lookback.cur, max.ra = max.ra,
                             method = method, sample = sample)
         }
@@ -1164,7 +1176,7 @@ ABRA <- function(alpha, qF, N.exp = seq(8, 19, by = 1), abstol = c(0, 0.01),
     ## Return
     list(bounds = c(low = res.low$bound, up = res.up$bound), # (\underline{s}_N, \overline{s}_N)
          rel.ra.gap = abs((res.up$bound - res.low$bound) / res.up$bound), # relative RA gap
-         abs.tol = c(low = res.low$tol, up = res.up$tol, joint = joint.tol), # individual and joint relative tolerances
+         tol = c(low = res.low$tol, up = res.up$tol, joint = joint.tol), # individual and joint relative tolerances
          converged = c(low = res.low$converged, up = res.up$converged,
                        joint = joint.tol.reached), # converged?
          N.used = N, # number of discretization points used

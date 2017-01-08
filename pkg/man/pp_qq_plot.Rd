@@ -13,17 +13,17 @@ qq_plot(x, FUN = qnorm, xlab = "Theoretical quantiles", ylab = "Sample quantiles
         qqline.args = NULL, ...)
 }
 \arguments{
-  \item{x}{The data \code{\link{vector}}.}
-  \item{FUN}{A \code{\link{function}}. For
+  \item{x}{data \code{\link{vector}}.}
+  \item{FUN}{\code{\link{function}}. For
     \describe{
       \item{\code{pp_plot()}:}{The distribution function.}
       \item{\code{qq_plot()}:}{The quantile function.}
   }}
-  \item{xlab}{The x-axis label.}
-  \item{ylab}{The y-axis label.}
-  \item{do.qqline}{A \code{\link{logical}} indicating whether a Q-Q line
+  \item{xlab}{x-axis label.}
+  \item{ylab}{y-axis label.}
+  \item{do.qqline}{\code{\link{logical}} indicating whether a Q-Q line
     is plotted.}
-  \item{method}{The method used to construct the Q-Q line. If
+  \item{method}{method used to construct the Q-Q line. If
     \code{"theoretical"}, the theoretically true line with intercept 0
     and slope 1 is displayed; if \code{"empirical"}, the intercept
     and slope are determined with \code{\link{qqline}()}. The former
@@ -31,11 +31,11 @@ qq_plot(x, FUN = qnorm, xlab = "Theoretical quantiles", ylab = "Sample quantiles
     specified by \code{FUN} exactly, the latter whether \code{x}
     comes from a location-scale transformed distribution specified by
     \code{FUN}.}
-  \item{qqline.args}{A \code{\link{list}} containing additional arguments
+  \item{qqline.args}{\code{\link{list}} containing additional arguments
     passed to the underlying \code{\link{abline}()} functions. Defaults to
     \code{list(a = 0, b = 1)} if \code{method = "theoretical"} and \code{list()}
     if \code{method = "empirical"}.}
-  \item{\dots}{Additional arguments passed to the underlying function
+  \item{\dots}{additional arguments passed to the underlying function
     \code{\link{plot}()}.}
 }
 \value{

@@ -1,18 +1,18 @@
 ### Working with returns #######################################################
 
 ##' @title Compute Log-Returns or the Inverse Transformation
-##' @param x A matrix of values to be turned into log-returns (if inverse = FALSE)
+##' @param x matrix of values to be turned into log-returns (if inverse = FALSE)
 ##'        or log-returns to be turned into data (if inverse = TRUE)
-##' @param inverse A logical indicating whether the inverse transformation
+##' @param inverse logical indicating whether the inverse transformation
 ##'        (data from given log-returns) is to be computed (if TRUE, this
 ##'        requires start to be specified)
-##' @param start If inverse = TRUE, the last available value of the time
+##' @param start if inverse = TRUE, the last available value of the time
 ##'        series
-##' @param include.start If inverse = TRUE, a logical indicating whether the
+##' @param include.start if inverse = TRUE, a logical indicating whether the
 ##'        last available value is included
-##' @param drop A logical indicating whether 1-column matrices which are not xts
+##' @param drop logical indicating whether 1-column matrices which are not xts
 ##'        objects are returned as vectors
-##' @return A matrix containing the log-returns or their 'inverses'
+##' @return matrix containing the log-returns or their 'inverses'
 ##' @author Marius Hofert
 ##' @note For *negative* log-returns, use -log_returns(x) or
 ##'       log_returns(-x, inverse = TRUE, start = ...)

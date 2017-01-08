@@ -19,23 +19,23 @@ ES_t(alpha, mu = 0, sigma = 1, df = Inf)
 ES_Par(alpha, theta, kappa = 1)
 }
 \arguments{
-  \item{x}{The vector of losses.}
-  \item{alpha}{The confidence level \eqn{\alpha\in[0,1]}{alpha in
+  \item{x}{vector of losses.}
+  \item{alpha}{confidence level \eqn{\alpha\in[0,1]}{alpha in
       [0,1]}.}
-  \item{names}{See \code{?\link{quantile}}.}
-  \item{type}{See \code{?\link{quantile}}.}
-  \item{mu}{The location parameter.}
-  \item{sigma}{The scale parameter, a positive number.}
-  \item{df}{The degrees of freedom, a positive number; choose \code{df = Inf}
+  \item{names}{see \code{?\link{quantile}}.}
+  \item{type}{see \code{?\link{quantile}}.}
+  \item{mu}{location parameter.}
+  \item{sigma}{scale parameter, a positive number.}
+  \item{df}{degrees of freedom, a positive number; choose \code{df = Inf}
     for the normal distribution.}
-  \item{theta}{The Pareto shape parameter, a positive number.}
-  \item{kappa}{The Pareto scale parameter, a positive number.}
-  \item{method}{A \code{\link{character}} string indicating the method
+  \item{theta}{Pareto shape parameter, a positive number.}
+  \item{kappa}{Pareto scale parameter, a positive number.}
+  \item{method}{\code{\link{character}} string indicating the method
     for computing expected shortfall.}
-  \item{verbose}{A \code{\link{logical}} indicating whether verbose
+  \item{verbose}{\code{\link{logical}} indicating whether verbose
     output is given (in case the mean is computed over (too) few
     observations).}
-  \item{\dots}{For
+  \item{\dots}{for
     \describe{
       \item{\code{VaR_np()}:}{Additional arguments passed to the
 	underlying \code{\link{quantile}()}.}

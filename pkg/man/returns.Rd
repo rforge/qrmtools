@@ -9,21 +9,21 @@
 log_returns(x, inverse = FALSE, start, include.start = FALSE, drop = TRUE)
 }
 \arguments{
-  \item{x}{A matrix of values to be turned into log-returns (if \code{inverse = FALSE})
+  \item{x}{matrix of values to be turned into log-returns (if \code{inverse = FALSE})
     or log-returns (if \code{inverse = TRUE}).}
-  \item{inverse}{A \code{\link{logical}} indicating whether the inverse transformation
+  \item{inverse}{\code{\link{logical}} indicating whether the inverse transformation
     (data from given log-returns) is to be computed (if TRUE, this
     requires \code{start} to be specified).}
-  \item{start}{If \code{inverse = TRUE}, the last available value
+  \item{start}{if \code{inverse = TRUE}, the last available value
     of the time series to be constructed from the given log-returns \code{x}.}
-  \item{include.start}{If \code{inverse = TRUE}, a \code{\link{logical}}
+  \item{include.start}{if \code{inverse = TRUE}, a \code{\link{logical}}
     indicating whether the last available value is included.}
-  \item{drop}{A \code{\link{logical}} indicating whether 1-column
+  \item{drop}{\code{\link{logical}} indicating whether 1-column
     matrices (or vectors) which are not \code{xts} objects are returned as
     vectors.}
 }
 \value{
-  A \code{\link{matrix}} with the same number of columns as \code{x}
+  \code{\link{matrix}} with the same number of columns as \code{x}
   (if one, then a \code{\link{vector}}), just one row less if \code{inverse = FALSE}
   or one row more if \code{inverse = TRUE} and \code{include.start = TRUE}.
 }

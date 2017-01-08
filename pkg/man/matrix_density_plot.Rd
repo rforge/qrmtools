@@ -9,14 +9,14 @@ matrix_density_plot(x, xlab = "Entries in the lower triangular matrix",
                     main = "", text = NULL, side = 4, line = 1, adj = 0, ...)
 }
 \arguments{
-  \item{x}{A \code{\link{matrix}}-like object.}
-  \item{xlab}{The x-axis label.}
-  \item{main}{The title.}
-  \item{text}{See \code{\link{mtext}()}. The \code{text = ""}, it is omitted.}
-  \item{side}{See \code{\link{mtext}()}.}
-  \item{line}{See \code{\link{mtext}()}.}
-  \item{adj}{See \code{\link{mtext}()}.}
-  \item{\dots}{Additional arguments passed to the underlying \code{\link{plot}()}.}
+  \item{x}{\code{\link{matrix}}-like object.}
+  \item{xlab}{x-axis label.}
+  \item{main}{title.}
+  \item{text}{see \code{\link{mtext}()}. The \code{text = ""}, it is omitted.}
+  \item{side}{see \code{\link{mtext}()}.}
+  \item{line}{see \code{\link{mtext}()}.}
+  \item{adj}{see \code{\link{mtext}()}.}
+  \item{\dots}{additional arguments passed to the underlying \code{\link{plot}()}.}
 }
 \value{
   \code{\link{invisible}()}.

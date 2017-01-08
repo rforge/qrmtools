@@ -3,12 +3,12 @@
 ### 1 Value-at-Risk ############################################################
 
 ##' @title Nonparametric VaR estimator
-##' @param x The vector of losses
-##' @param alpha The confidence level
-##' @param names See ?quantile
-##' @param type The 'type' used (1 = inverse of empirical df); see ?quantile
-##' @param ... See ?quantile
-##' @return Nonparametric VaR_alpha estimate
+##' @param x vector of losses
+##' @param alpha confidence level
+##' @param names see ?quantile
+##' @param type 'type' used (1 = inverse of empirical df); see ?quantile
+##' @param ... see ?quantile
+##' @return nonparametric VaR_alpha estimate
 ##' @author Marius Hofert
 ##' @note We use the conservative type = 1 here as for sufficiently large alpha,
 ##'       type = 7 (quantile()'s default) would interpolate between the two
@@ -42,13 +42,13 @@ VaR_Par <- function(alpha, theta, kappa = 1) qPar(alpha, theta = theta, kappa = 
 ### 2 Expected shortfall #######################################################
 
 ##' @title Nonparametric expected shortfall estimator
-##' @param x The vector of losses
-##' @param alpha The confidence level
-##' @param method The method
-##' @param verbose A logical indicating whether verbose output is provided in
+##' @param x vector of losses
+##' @param alpha confidence level
+##' @param method method
+##' @param verbose logical indicating whether verbose output is provided in
 ##'        case the mean is taken over (too) few losses
-##' @param ... Additional arguments passed VaR_np()
-##' @return Nonparametric ES_alpha estimate (derived under the assumption of continuity)
+##' @param ... additional arguments passed VaR_np()
+##' @return nonparametric ES_alpha estimate (derived under the assumption of continuity)
 ##' @author Marius Hofert
 ##' @note - Vectorized in x and alpha
 ##'       - ">" : Mathematically correct for discrete dfs, but

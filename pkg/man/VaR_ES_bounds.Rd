@@ -28,7 +28,7 @@ rearrange(X, tol = 0, tol.type = c("relative", "absolute"),
           n.lookback = ncol(X), max.ra = Inf,
           method = c("worst.VaR", "best.VaR", "best.ES"),
 	  sample = TRUE, is.sorted = FALSE, trace = FALSE, ...)
-block_rearrange(X, tol = 0, tol.type = c("relative", "absolute"),
+block_rearrange(X, tol = 0, tol.type = c("absolute", "relative"),
                 n.lookback = ncol(X), max.ra = Inf,
                 method = c("worst.VaR", "best.VaR", "best.ES"),
                 sample = TRUE, trace = FALSE, ...)
@@ -43,20 +43,20 @@ ARA(alpha, qF, N.exp = seq(8, 19, by = 1), reltol = c(0, 0.01),
     method = c("worst.VaR", "best.VaR", "best.ES"),
     sample = TRUE)
 ## Adaptive Block Rearrangement Algorithm
-ABRA(alpha, qF, N.exp = seq(8, 19, by = 1), abstol = c(0, 0.01),
+ABRA(alpha, qF, N.exp = seq(8, 19, by = 1), absreltol = c(0, 0.01),
      n.lookback = NULL, max.ra = Inf,
      method = c("worst.VaR", "best.VaR", "best.ES"),
      sample = TRUE)
 }
 \arguments{
-  \item{alpha}{Confidence level for VaR and ES (e.g., 0.99).}
-  \item{d}{Dimension (number of risk factors; \eqn{\ge 2}{ >= 2}). For
+  \item{alpha}{confidence level for VaR and ES (e.g., 0.99).}
+  \item{d}{dimension (number of risk factors; \eqn{\ge 2}{ >= 2}). For
     \code{crude_VaR_bounds()}, \code{d} only needs to be given in
     the homogeneous case in which \code{qF()} is a \code{\link{function}}.}
-  \item{qF}{The marginal quantile function (in the homogeneous case) or
+  \item{qF}{marginal quantile function (in the homogeneous case) or
     a \code{d}-list containing the marginal quantile functions (in the
     general case).}
-  \item{method}{A \code{\link{character}} string. For
+  \item{method}{\code{\link{character}} string. For
     \describe{
       \item{\code{VaR_bounds_hom()}:}{\code{method = "Wang"} and
 	\code{method = "Wang.Par"}
@@ -81,22 +81,22 @@ ABRA(alpha, qF, N.exp = seq(8, 19, by = 1), abstol = c(0, 0.01),
 	  line with results from \code{VaR_bounds_hom()} in the homogeneous
 	  case, for example.}
   }}
-  \item{interval}{Initial interval (a \code{\link{numeric}(2)}) for
+  \item{interval}{initial interval (a \code{\link{numeric}(2)}) for
     computing worst VaR. If not provided, these are the defaults chosen:
     \describe{
-      \item{\code{method = "Wang"}:}{The initial
+      \item{\code{method = "Wang"}:}{initial
 	interval is \eqn{[0,(1-\alpha)/d]}{[0,(1-alpha)/d]}.}
-      \item{\code{method = "Wang.Par"}:}{The initial
+      \item{\code{method = "Wang.Par"}:}{initial
 	interval is \eqn{[c_l,c_u]}, where \eqn{c_l} and \eqn{c_u}
 	are chosen as in Hofert et al. (2015).}
-      \item{\code{method = "dual"}:}{In this case, no good defaults are known.
+      \item{\code{method = "dual"}:}{in this case, no good defaults are known.
 	Note that the lower endpoint of the initial interval has to be
 	sufficiently large in order for the the inner root-finding algorithm
 	to find a root; see Details.}
   }}
   \item{tol}{
     \describe{
-      \item{\code{VaR_bounds_hom()}:}{The tolerance for
+      \item{\code{VaR_bounds_hom()}:}{tolerance for
         \code{\link{uniroot}()}
 	for computing worst VaR. This defaults (for \code{tol = NULL}) to
 	\eqn{2.2204*10^{-16}}{2.2204*10^{-16}}
@@ -105,7 +105,7 @@ ABRA(alpha, qF, N.exp = seq(8, 19, by = 1), abstol = c(0, 0.01),
 	default \code{.Machine$double.eps^0.25} otherwise. Note that for
 	\code{method = "dual"}, \code{tol} is used for both the outer
 	and the inner root-finding procedure.}
-      \item{\code{rearrange()}, \code{block_rearrange()}:}{(Absolute or
+      \item{\code{rearrange()}, \code{block_rearrange()}:}{(absolute or
 	relative) tolerance to determine (the individual) convergence.
 	This should normally be a number greater than or equal to 0,
 	but \code{rearrange()} also allows for \code{tol = NULL}
@@ -115,24 +115,24 @@ ABRA(alpha, qF, N.exp = seq(8, 19, by = 1), abstol = c(0, 0.01),
   \item{tol.type}{\code{\link{character}} string indicating the
     type of convergence tolerance function to be used (\code{"relative"}
     for relative tolerance and \code{"absolute"} for absolute tolerance).}
-  \item{n.lookback}{Number of rearrangements to look back for deciding
+  \item{n.lookback}{number of rearrangements to look back for deciding
     about numerical convergence. Use this option with care.}
-  \item{s}{Dual bound evaluation point.}
-  \item{pF}{The marginal loss distribution function.}
-  \item{X}{An (\code{N}, \code{d})-matrix of quantiles (to be
+  \item{s}{dual bound evaluation point.}
+  \item{pF}{marginal loss distribution function.}
+  \item{X}{(\code{N}, \code{d})-matrix of quantiles (to be
     rearranged). If \code{is.sorted} it is assumed that the columns of
     \code{X} are sorted in \emph{increasing} order.}
-  \item{max.ra}{Maximal number of (considered) column rearrangements
+  \item{max.ra}{maximal number of (considered) column rearrangements
     of the underlying matrix of quantiles (can be set to \code{Inf}).}
-  \item{N}{The number of discretization points.}
-  \item{N.exp}{The exponents of the number of discretization points
+  \item{N}{number of discretization points.}
+  \item{N.exp}{exponents of the number of discretization points
     (a \code{\link{vector}}) over which the algorithm iterates to find
     the smallest number of discretization points for which the desired
     accuracy (specified by \code{abstol} and \code{reltol}) is attained;
     for each number of discretization points, at most \code{max.ra}-many
     column rearrangements are of the underlying matrix of quantiles
     are considered.}
-  \item{abstol}{Absolute convergence tolerance \eqn{\epsilon}{epsilon}
+  \item{abstol}{absolute convergence tolerance \eqn{\epsilon}{epsilon}
     to determine the individual convergence, i.e., the change in the computed
     minimal row sums (for \code{method = "worst.VaR"}) or maximal
     row sums (for \code{method = "best.VaR"}) or expected shortfalls (for
@@ -140,37 +140,47 @@ ABRA(alpha, qF, N.exp = seq(8, 19, by = 1), abstol = c(0, 0.01),
     and the upper bound \eqn{\overline{s}_N}. \code{abstol} is typically
     \eqn{\ge0}{>= 0}; it can also be \code{\link{NULL}}, see \code{tol}
     above.}
-  \item{reltol}{A \code{\link{vector}} of length one or two containing the
-    relative convergence tolerances. If \code{reltol} is of length two,
-    the first component is the the individual relative tolerance
-    (used to determine convergence of the minimal row sums (for
-    \code{method = "worst.VaR"}) or maximal row sums
-    (for \code{method = "best.VaR"}) or expected shortfalls (for
+  \item{reltol}{\code{\link{vector}} of length two containing the
+    individual (first component; used to determine convergence of the
+    minimal row sums (for \code{method = "worst.VaR"}) or maximal row
+    sums (for \code{method = "best.VaR"}) or expected shortfalls (for
     \code{method = "best.ES"}) for \eqn{\underline{s}_N} and
-    \eqn{\overline{s}_N}) and the second component is the joint relative
-    tolerance (i.e., the relative tolerance between the computed
-    \eqn{\underline{s}_N} and \eqn{\overline{s}_N} with respect to
-    \eqn{\overline{s}_N}). If \code{reltol} is of length one, it denotes
-    the joint relative tolerance; the individual relative tolerance is
-    then taken as \code{NULL} (see \code{tol} above).}
-  \item{sample}{A \code{\link{logical}} indicating whether each column of
+    \eqn{\overline{s}_N}) and the joint (second component; relative
+    tolerance between the computed \eqn{\underline{s}_N} and
+    \eqn{\overline{s}_N} with respect to \eqn{\overline{s}_N}) relative
+    convergence tolerances. \code{reltol} can also be of length one
+    in which case it denotes the joint relative tolerance; the
+    individual relative tolerance is taken as \code{NULL}
+    (see \code{tol} above) in this case.}
+  \item{absreltol}{\code{\link{vector}} of length two containing the
+    individual (first component; used to determine convergence of the
+    minimal row sums (for \code{method = "worst.VaR"}) or maximal row
+    sums (for \code{method = "best.VaR"}) or expected shortfalls (for
+    \code{method = "best.ES"}) for \eqn{\underline{s}_N} and
+    \eqn{\overline{s}_N}) absolute and the joint (second component; relative
+    tolerance between the computed \eqn{\underline{s}_N} and
+    \eqn{\overline{s}_N} with respect to \eqn{\overline{s}_N}) relative
+    convergence tolerances. \code{absreltol} can also be of length one
+    in which case it denotes the joint relative tolerance; the
+    individual absolute tolerance is taken as 0 in this case.}
+  \item{sample}{\code{\link{logical}} indicating whether each column of
     the two underlying matrices of quantiles (see Step 3 of the Rearrangement
     Algorithm in Embrechts et al. (2013))
     are randomly permuted before the rearrangements begin. This typically has
     quite a positive effect on run time (as most of the time is spent
     (oppositely) ordering columns (for \code{rearrange()}) or blocks
     (for \code{block_rearrange()})).}
-  \item{is.sorted}{A \code{\link{logical}} indicating whether the columns of
+  \item{is.sorted}{\code{\link{logical}} indicating whether the columns of
     \code{X} are sorted in increasing order.}
-  \item{trace}{A \code{\link{logical}} indicating whether the underlying
+  \item{trace}{\code{\link{logical}} indicating whether the underlying
     matrix is printed after each rearrangement step. See
     \code{vignette("VaR_bounds", package = "qrmtools")} for how to interpret
     the output.}
   \item{\dots}{
     \describe{
-      \item{\code{crude_VaR_bounds()}:}{Ellipsis argument passed
+      \item{\code{crude_VaR_bounds()}:}{ellipsis argument passed
         to (all provided) quantile functions.}
-      \item{\code{VaR_bounds_hom()}:}{The case \code{method = "Wang"}
+      \item{\code{VaR_bounds_hom()}:}{case \code{method = "Wang"}
         requires the quantile function \code{qF()} to be provided
         and additional arguments passed via the ellipsis argument are passed
 	on to
@@ -186,9 +196,9 @@ ABRA(alpha, qF, N.exp = seq(8, 19, by = 1), abstol = c(0, 0.01),
 	\code{d = 2}); additional arguments are passed on to the underlying
 	\code{\link{integrate}()} for computing the dual bound
 	\eqn{D(s)}.}
-      \item{\code{dual_bound()}:}{The ellipsis argument is passed to the
+      \item{\code{dual_bound()}:}{ellipsis argument is passed to the
 	underlying \code{\link{integrate}()}.}
-      \item{\code{rearrange():}}{Additional arguments passed to the underlying
+      \item{\code{rearrange():}}{additional arguments passed to the underlying
        optimization function. Currently, this is only used if
        \code{method = "best.ES"} in which case the required confidence
        level \eqn{\alpha}{alpha} must be provided as argument \code{alpha}.}
@@ -211,36 +221,36 @@ ABRA(alpha, qF, N.exp = seq(8, 19, by = 1), abstol = c(0, 0.01),
   \code{rearrange()} and \code{block_rearrange()} return a
   \code{\link{list}} containing
   \describe{
-    \item{\code{bound}:}{The computed \eqn{\underline{s}_N}
+    \item{\code{bound}:}{computed \eqn{\underline{s}_N}
       or \eqn{\overline{s}_N}.}
-    \item{\code{tol}:}{The reached tolerance (i.e., the (absolute or
+    \item{\code{tol}:}{reached tolerance (i.e., the (absolute or
       relative) change of the minimal row sum (for
       \code{method = "worst.VaR"}) or maximal row sum
       (for \code{method = "best.VaR"}) or expected shortfall (for
       \code{method = "best.ES"}) after the last rearrangement).}
-    \item{\code{converged}:}{A \code{\link{logical}} indicating whether
+    \item{\code{converged}:}{\code{\link{logical}} indicating whether
       the desired (absolute or relative) tolerance \code{tol} has been
       reached.}
-    \item{\code{opt.row.sums}:}{A \code{\link{vector}} containing the
+    \item{\code{opt.row.sums}:}{\code{\link{vector}} containing the
       computed optima (minima for \code{method = "worst.VaR"}; maxima
       for \code{method = "best.VaR"}; expected shortfalls for
       \code{method = "best.ES"}) for the row sums after each (considered)
       rearrangement.}
-    \item{\code{X.rearranged}:}{An (\code{N}, \code{d})-\code{\link{matrix}}
+    \item{\code{X.rearranged}:}{(\code{N}, \code{d})-\code{\link{matrix}}
       containing the rearranged \code{X}.}
   }
 
   \code{RA()} returns a \code{\link{list}} containing
   \describe{
-    \item{\code{bounds}:}{A bivariate vector containing the computed
+    \item{\code{bounds}:}{bivariate vector containing the computed
       \eqn{\underline{s}_N} and \eqn{\overline{s}_N} (the so-called
       rearrangement range) which are typically treated as bounds for
       worst/best VaR or best ES; see also above.}
-    \item{\code{rel.ra.gap}:}{The reached relative tolerance (also known as
+    \item{\code{rel.ra.gap}:}{reached relative tolerance (also known as
       relative rearrangement gap) between
       \eqn{\underline{s}_N} and \eqn{\overline{s}_N} computed with
       respect to \eqn{\overline{s}_N}.}
-    \item{\code{ind.abs.tol}:}{A bivariate \code{\link{vector}} containing
+    \item{\code{ind.abs.tol}:}{bivariate \code{\link{vector}} containing
       the reached individual absolute tolerances (i.e., the absolute change
       of the minimal row sums
       (for \code{method = "worst.VaR"}) or maximal row sums
@@ -248,46 +258,47 @@ ABRA(alpha, qF, N.exp = seq(8, 19, by = 1), abstol = c(0, 0.01),
       (for \code{mehtod = "best.ES"}) for computing \eqn{\underline{s}_N}
       and \eqn{\overline{s}_N};
       see also \code{tol} returned by \code{rearrange()} above).}
-    \item{\code{converged}:}{A bivariate \code{\link{logical}} vector
+    \item{\code{converged}:}{bivariate \code{\link{logical}} vector
       indicating convergence of the computed \eqn{\underline{s}_N} and
       \eqn{\overline{s}_N} (i.e., whether the desired tolerances were
       reached).}
-    \item{\code{num.ra}:}{A bivariate vector containing the number
+    \item{\code{num.ra}:}{bivariate vector containing the number
       of column rearrangments of the underlying matrices
       of quantiles for
       \eqn{\underline{s}_N} and \eqn{\overline{s}_N}.}
-    \item{\code{opt.row.sums}:}{A \code{\link{list}} of length two containing
+    \item{\code{opt.row.sums}:}{\code{\link{list}} of length two containing
       the computed optima (minima for \code{method = "worst.VaR"}; maxima
       for \code{method = "best.VaR"}; expected shortfalls for
       \code{method = "best.ES"}) for the row sums after each
       (considered) column rearrangement for the computed
       \eqn{\underline{s}_N} and \eqn{\overline{s}_N}; see also
       \code{rearrange()}.}
-    \item{\code{X}:}{The initially constructed (\code{N}, \code{d})-matrices
+    \item{\code{X}:}{initially constructed (\code{N}, \code{d})-matrices
       of quantiles for computing
       \eqn{\underline{s}_N} and \eqn{\overline{s}_N}.}
-    \item{\code{X.rearranged}:}{The rearranged matrices \code{X} (for
+    \item{\code{X.rearranged}:}{rearranged matrices \code{X} (for
       \eqn{\underline{s}_N} and \eqn{\overline{s}_N}).}
   }
 
-  \code{ARA()} returns a \code{\link{list}} containing
+  \code{ARA()} and \code{ABRA()} return a \code{\link{list}} containing
   \describe{
-    \item{\code{bounds}:}{See \code{RA()}.}
-    \item{\code{rel.ra.gap}:}{See \code{RA()}.}
-    \item{\code{rel.tol}:}{A trivariate \code{\link{vector}} containing
-      the reached individual relative tolerances and the reached joint
+    \item{\code{bounds}:}{see \code{RA()}.}
+    \item{\code{rel.ra.gap}:}{see \code{RA()}.}
+    \item{\code{tol}:}{trivariate \code{\link{vector}} containing
+      the reached individual (relative for \code{ARA()}; absolute for
+      \code{ABRA()}) tolerances and the reached joint
       relative tolerance (computed with respect to \eqn{\overline{s}_N}).}
-    \item{\code{converged}:}{A trivariate \code{\link{logical}}
+    \item{\code{converged}:}{trivariate \code{\link{logical}}
       \code{\link{vector}} indicating individual convergence of the computed
       \eqn{\underline{s}_N} (first entry) and \eqn{\overline{s}_N}
       (second entry) and indicating joint convergence of the two bounds
       according to the attained joint relative tolerance (third entry).}
-    \item{\code{N.used}:}{The actual \code{N} used for computing
+    \item{\code{N.used}:}{actual \code{N} used for computing
       the (final) \eqn{\underline{s}_N} and \eqn{\overline{s}_N}.}
-    \item{\code{num.ra}:}{See \code{RA()}; computed for \code{N.used}.}
-    \item{\code{opt.row.sums}:}{See \code{RA()}; computed for \code{N.used}.}
-    \item{\code{X}:}{See \code{RA()}; computed for \code{N.used}.}
-    \item{\code{X.rearranged}:}{See \code{RA()}; computed for \code{N.used}.}
+    \item{\code{num.ra}:}{see \code{RA()}; computed for \code{N.used}.}
+    \item{\code{opt.row.sums}:}{see \code{RA()}; computed for \code{N.used}.}
+    \item{\code{X}:}{see \code{RA()}; computed for \code{N.used}.}
+    \item{\code{X.rearranged}:}{see \code{RA()}; computed for \code{N.used}.}
   }
 }
 \details{
@@ -346,7 +357,8 @@ ABRA(alpha, qF, N.exp = seq(8, 19, by = 1), abstol = c(0, 0.01),
   \code{rearrange()} and it can change in future versions to (futher)
   improve run time. Overall it should only be used by experts.
 
-  \code{block_rearrange()} is similar to \code{rearrange()} in that it
+  \code{block_rearrange()}, the workhorse underlying \code{ABRA()},
+  is similar to \code{rearrange()} in that it
   checks whether convergence has occurred after every rearrangement by
   comparing the change to the row sum variance from \code{n.lookback}
   rearrangement steps back. \code{block_rearrange()} differs from
@@ -371,26 +383,28 @@ ABRA(alpha, qF, N.exp = seq(8, 19, by = 1), abstol = c(0, 0.01),
   only check for convergence after an iteration through all
   columns of the underlying matrix of quantiles has been completed.
 
-  For the Adaptive Rearrangement Algorithm \code{ARA()},
+  For the Adaptive Rearrangement Algorithm \code{ARA()}
+  and the Adaptive Block Rearrangement Algorithm \code{ABRA()},
   convergence of \eqn{\underline{s}_N} and \eqn{\overline{s}_N}
   is determined if, after at most \code{max.ra}-many column
   rearrangements, the (the individual relative tolerance)
   \code{reltol[1]} is satisfied \emph{and} the
   relative (joint) tolerance between both bounds is at most \code{reltol[2]}.
 
-  Note that both \code{RA()} and \code{ARA()} need to evalute the
+  Note that \code{RA()}, \code{ARA()} and \code{ABRA()} need to evalute the
   0-quantile (for the lower bound for the best VaR) and
   the 1-quantile (for the upper bound for the
-  worst VaR). As the algorithms can only handle finite values, the
-  0-quantile and the 1-quantile need to be adjusted if infinite. Instead
-  of the 0-quantile, the \eqn{\alpha/(2N)}{alpha/(2N)}-quantile is
+  worst VaR). As the algorithms, due to performance reasons, can only
+  handle finite values, the 0-quantile and the 1-quantile need to be
+  adjusted if infinite. Instead of the 0-quantile,
+  the \eqn{\alpha/(2N)}{alpha/(2N)}-quantile is
   computed and instead of the 1-quantile the
   \eqn{\alpha+(1-\alpha)(1-1/(2N))}{alpha+(1-alpha)(1-1/(2N))}-quantile
   is computed for such margins (if the 0-quantile or the 1-quantile is
   finite, no adjustment is made).
 
-  \code{rearrange()}, \code{block_rearrange()}, \code{RA()} and
-  \code{ARA()} compute \eqn{\underline{s}_N} and
+  \code{rearrange()}, \code{block_rearrange()}, \code{RA()}, \code{ARA()}
+  and \code{ABRA()} compute \eqn{\underline{s}_N} and
   \eqn{\overline{s}_N} which are, from a practical
   point of view, treated as bounds for the worst (i.e., largest) or the
   best (i.e., smallest) VaR or the best (i.e., smallest ES), but which are
@@ -399,6 +413,8 @@ ABRA(alpha, qF, N.exp = seq(8, 19, by = 1), abstol = c(0, 0.01),
   theoretically not correct (unless proven) but \dQuote{practical}.
   The literature thus speaks of \eqn{(\underline{s}_N, \overline{s}_N)} as
   the rearrangement gap.
+
+  More details not provided here can be found in the references listed below.
 }
 \author{Marius Hofert}
 \references{

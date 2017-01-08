@@ -1,21 +1,21 @@
 ### Tools for working with data sets ###########################################
 
 ##' @title Download data via quantmod's getSymbols() or Quandl's Quandl()
-##' @param x A vector of, for example, ticker symbols (if src = "yahoo") or
+##' @param x vector of, for example, ticker symbols (if src = "yahoo") or
 ##'        "EUR/USD" if (src = "oanda")
 ##' @param from start date as character string (e.g. 2015-01-01); if NULL,
 ##'        the earliest available date is picked
 ##' @param to end date; today unless otherwise specified
-##' @param src The source of the data
-##' @param FUN A function to apply to the downloaded data:
+##' @param src source of the data
+##' @param FUN function to apply to the downloaded data:
 ##'        - if data is NA (could not be retrieved): none
 ##'        - if provided: the given function
 ##'        - if not provided: Ad() if src = "yahoo"; Cl() if src = "google";
 ##'          none otherwise (e.g. if src = "oanda")
-##' @param verbose A logical indicating whether progress monitoring is done
-##' @param warn A logical indicating whether a warning is given showing the error
+##' @param verbose logical indicating whether progress monitoring is done
+##' @param warn logical indicating whether a warning is given showing the error
 ##'        message when fetching x fails
-##' @param ... Additional arguments passed to getSymbols() or Quandl()
+##' @param ... additional arguments passed to getSymbols() or Quandl()
 ##' @return (n, d)-matrix of data (an xts object)
 ##' @author Marius Hofert
 ##' @note - One could do...

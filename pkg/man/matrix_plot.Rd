@@ -14,24 +14,24 @@ matrix_plot(x, ylim = rev(c(0.5, nrow(x) + 0.5)),
             col.regions = NULL, ...)
 }
 \arguments{
-  \item{x}{A \code{\link{matrix}}-like object.}
-  \item{ylim}{The y-axis limits in reverse order (for the rows to appear 'top down').}
-  \item{xlab}{The x-axis label.}
-  \item{ylab}{The y-axis label.}
-  \item{scales}{See \code{\link{levelplot}()}; if \code{\link{NULL}},
+  \item{x}{\code{\link{matrix}}-like object.}
+  \item{ylim}{y-axis limits in reverse order (for the rows to appear 'top down').}
+  \item{xlab}{x-axis label.}
+  \item{ylab}{y-axis label.}
+  \item{scales}{see \code{\link{levelplot}()}; if \code{\link{NULL}},
     labels and ticks are omitted.}
-  \item{at}{See \code{\link{levelplot}()}. If \code{\link{NULL}}, a
+  \item{at}{see \code{\link{levelplot}()}. If \code{\link{NULL}}, a
     useful default is computed based on the given values in \code{x}.}
-  \item{colorkey}{See \code{\link{levelplot}()}. If \code{\link{NULL}}, a
+  \item{colorkey}{see \code{\link{levelplot}()}. If \code{\link{NULL}}, a
     useful default is computed based on \code{at}.}
-  \item{col}{A \code{\link{vector}} of length two (if all values of
+  \item{col}{\code{\link{vector}} of length two (if all values of
     \code{x} are non-positive or all are non-negative; note that also a
     vector of length three is allowed in this case) or three (if
     \code{x} contains negative and positive values) providing the color
     key's default colors.}
-  \item{col.regions}{See \code{\link{levelplot}()}. If \code{\link{NULL}}, a
+  \item{col.regions}{see \code{\link{levelplot}()}. If \code{\link{NULL}}, a
     useful default is computed based on \code{at}.}
-  \item{\dots}{Additional arguments passed to the underlying function
+  \item{\dots}{additional arguments passed to the underlying function
     \code{\link{levelplot}()}.}
 }
 \value{
