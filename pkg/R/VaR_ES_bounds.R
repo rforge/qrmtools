@@ -714,6 +714,8 @@ block_rearrange <- function(X, tol = 0, tol.type = c("absolute", "relative"),
         bsize <- sample(seq_len(d-1), size = 1) # draw a number from {1,..,d-1} (block size)
         block <- sample(seq_len(d), size = bsize) # draw bsize numbers from {1,..,d} (actual block of size bsize)
         rs.block <- .rowSums(X[, block], m = N, n = bsize) # row sum of the block
+        ## Note: We can't avoid the call of .rowSums() here if blocks of size > 1 are
+        ##       rearranged => performance drawback in comparison to rearrange().
         rs.complement.block <- X.rs - rs.block # row sum of the complement block (= set of remaining columns)
 
         ## Oppositely order all columns belonging to block 'block' to the row
