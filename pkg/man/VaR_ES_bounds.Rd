@@ -604,7 +604,7 @@ set.seed(271)
 ra <- rearrange(X)
 bra <- block_rearrange(X)
 stopifnot(ra$converged, bra$converged,
-          all.equal(ra$bound, bra$bound, tolerance = 5e-4))
+          all.equal(ra$bound, bra$bound, tolerance = 5e-3))
 
 ## Checking ABRA against ARA
 set.seed(271)

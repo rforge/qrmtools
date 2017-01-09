@@ -712,6 +712,7 @@ block_rearrange <- function(X, tol = 0, tol.type = c("absolute", "relative"),
 
         ## Sample a random two-set partition
         bsize <- sample(seq_len(d-1), size = 1) # draw a number from {1,..,d-1} (block size)
+        if(bsize > d/2) bsize <- d - bsize # speed-up; rearrange smaller block
         block <- sample(seq_len(d), size = bsize) # draw bsize numbers from {1,..,d} (actual block of size bsize)
         rs.block <- .rowSums(X[, block], m = N, n = bsize) # row sum of the block
         ## Note: We can't avoid the call of .rowSums() here if blocks of size > 1 are
