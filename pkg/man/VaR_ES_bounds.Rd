@@ -430,10 +430,10 @@ ABRA(alpha, qF, N.exp = seq(8, 19, by = 1), absreltol = c(0, 0.01),
   \emph{Quantitative Risk Management: Concepts, Techniques, Tools}.
   Princeton University Press.
 
-  Hofert, M., Memartoluie, A., Saunders, D., Wirjanto, T. (2016).
-  Improved Algorithms for Computing Worst Value-at-Risk:
-  Numerical Challenges and the Adaptive Rearrangement Algorithm.
-  See \url{http://arxiv.org/abs/1505.02281}.
+  Hofert, M., Memartoluie, A., Saunders, D., Wirjanto, T. (2017).
+  Improved Algorithms for Computing Worst
+  Value-at-Risk. \emph{Statistics \& Risk Modeling}
+  or, for an earlier version, \url{http://arxiv.org/abs/1505.02281}.
 
   Bernard, C., \enc{Rüschendorf}{Rueschendorf}, L., Vanduffel,
   S. (2013). Value-at-Risk bounds with variance constraints.

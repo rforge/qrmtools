@@ -49,10 +49,10 @@
 #'             Embrechts, P., Puccetti, G., Rueschendorf, L. (2013). Model Uncertainty and VaR
 #'             Aggregation. \emph{Journal of Banking & Finance} \strong{37}, 2750-2764.
 #'
-#'             Hofert, M., Memartoluie, A., Saunders, D. and Wirjanto, T. (2015). Improved Algorithms for
-#'             Computing Worst Value-at-Risk: Numerical Challenges and the Adaptive Rearrangement Algorithm.
+#'             Hofert, M., Memartoluie, A., Saunders, D. and Wirjanto, T. (2017). Improved Algorithms for
+#'             Computing Worst Value-at-Risk
 #'             See \url{http://arxiv.org/abs/1505.02281}.
-#'          
+#'
 #' @examples
 #' # Set up a matrix of quantiles
 #' N <- 500
@@ -62,13 +62,13 @@
 #' qfs <- rep(list(qf), d)
 #' p <- alpha + (1 - alpha) * 0:(N - 1) / N
 #' X <- sapply(qf, function(f) f(p))
-#' 
+#'
 #' # Rearrange a randomized initial matrix and compute a lower bound for the worst VaR
 #' block_rearrange(X = X, tol = 0, M = 2, max.ra = Inf, method = "worst", sample = TRUE)
-#' 
+#'
 #' @author Martin Stefanik
 #' @export
-block_rearrange <- function(X, tol = 0, M = ncol(X), max.ra = Inf, method = c("worst", "best"), 
+block_rearrange <- function(X, tol = 0, M = ncol(X), max.ra = Inf, method = c("worst", "best"),
                             sample = TRUE)
 {
   N <- nrow(X)
@@ -84,16 +84,16 @@ block_rearrange <- function(X, tol = 0, M = ncol(X), max.ra = Inf, method = c("w
 
   while (TRUE) {
     iter <- iter + 1
-    
+
     # Sample a random two-set partition
     n.cols <- sample(1:(d - 1), 1)
     cols <- sample(1:d, n.cols)
     rs.one <- .rowSums(X[, cols], m = N, n = n.cols)
     rs.two <- X.rs - rs.one
-    
+
     # Rearrange one of the blocks
     X[, -cols] <- X[order(rs.two), ][order(order(rs.one, decreasing = TRUE)), -cols]
-    
+
     # Assess convergence
     X.rs <- .rowSums(X, m = N, n = d)
     j <- if (j == M) 1 else j + 1
@@ -109,12 +109,12 @@ block_rearrange <- function(X, tol = 0, M = ncol(X), max.ra = Inf, method = c("w
       if (tol. <= tol) {
         tol.reached <- TRUE
         break
-      } 
+      }
     } else {
       rs.var[j] <- var(X.rs)
     }
   }
-  
+
   list(X.rearranged = X, bound = optim.fun(X.rs), tol = tol., converged = tol.reached, iter = iter)
 }
 

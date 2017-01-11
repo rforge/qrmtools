@@ -58,10 +58,10 @@
 #'             Embrechts, P., Puccetti, G., Rueschendorf, L. (2013). Model Uncertainty and VaR
 #'             Aggregation. \emph{Journal of Banking & Finance} \strong{37}, 2750-2764.
 #'
-#'             Hofert, M., Memartoluie, A., Saunders, D. and Wirjanto, T. (2015). Improved Algorithms for
-#'             Computing Worst Value-at-Risk: Numerical Challenges and the Adaptive Rearrangement Algorithm.
+#'             Hofert, M., Memartoluie, A., Saunders, D. and Wirjanto, T. (2017). Improved Algorithms for
+#'             Computing Worst Value-at-Risk
 #'             See \url{http://arxiv.org/abs/1505.02281}.
-#' @examples 
+#' @examples
 #' # Initial setup
 #' alpha <- 0.99
 #' d <- 5
@@ -69,20 +69,20 @@
 #' qfs <- rep(list(qf), d)
 #' ABRA(alpha = alpha, qf = qfs, M = NULL, method = "worst", tol =c(0, 0.01), max.ra = Inf,
 #'      sample = TRUE)
-#' 
+#'
 #' @author Martin Stefanik
 #' @export
-ABRA <- function(alpha, qF, N.exp = seq(8, 19, by = 1), M = NULL, method = c("worst", "best"), 
+ABRA <- function(alpha, qF, N.exp = seq(8, 19, by = 1), M = NULL, method = c("worst", "best"),
                  tol = c(0, 0.01), max.ra = Inf, sample = TRUE)
 {
   ltol <- length(tol)
-  stopifnot(0 < alpha, alpha < 1, ltol == 1 || ltol == 2, tol >= 0, 
+  stopifnot(0 < alpha, alpha < 1, ltol == 1 || ltol == 2, tol >= 0,
             length(N.exp) >= 1, N.exp >= 1, is.logical(sample), is.list(qF),
             sapply(qF, is.function), (d <- length(qF)) >= 2)
   method <- match.arg(method)
   itol <- if (ltol == 2) tol[1] else 0
   jtol <- if (ltol == 2) tol[2] else tol[1]
-  
+
   # Function that returns the optimal M
   m.opt <- function(N, d, col.var) {
     b0 <-  1.6482635640
@@ -91,55 +91,55 @@ ABRA <- function(alpha, qF, N.exp = seq(8, 19, by = 1), M = NULL, method = c("wo
     b3 <-  0.0001273265
     ceiling(exp(b0 + b1 * N + b2 * d + b3 * col.var))
   }
-  
+
   for (N in 2^N.exp) {
-    
+
     # Create the discretization matrix for the approximation from below
     p <- if (method == "worst") {
       alpha + (1 - alpha) * (0:(N - 1)) / N
     } else {
       alpha * (0:(N - 1)) / N
     }
-    
+
     X.low <- sapply(qF, function(qF) qF(p))
-    if (method == "best") 
+    if (method == "best")
       X.low[1, ] <- sapply(1:d, function(j) if (is.infinite(X.low[1, j])) {
         qF[[j]](alpha / (2 * N))
       } else {
         X.low[1, j]
       })
-    
+
     # Rearrange for the approxiation from below
     M.current <- if (is.null(M)) m.opt(N, d, mean(apply(X.low, 2, var))) else M
     res.low <- rearrangeABRA(X.low, M = M.current, tol = itol,
                              max.ra = max.ra, sample = sample)
-    
+
     # Create the discretization matrix for the approximation from above
     p <- if (method == "worst") alpha + (1 - alpha) * (1:N) / N else alpha * (1:N) / N
     X.up <- sapply(qF, function(qF) qF(p))
-    if (method == "worst") 
+    if (method == "worst")
       X.up[N, ] <- sapply(1:d, function(j) if (is.infinite(X.up[N, j])) {
         qF[[j]](alpha + (1 - alpha) * (1 - 1 / (2 * N)))
       } else {
         X.up[N, j]
       })
-    
+
     # Rearrange for the approxiation from above
     M.current <- if (is.null(M)) m.opt(N, d, mean(apply(X.up, 2, var))) else M
-    res.up <- rearrangeABRA(X.up, M = M.current, tol = itol, 
+    res.up <- rearrangeABRA(X.up, M = M.current, tol = itol,
                             max.ra = max.ra, sample = sample)
-    
+
     # Check joint convergence
     joint.tol <- abs((res.low$bound - res.up$bound) / res.up$bound)
     joint.tol.reached <- joint.tol <= jtol
     if (res.low$converged && res.up$converged && joint.tol.reached) break
   }
-  
-  list(bounds = c(low = res.low$bound, up = res.up$bound), 
-       rel.ra.gap = abs((res.up$bound - res.low$bound) / res.up$bound), 
-       tol = c(low = res.low$tol, up = res.up$tol, joint = joint.tol), 
-       converged = c(low = res.low$converged, up = res.up$converged, 
+
+  list(bounds = c(low = res.low$bound, up = res.up$bound),
+       rel.ra.gap = abs((res.up$bound - res.low$bound) / res.up$bound),
+       tol = c(low = res.low$tol, up = res.up$tol, joint = joint.tol),
+       converged = c(low = res.low$converged, up = res.up$converged,
                      joint = joint.tol.reached),
-       N.used = N, num.iter = c(low = res.low$iter, up = res.up$iter), 
+       N.used = N, num.iter = c(low = res.low$iter, up = res.up$iter),
        X.rearranged = list(low = res.low$X.rearranged, up = res.up$X.rearranged))
 }
