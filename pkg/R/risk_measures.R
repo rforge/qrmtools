@@ -102,3 +102,80 @@ ES_Par <- function(alpha, theta, kappa = 1)
     stopifnot(0 <= alpha, alpha <= 1, theta > 1, kappa > 0)
     kappa * ((theta / (theta-1)) * (1-alpha)^(-1/theta) - 1)
 }
+
+
+### 3 Geometric risk measures ##################################################
+
+##' @title Objective Function E(Lambda_alpha(X-c))
+##' @param x running variable ("c")
+##' @param X (n, d)-matrix containing random sample from the underlying
+##'        multivariate distribution H
+##' @param alpha d-vector of confidence levels
+##' @param measure character string specifying the risk measure
+##' @return value of E(Lambda_alpha(X-c))
+##' @author Marius Hofert
+ELambda <- function(x, X, alpha, measure = c("gExp", "gVaR"))
+{
+    X. <- sweep(X, MARGIN = 2, STATS = x, FUN = "-")
+    norm <- sqrt(rowSums(X.^2))
+    measure <- match.arg(measure)
+    switch(measure,
+    "gExp" = {
+        mean(0.5 * norm * (norm + rowSums(X. * rep(alpha, each = nrow(X.)))))
+    },
+    "gVaR" = {
+        mean(0.5 *        (norm + rowSums(X. * rep(alpha, each = nrow(X.)))))
+    },
+    stop("Wrong 'measure'"))
+}
+
+##' @title Multivariate Geometric VaR
+##' @param x (n, d)-matrix containing random sample from the underlying
+##'        multivariate distribution H
+##' @param alpha d-vector of confidence levels; can also be a (N, d)-matrix where
+##'        N is the number of alpha vectors of dimension d each
+##' @param start d-vector of initial values for the minimization of ELambda()
+##' @param method method for optim()
+##' @param ... additional arguments passed to the underlying optim()
+##' @return value of optim() containing the geometric VaR in the component 'par'
+##' @author Marius Hofert
+##' @note if length(alpha) == 1, 'lower' and 'upper' need to be provided for
+##'       method "Brent"
+gVaR <- function(x, alpha, start = colMeans(x),
+                 method = if(length(alpha) == 1) "Brent" else "Nelder-Mead", ...)
+{
+    if(!is.matrix(x)) x <- rbind(x)
+    if(is.matrix(alpha)) {
+        apply(alpha, 1, function(a) optim(par = start, fn = ELambda, X = x, alpha = a,
+                                          measure = "gVaR", method = method, ...))
+    } else { # alpha is a single vector (for d > 1) or number (for d = 1)
+        optim(par = start, fn = ELambda, X = x, alpha = alpha, measure = "gVaR",
+              method = method, ...)
+    }
+}
+
+##' @title Multivariate Geometric Expectile
+##' @param x (n, d)-matrix containing random sample from the underlying
+##'        multivariate distribution H
+##' @param alpha d-vector of confidence levels; can also be a (N, d)-matrix where
+##'        N is the number of alpha vectors of dimension d each
+##' @param start d-vector of initial values for the minimization of ELambda()
+##' @param method method for optim()
+##' @param ... additional arguments passed to the underlying optim()
+##' @return value of optim() containing the geometric Exp in the component 'par'
+##' @author Marius Hofert
+##' @note if length(alpha) == 1, 'lower' and 'upper' need to be provided for
+##'       method "Brent"
+gExp <- function(x, alpha, start = colMeans(x),
+                 method = if(length(alpha) == 1) "Brent" else "Nelder-Mead", ...)
+{
+    if(!is.matrix(x)) x <- rbind(x)
+    if(is.matrix(alpha)) {
+        apply(alpha, 1, function(a) optim(par = start, fn = ELambda, X = x, alpha = a,
+                                          measure = "gExp", method = method, ...))
+    } else { # alpha is a single vector (for d > 1) or number (for d = 1)
+        optim(par = start, fn = ELambda, X = x, alpha = alpha, measure = "gExp",
+              method = method, ...)
+    }
+}
+

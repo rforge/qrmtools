@@ -11,11 +11,11 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 ```{r, message = FALSE}
-require(qrmtools)
-require(QRM)
-require(copula)
-require(combinat)
-require(sfsmisc)
+library(qrmtools)
+library(QRM)
+library(copula)
+library(combinat)
+library(sfsmisc)
 doPDF <- FALSE
 ```
 

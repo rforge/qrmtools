@@ -1,0 +1,17 @@
+---
+title: Geometric Risk Measures
+author: Marius Hofert, Klaus Herrmann and Mélina Mailhot
+date: '`r Sys.Date()`'
+output:
+  html_vignette:
+    css: style.css
+vignette: >
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteIndexEntry{Geometric Risk Measures}
+  %\VignetteEncoding{UTF-8}
+---
+```{r, message = FALSE}
+library(qrmtools)
+library(copula)
+doPDF <- FALSE
+```
