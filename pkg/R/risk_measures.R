@@ -166,7 +166,7 @@ gVaR <- function(x, alpha, start = colMeans(x),
 ##' @author Marius Hofert
 ##' @note if length(alpha) == 1, 'lower' and 'upper' need to be provided for
 ##'       method "Brent"
-gExp <- function(x, alpha, start = colMeans(x),
+gEX <- function(x, alpha, start = colMeans(x),
                  method = if(length(alpha) == 1) "Brent" else "Nelder-Mead", ...)
 {
     if(!is.matrix(x)) x <- rbind(x)

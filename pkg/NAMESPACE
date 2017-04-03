@@ -30,7 +30,7 @@ export(
     "dPar", "pPar", "qPar", "rPar",
     ## Risk measures
     "VaR_np", "VaR_t", "VaR_Par", "ES_np", "ES_t", "ES_Par",
-    "gVaR", "gExp",
+    "gVaR", "gEX",
     ## Worst/best VaR
     "crude_VaR_bounds", "dual_bound", "VaR_bounds_hom",
     "rearrange", "RA", "ARA",

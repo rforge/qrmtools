@@ -6,7 +6,7 @@
 \alias{ES_t}
 \alias{ES_Par}
 \alias{gVaR}
-\alias{gExp}
+\alias{gEX}
 \title{Risk Measures}
 \description{
   Computing risk measures.
@@ -25,20 +25,20 @@ ES_Par(alpha, theta, kappa = 1)
 ## multivariate geometric value-at-risk and expectiles
 gVaR(x, alpha, start = colMeans(x),
      method = if(length(alpha) == 1) "Brent" else "Nelder-Mead", ...)
-gExp(x, alpha, start = colMeans(x),
-     method = if(length(alpha) == 1) "Brent" else "Nelder-Mead", ...)
+gEX(x, alpha, start = colMeans(x),
+    method = if(length(alpha) == 1) "Brent" else "Nelder-Mead", ...)
 }
 \arguments{
   \item{x}{
     \describe{
-      \item{\code{gVaR()}, \code{gExp()}}{\code{\link{matrix}} of
+      \item{\code{gVaR()}, \code{gEX()}}{\code{\link{matrix}} of
 	(rowwise) multivariate losses.}
       \item{otherwise}{\code{\link{vector}} of losses.}
     }
   }
   \item{alpha}{
     \describe{
-      \item{\code{gVaR()}, \code{gExp()}}{\code{\link{vector}} or
+      \item{\code{gVaR()}, \code{gEX()}}{\code{\link{vector}} or
 	\code{\link{matrix}} of	(rowwise) confidence levels (all in
 	\eqn{[0,1]}).}
       \item{otherwise}{confidence level \eqn{\alpha\in[0,1]}{alpha in
@@ -59,7 +59,7 @@ gExp(x, alpha, start = colMeans(x),
     \describe{
       \item{\code{ES_np()}}{\code{\link{character}} string indicating the method
 	for computing expected shortfall.}
-      \item{\code{gVaR()}, \code{gExp()}}{the optimization method passed to the
+      \item{\code{gVaR()}, \code{gEX()}}{the optimization method passed to the
 	underlying \code{\link{optim}()}.}
     }
   }
@@ -72,7 +72,7 @@ gExp(x, alpha, start = colMeans(x),
 	underlying \code{\link{quantile}()}.}
       \item{\code{ES_np()}}{additional arguments passed to
 	\code{VaR_np()}.}
-      \item{\code{gVaR()}, \code{gExp()}}{additional arguments passed to
+      \item{\code{gVaR()}, \code{gEX()}}{additional arguments passed to
 	the underlying \code{\link{optim}()}.}
     }
   }
@@ -90,7 +90,7 @@ gExp(x, alpha, start = colMeans(x),
   \code{VaR_Par()}, \code{ES_Par()} compute value-at-risk and expected
   shortfall for the Pareto distribution.
 
-  \code{gVaR()}, \code{gExp()} compute the multivariate geometric
+  \code{gVaR()}, \code{gEX()} compute the multivariate geometric
   value-at-risk and expectiles suggested by Chaudhuri (1996) and
   Herrmann et al. (2017), respectively.
 }
@@ -177,8 +177,8 @@ gvar <- t(sapply(seq_len(nrow(alpha)), function(i) {
 })) # (N, 2)-matrix
 
 ## Compute geometric expectiles
-system.time(res <- gExp(X, alpha = alpha))
-gexp <- t(sapply(seq_len(nrow(alpha)), function(i) {
+system.time(res <- gEX(X, alpha = alpha))
+gex <- t(sapply(seq_len(nrow(alpha)), function(i) {
     x <- res[[i]]
     if(x[["convergence"]] != 0) # 0 = 'converged'
         warning("No convergence for alpha = (", alpha[i,1], ", ", alpha[i,2],
@@ -187,12 +187,13 @@ gexp <- t(sapply(seq_len(nrow(alpha)), function(i) {
 })) # (N, 2)-matrix
 
 ## Plot geometric VaR and geometric expectiles
-plot(gvar, type = "b", xlab = expression(alpha[1]), ylab = expression(alpha[2]),
-     main = "Multivariate geometric VaR and expectiles")
-lines(gexp, type = "b", col = "royalblue3")
+plot(gvar, type = "b", xlab = "Component 1 of geometric VaRs and expectiles",
+     ylab = "Component 2 of geometric VaRs and expectiles",
+     main = "Multivariate geometric VaRs and expectiles")
+lines(gex, type = "b", col = "royalblue3")
 legend("bottomleft", lty = 1, bty = "n", col = c("black", "royalblue3"),
-       legend = c("geom. VaR", "geom. Expectile"))
-lab <- substitute("MC sample size n ="~n.*","~t[nu.]~"model with Par("*th1*
+       legend = c("geom. VaR", "geom. expectile"))
+lab <- substitute("MC sample size n ="~n.*","~t[nu.]~"copula with Par("*th1*
                   ") and Par("*th2*") margins",
                   list(n. = n, nu. = nu, th1 = theta[1], th2 = theta[2]))
 mtext(lab, side = 4, line = 1, adj = 0)
