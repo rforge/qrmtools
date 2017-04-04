@@ -142,7 +142,8 @@ qrmtools:::Wang_h_aux(0, alpha = alpha, d = d, method = method, theta = th) # In
 ```
 
 A proper initial interval $[c_l,u_l]$ with $0<c_l<=c_u<(1-\alpha)/d$ (containing
-the root) is thus required. We have derived this in Hofert et al. (2016).
+the root) is thus required. We have derived this in Hofert et al. (2017,
+``Improved Algorithms for Computing Worst Value-at-Risk'')).
 
 
 #### 1.2.2 Check of $h(c)$ *without* numerical integration (for a range of $\theta$)
