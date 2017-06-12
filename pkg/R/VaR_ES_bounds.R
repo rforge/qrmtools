@@ -616,8 +616,8 @@ rearrange <- function(X, tol = 0, tol.type = c("relative", "absolute"),
     list(bound = opt.rs.cur.col, # computed bound (\underline{s}_N or \overline{s}_N)
          tol = tol., # tolerance for the computed bound
          converged = tol.reached, # indicating whether converged
-         opt.row.sums = opt.row.sums[1:iter], # the computed optimized row sums after each column rearrangement
-         X.rearranged = do.call(cbind, Y.lst)) # the rearranged matrix X
+         opt.row.sums = opt.row.sums[1:iter], # the computed optimized row sums after each ra
+         X.rearranged = do.call(cbind, Y.lst)) # the (single) rearranged matrix X
 }
 
 ##' @title Basic rearrangement function for (A)BRA
