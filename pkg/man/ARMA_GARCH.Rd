@@ -51,7 +51,7 @@ uspec <- c(rep(list(ugarchspec(distribution.model = "std")), d-2), # ARMA(1,1)-G
            list(ugarchspec(variance.model = list(model = "sGARCH", garchOrder = c(2,1)),
                            mean.model = list(armaOrder = c(1,2), include.mean = TRUE),
                            distribution.model = "std")))
-fitAG <- fit_ARMA_GARCH(X, ugarchspec.list = uspec)
+system.time(fitAG <- fit_ARMA_GARCH(X, ugarchspec.list = uspec))
 str(fitAG, max.level = 1) # list with components fit, warning, error
 stopifnot(sapply(fitAG$error, is.null)) # NULL = no error
 stopifnot(sapply(fitAG$warning, is.null)) # NULL = no warning
@@ -63,7 +63,8 @@ stopifnot(sapply(fitAG$warning, is.null)) # NULL = no warning
 Z <- sapply(fitAG$fit, residuals, standardize = TRUE)
 U <- pobs(Z)
 pairs(U, gap = 0)
-fitC <- fitCopula(tCopula(dim = d, dispstr = "un"), data = U, method = "mpl")
+system.time(fitC <- fitCopula(tCopula(dim = d, dispstr = "un"), data = U,
+                              method = "mpl"))
 
 ## Simulate (standardized) Z
 set.seed(271)
