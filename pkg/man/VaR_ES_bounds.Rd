@@ -459,7 +459,7 @@ theta <- 3
 qF <- rep(list(function(p) qPar(p, theta = theta)), d)
 
 ## Worst VaR
-N <- 1e5
+N <- 5e4
 set.seed(271)
 system.time(RA.worst.VaR <- RA(alpha, qF = qF, N = N, method = "worst.VaR"))
 RA.worst.VaR$bounds
@@ -468,7 +468,7 @@ stopifnot(RA.worst.VaR$converged,
                     RA.worst.VaR$bounds[["up"]], tol = 1e-4))
 
 ## Best VaR
-N <- 1e5
+N <- 5e4
 set.seed(271)
 system.time(RA.best.VaR <- RA(alpha, qF = qF, N = N, method = "best.VaR"))
 RA.best.VaR$bounds
@@ -477,7 +477,7 @@ stopifnot(RA.best.VaR$converged,
                     RA.best.VaR$bounds[["up"]], tol = 1e-4))
 
 ## Best ES
-N <- 2e5 # actually, we need a (much larger) N here (but that's time consuming)
+N <- 5e4 # actually, we need a (much larger) N here (but that's time consuming)
 set.seed(271)
 system.time(RA.best.ES <- RA(alpha, qF = qF, N = N, method = "best.ES"))
 RA.best.ES$bounds

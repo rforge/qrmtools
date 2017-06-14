@@ -161,7 +161,7 @@ U <- rCopula(n, cop = cop) # copula sample
 theta <- c(2.5, 4) # marginal Pareto parameters
 stopifnot(theta > 2) # need finite 2nd moments
 X <- sapply(1:2, function(j) qPar(U[,j], theta = theta[j])) # generate X
-N <- 33 # number of angles
+N <- 17 # number of angles (rather small here because of run time)
 phi <- seq(0, 2*pi, length.out = N) # angles
 r <- 0.98 # radius
 alpha <- r * cbind(alpha1 = cos(phi), alpha2 = sin(phi)) # vector of confidence levels
