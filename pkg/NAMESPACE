@@ -8,6 +8,7 @@ importFrom("quantmod", "getSymbols",
            "OpCl", "ClCl", "HiCl", "LoCl", "LoHi", "OpHi", "OpLo", "OpOp")
 importFrom("Quandl", "Quandl")
 importFrom("zoo", "index")
+importFrom("xts", "as.xts")
 importFrom("methods", "hasArg")
 importFrom("stats", "dnorm", "dt", "integrate", "pnorm", "qnorm", "qt",
            "runif", "uniroot", "qqline", "var")
@@ -18,7 +19,7 @@ importFrom("lattice", "levelplot")
 importFrom("rugarch", "ugarchspec", "ugarchfit")
 importFrom("stats", "quantile", "HoltWinters", "density", "ppoints", "optim")
 importFrom("methods", "is", "existsFunction")
-importFrom("utils", "setTxtProgressBar", "txtProgressBar")
+importFrom("utils", "setTxtProgressBar", "txtProgressBar", "head")
 
 
 ### Exports ####################################################################
@@ -44,7 +45,7 @@ export(
     ## Result/warning/error catching
     "catch",
     ## Returns
-    log_returns,
+    "returns",
     ## Data related functions
-    get_data
+    "get_data"
 )

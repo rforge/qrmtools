@@ -36,7 +36,7 @@ library(copula)
 data(SMI.12) # Swiss Market Index data
 stocks <- c("CSGN", "BAER", "UBSN", "SREN", "ZURN") # components we work with
 x <- SMI.12[, stocks]
-X <- -log_returns(x)
+X <- -returns(x)
 n <- nrow(X)
 d <- ncol(X)
 
@@ -56,8 +56,9 @@ str(fitAG, max.level = 1) # list with components fit, warning, error
 stopifnot(sapply(fitAG$error, is.null)) # NULL = no error
 stopifnot(sapply(fitAG$warning, is.null)) # NULL = no warning
 
+\dontrun{
 ## Pick out the standardized residuals, plot them and fit a t copula to them
-## Note: ugarchsim() needs the residuals to be standardized; so working with
+## Note: ugarchsim() needs the residuals to be standardized; working with
 ##       standardize = FALSE still requires to simulate them from the
 ##       respective standardized marginal distribution functions.
 Z <- sapply(fitAG$fit, residuals, standardize = TRUE)
@@ -86,6 +87,7 @@ for(j in 1:d) {
     plot(X[,j],  type = "l", ylim = ran, ylab = paste(stocks[j], "-log-returns"))
     plot(X.[,j], type = "l", ylim = ran, ylab = "Simulated -log-returns")
 }
-par(opar)
+    par(opar)
+}
 }
 \keyword{ts}
