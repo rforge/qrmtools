@@ -56,7 +56,8 @@ get_data(x, from = NULL, to = NULL,
 }
 \author{Marius Hofert}
 \examples{
-if(FALSE) {
+\dontrun{
+    ## Note: This needs a working internet connection
     ## Get stock and volatility data (for all available trading days)
     dat <- get_data(c("^GSPC", "^VIX")) # note: this needs a working internet connection
     ## Plot them (Alternative: plot.xts() from xtsExtra)
