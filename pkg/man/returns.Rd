@@ -34,6 +34,10 @@ returns(x, method = c("logarithmic", "simple", "diff"), inverse = FALSE,
 \details{
   If \code{inverse = FALSE} and \code{x} is an \code{xts} object, the
   returned object is an \code{xts}, too.
+
+  Note that the \R package \pkg{timeSeries} contains a function of
+  the same name (and hence the order in which \pkg{timeSeries} and
+  \pkg{qrmtools} are loaded matters).
 }
 \author{Marius Hofert}
 \examples{
