@@ -604,14 +604,14 @@ set.seed(271)
 ra <- rearrange(X)
 bra <- block_rearrange(X)
 stopifnot(ra$converged, bra$converged,
-          all.equal(ra$bound, bra$bound, tolerance = 5e-3))
+          all.equal(ra$bound, bra$bound, tolerance = 6e-3)) # slightly above 0.005 without long double
 
 ## Checking ABRA against ARA
 set.seed(271)
 ara  <- ARA (alpha, qF = qPar)
 abra <- ABRA(alpha, qF = qPar)
 stopifnot(ara$converged, abra$converged,
-          all.equal(ara$bound[["low"]], abra$bound[["low"]], tolerance = 1e-3),
-          all.equal(ara$bound[["up"]],  abra$bound[["up"]],  tolerance = 5e-3))
+          all.equal(ara$bound[["low"]], abra$bound[["low"]], tolerance = 2e-3),
+          all.equal(ara$bound[["up"]],  abra$bound[["up"]],  tolerance = 6e-3))
 }
 \keyword{programming}
