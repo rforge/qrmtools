@@ -722,8 +722,10 @@ block_rearrange <- function(X, tol = 0, tol.type = c("absolute", "relative"),
         ## Oppositely order all columns belonging to block 'block' to the row
         ## sums of the complement block
         if(trace) B <- X # grab out matrix before rearranging
-        X.block.ordered <- X[order(rs.block), block, drop = FALSE] # (*)
-        X[, block] <- X.block.ordered[indices_opp_ordered_to(rs.complement.block),]
+        ord <- order(rs.block)
+        X.block.ordered <- X[ord, block, drop = FALSE] # (*)
+        oord <- indices_opp_ordered_to(rs.complement.block)
+        X[, block] <- X.block.ordered[oord,]
         ## Concerning (*): - In rearrange() we could work with X.lst.sorted and thus use
         ##                   presorted columns. Avoiding X[order(rs.block), block]
         ##                   doesn't seem possible here as rs.block can change all the time.
@@ -731,7 +733,9 @@ block_rearrange <- function(X, tol = 0, tol.type = c("absolute", "relative"),
         ##                 - Another reason is that we work with matrices here, not lists
         ##                   (the effect of this is probably rather minor given the sorting)
         ## Update the vector of row sums
-        X.rs <- rs.complement.block + .rowSums(X[, block], m = N, n = bsize)
+        X.rs <- rs.complement.block + rs.block[ord][oord] # formerly: rs.complement.block + .rowSums(X[, block], m = N, n = bsize)
+        ## Note: rs.block[ord][oord] = .rowSums(X[, block], m = N, n = bsize) (but avoiding to
+        ##       call *expensive* .rowSums() -- even if .rowSums() is already C code, see ./src/main/array.c -> do_colsum)
 
         ## Tracing
         if(trace) {
