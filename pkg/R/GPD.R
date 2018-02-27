@@ -10,18 +10,20 @@
 dGPD <- function(x, xi, beta, log = FALSE)
 {
     stopifnot(beta > 0)
-    res <- if(log) rep(-Inf, length(x)) else rep(0, length(x)) # correctly extend
+    x <- if(xi >= 0) pmax(x, 0) else pmin(pmax(x, 0), -beta/xi) # correctly extend
     if(xi == 0) { # xi == 0
-        ind <- x >= 0
-        if(any(ind))
-            res[ind] <- if(log) -x[ind]/beta-log(beta) else exp(-x[ind]/beta)/beta
+        if(log) {
+            -x/beta-log(beta)
+        } else {
+            exp(-x/beta)/beta
+        }
     } else { # xi != 0
-        ind <- if(xi > 0) x >= 0 else 0 <= x & x <= -beta/xi
-        if(any(ind))
-            res[ind] <- if(log) -(1/xi+1)*log1p(xi*x[ind]/beta)-log(beta)
-            else (1+xi*x[ind]/beta)^(-(1/xi+1))/beta
+        if(log) {
+            -(1/xi+1)*log1p(xi*x/beta)-log(beta)
+        } else {
+            (1+xi*x/beta)^(-(1/xi+1))/beta
+        }
     }
-    res
 }
 
 ##' @title Distribution function of the GPD(xi, beta) distribution (vectorized in q)
@@ -35,16 +37,37 @@ dGPD <- function(x, xi, beta, log = FALSE)
 pGPD <- function(q, xi, beta, lower.tail = TRUE, log.p = FALSE)
 {
     stopifnot(beta > 0)
+    q <- if(xi >= 0) pmax(q, 0) else pmin(pmax(q, 0), -beta/xi) # correctly extend (q >= 0; q <= -beta/xi if xi < 0)
+    ## Note: - This 'extension' works correctly here as R correctly deals with Inf
+    ##       - It avoids having to set res outside the compact support (=> two regions)
     if(xi == 0) { # xi == 0
-        q <- pmax(q, 0) # correctly extend (instead of stopifnot(x >= 0))
-        if(lower.tail)
-            if(log.p) log1p(-exp(-q/beta)) else 1-exp(-q/beta)
-        else if(log.p) -q/beta else exp(-q/beta)
+        if(lower.tail) {
+            if(log.p) {
+                log1p(-exp(-q/beta))
+            } else {
+                1-exp(-q/beta)
+            }
+        } else {
+            if(log.p) {
+                -q/beta
+            } else {
+                exp(-q/beta)
+            }
+        }
     } else { # xi != 0
-        q <- if(xi > 0) pmax(q, 0) else pmin(pmax(q, 0), -beta/xi) # correctly extend
-        if(lower.tail)
-            if(log.p) log1p(-(1+xi*q/beta)^(-1/xi)) else 1-(1+xi*q/beta)^(-1/xi)
-        else if(log.p) -log1p(xi*q/beta)/xi else (1+xi*q/beta)^(-1/xi)
+        if(lower.tail) {
+            if(log.p) {
+                log1p(-(1+xi*q/beta)^(-1/xi))
+            } else {
+                1-(1+xi*q/beta)^(-1/xi)
+            }
+        } else {
+            if(log.p) {
+                -log1p(xi*q/beta)/xi
+            } else {
+                (1+xi*q/beta)^(-1/xi)
+            }
+        }
     }
 }
 

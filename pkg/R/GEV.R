@@ -15,13 +15,22 @@ dGEV <- function(x, xi, mu = 0, sigma = 1, log = FALSE)
     if(xi == 0) { # xi == 0
         if(log) -log(sigma) -(y+exp(-y)) else exp(-(y+exp(-y)))/sigma
     } else { # xi != 0
-          xiy <- xi*y
-          ii <- 1+xiy > 0
-          res <- rep(0, length(x)) # correctly extend
-          if(any(ii))
-              res[ii] <- if(log) -log(sigma) + (-1/xi-1)*log1p(xiy[ii]) - (1+xiy[ii])^(-1/xi) else
-                          (1+xiy[ii])^(-1/xi-1)*exp(-(1+xiy[ii])^(-1/xi))/sigma
-          res
+        xiy <- pmax(xi*y, -1) # only need to get the right limit for '1+xiy = 0'
+        if(log) {
+            -log(sigma) + (-1/xi - 1) * log1p(xiy) - (1 + xiy)^(-1/xi)
+        } else {
+            (1 + xiy)^(-1/xi - 1) * exp(-(1 + xiy)^(-1/xi))/sigma
+        }
+        ## Formerly (also works):
+        ## ii <- 1+xiy > 0
+        ## if(log) {
+        ##     res <- rep(-Inf, length(x)) # correctly extend
+        ##     res[ii] <- -log(sigma) + (-1/xi - 1) * log1p(xiy[ii]) - (1 + xiy[ii])^(-1/xi)
+        ## } else {
+        ##     res <- rep(0, length(x)) # correctly extend
+        ##     res[ii] <- (1 + xiy[ii])^(-1/xi - 1) * exp(-(1 + xiy[ii])^(-1/xi))/sigma
+        ## }
+        ## res
     }
 }
 
@@ -43,13 +52,41 @@ pGEV <- function(q, xi, mu = 0, sigma = 1, lower.tail = TRUE, log.p = FALSE)
             if(log.p) -exp(-y) else exp(-exp(-y))
         else if(log.p) log1p(-exp(-exp(-y))) else 1-exp(-exp(-y))
     } else { # xi != 0
-          xiy <- xi*y
-          ii <- 1+xiy > 0
-          res <- rep(xi <= 0, length(q)) # correctly extend (0 if xi>0, 1 if xi <= 0)
-          res[ii] <- if(lower.tail)
-                         if(log.p) -(1+xiy[ii])^(-1/xi) else exp(-(1+xiy[ii])^(-1/xi))
-                     else if(log.p) log1p(-exp(-(1+xiy[ii])^(-1/xi))) else 1-exp(-(1+xiy[ii])^(-1/xi))
-          res
+        xiy <- pmax(xi*y, -1) # see dGEV()
+        if(lower.tail) {
+            if(log.p) {
+                -(1+xiy)^(-1/xi) # log H
+            } else {
+                exp(-(1+xiy)^(-1/xi)) # H
+            }
+        } else {
+            if(log.p) {
+                log1p(-exp(-(1+xiy)^(-1/xi))) # log(bar{H})
+            } else {
+                1-exp(-(1+xiy)^(-1/xi)) # bar{H}
+            }
+        }
+        ## Formerly (also works):
+        ## xiy <- xi*y
+        ## ii <- 1+xiy > 0
+        ## if(lower.tail) {
+        ##     if(log.p) {
+        ##         res <- if(xi < 0) rep(0, length(q)) else rep(-Inf, length(q)) # log('see case below')
+        ##         res[ii] <- -(1+xiy[ii])^(-1/xi) # log H
+        ##     } else {
+        ##         res <- if(xi < 0) rep(1, length(q)) else rep(0, length(q)) # correctly extend; think of case '1+xi*x = 0' in both cases
+        ##         res[ii] <- exp(-(1+xiy[ii])^(-1/xi)) # H
+        ##     }
+        ## } else {
+        ##     if(log.p) {
+        ##         res <- if(xi < 0) rep(-Inf, length(q)) else rep(0, length(q)) # log('see case below')
+        ##         res[ii] <- log1p(-exp(-(1+xiy[ii])^(-1/xi))) # log(bar{H})
+        ##     } else {
+        ##         res <- if(xi < 0) rep(0, length(q)) else rep(1, length(q)) # 1 - 'case above'
+        ##         res[ii] <- 1-exp(-(1+xiy[ii])^(-1/xi)) # bar{H}
+        ##     }
+        ## }
+        ## res
     }
 }
 
