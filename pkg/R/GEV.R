@@ -215,6 +215,8 @@ logLik_GEV <- function(param, x)
 ##' @title MLE for GEV Parameters
 ##' @param x numeric vector of data. In the block maxima method, these are the
 ##'        block maxima (based on block size n)
+##' @param init numeric(3) giving the initial values for xi, mu, sigma; if NULL,
+##'        determined by a procedure to find initial values
 ##' @param estimate.cov logical indicating whether the asymptotic covariance
 ##'        matrix of the parameter estimators is to be estimated
 ##'        (inverse of observed Fisher information (negative Hessian
@@ -229,10 +231,13 @@ logLik_GEV <- function(param, x)
 ##' @note - similar to copula:::fitCopula.ml()
 ##'       - careful for xi <= -0.5 (very short, bounded upper tail):
 ##'         MLE doesn't have standard asymptotic properties.
-fit_GEV <- function(x, estimate.cov = TRUE, control = list(), ...)
+fit_GEV <- function(x, init = NULL, estimate.cov = TRUE, control = list(), ...)
 {
-    ## Compute initial values; see test
-    init <- fit_GEV_init(x)
+    ## Checks
+    stopifnot(is.numeric(x), is.null(init) || (length(init) == 3),
+              is.logical(estimate.cov), is.list(control))
+    ## Compute initial values
+    if(is.null(init)) init <- fit_GEV_init(x)
     ## Fit
     control <- c(as.list(control), fnscale = -1) # maximization (overwrites possible additionally passed 'fnscale')
     fit <- optim(init, fn = function(param) logLik_GEV(param, x = x),

@@ -8,7 +8,7 @@
 }
 \usage{
 logLik_GEV(param, x)
-fit_GEV(x, estimate.cov = TRUE, control = list(), ...)
+fit_GEV(x, init = NULL, estimate.cov = TRUE, control = list(), ...)
 }
 \arguments{
   \item{param}{vector containing the value of the shape \eqn{\xi}{xi} (a
@@ -16,6 +16,9 @@ fit_GEV(x, estimate.cov = TRUE, control = list(), ...)
     (positive real) parameters of the GEV distribution in this order.}
   \item{x}{numeric vector of data. In the block maxima method, these are the
     block maxima.}
+  \item{init}{vector of length three specifying the initial values
+    for \eqn{\xi}{xi}, \eqn{\mu}{mu}, \eqn{\sigma}{sigma};
+    if \code{NULL}, determined by a procedure to find initial values.}
   \item{estimate.cov}{\code{\link{logical}} indicating whether the
     asymptotic covariance matrix of the parameter estimators is to be
     estimated (inverse of observed Fisher information (negative Hessian
