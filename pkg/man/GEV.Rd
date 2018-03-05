@@ -18,9 +18,9 @@ rGEV(n, xi, mu = 0, sigma = 1)
   \item{x, q}{vector of quantiles.}
   \item{p}{vector of probabilities.}
   \item{n}{number of observations.}
-  \item{xi}{GEV shape parameter, a real number.}
-  \item{mu}{GEV location parameter, a real number.}
-  \item{sigma}{GEV scale parameter, a positive number.}
+  \item{xi}{GEV shape parameter \eqn{\xi}{xi}, a real.}
+  \item{mu}{GEV location parameter \eqn{\mu}{mu}, a real.}
+  \item{sigma}{GEV scale parameter \eqn{\sigma}{sigma}, a positive real.}
   \item{lower.tail}{\code{\link{logical}}; if TRUE (default)
     probabilities are \eqn{P(X \le x)}{P(X <= x)} otherwise, \eqn{P(X > x)}.}
   \item{log, log.p}{logical; if TRUE, probabilities p are given as log(p).}

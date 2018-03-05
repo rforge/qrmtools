@@ -2,36 +2,26 @@
 
 ##' @title Density of the GEV(xi, mu, sigma) distribution
 ##' @param x evaluation points
-##' @param xi parameter xi
-##' @param mu parameter mu
-##' @param sigma parameter sigma
+##' @param xi parameter xi (real)
+##' @param mu parameter mu (real)
+##' @param sigma parameter sigma (also real here; density is 0 if sigma <= 0)
 ##' @param log logical indicating whether the log density is computed
 ##' @return density of the GEV(xi, mu, sigma) distribution
 ##' @author Marius Hofert
 dGEV <- function(x, xi, mu = 0, sigma = 1, log = FALSE)
 {
-    stopifnot(sigma > 0)
-    y <- (x-mu)/sigma
+    if(sigma <= 0)
+        return(if(log) -Inf else 0)
+    y <- (x - mu) / sigma
     if(xi == 0) { # xi == 0
-        if(log) -log(sigma) -(y+exp(-y)) else exp(-(y+exp(-y)))/sigma
+        res <- -log(sigma) - (y + exp(-y))
     } else { # xi != 0
-        xiy <- pmax(xi*y, -1) # only need to get the right limit for '1+xiy = 0'
-        if(log) {
-            -log(sigma) + (-1/xi - 1) * log1p(xiy) - (1 + xiy)^(-1/xi)
-        } else {
-            (1 + xiy)^(-1/xi - 1) * exp(-(1 + xiy)^(-1/xi))/sigma
-        }
-        ## Formerly (also works):
-        ## ii <- 1+xiy > 0
-        ## if(log) {
-        ##     res <- rep(-Inf, length(x)) # correctly extend
-        ##     res[ii] <- -log(sigma) + (-1/xi - 1) * log1p(xiy[ii]) - (1 + xiy[ii])^(-1/xi)
-        ## } else {
-        ##     res <- rep(0, length(x)) # correctly extend
-        ##     res[ii] <- (1 + xiy[ii])^(-1/xi - 1) * exp(-(1 + xiy[ii])^(-1/xi))/sigma
-        ## }
-        ## res
+        res <- rep(-Inf, length(y)) # correctly extend log-density
+        xiy <- xi * y
+        ii <- 1 + xiy > 0
+        res[ii] <- -log(sigma) + (-1/xi - 1) * log1p(xiy[ii]) - (1 + xiy[ii])^(-1/xi)
     }
+    if(log) res else exp(res)
 }
 
 ##' @title Distribution function of the GEV(xi, mu, sigma) distribution (vectorized in q)
@@ -125,3 +115,140 @@ qGEV <- function(p, xi, mu = 0, sigma = 1, lower.tail = TRUE, log.p = FALSE)
 ##' @author Marius Hofert
 rGEV <- function(n, xi, mu = 0, sigma = 1)
     qGEV(runif(n), xi = xi, mu = mu, sigma = sigma)
+
+
+### Fitting GEV(xi, mu, sigma) #################################################
+
+## ## Other packages
+## - QRM:
+##   + fit.GEV() uses hard-coded values (with wrong sig; see below)
+## - Renext:
+##   + also based on optim()
+##   + fGEV.MAX() -> calls parIni.MAX(); detailed in "Renext Computing Details" (but not available)
+##   + some sort of weird procedure based on a regression idea of some sort
+##   + good 'caution': log-lik = Inf for xi <= -1 but optimization
+##     done in unconstrained way. Typically xi > -1, but if xi <= -1, then meaningless.
+##     For xi < -0.5, treat with care.
+## - evd:
+##   + also based on optim()
+##   + fextreme(): requires 'start' to be provided
+##   + fgev(): requires 'start' to be provided
+## - evir:
+##   + ./R -> bmax.R -> gev(): hardcoded xi = 0.1 as 'QRM' *BUT* has 'pi' on the outside!, so different sigma
+## - extRemes:
+##   + fevd(): huge, uses optim() with 'init.pars', can provide 'initial' or determine them
+##   + 'initial' is determine (on 'find.init') via L moments or moments and hard-coded
+##     (xi = 0.01, mu = 0, sig = 1) on failure of both methods
+## - fExtremes:
+##   + gevFit() -> .gevFit() -> .gevmleFit(): uses optim(), hardcoded initial values as 'QRM' (refers to evir for that)
+## - ismev:
+##   + gev.fit(): uses optim(), hardcoded initial values as in 'QRM'
+## - lmom:
+##   + pelp(): based on optim(), 'start' needs to be provided
+## - texmex:
+##   + evm() -> evm.default() -> evmFit(): based on optim(); uses 'family$start(data)'
+##     if start not provided (see also .pdf)
+##   + 'start()' is a function and for the GEV found in ./R/gev.R
+##   + start() returns a longer vector (unclear why) but seems to use mean() as initial value for mu
+##     and log(IQR(data)/2) as initial value for xi; quite unclear
+##   + points out that GPD MLE will often fail with small sample size
+##   + probably closest to what we do but still different
+
+##' @title Computing Initial Values for MLE of the GEV
+##' @param x numeric vector of data. In the block maxima method, these are the
+##'        block maxima (based on block size n).
+##' @param p numeric(3) specifying the probabilities used to compute the initial
+##'        values (should be in (0,1) and in strictly increasing order).
+##' @param cutoff numeric(1) specifying the cutoff point beyond which
+##'        exp(-cutoff) is truncated to 0 (to get an explicitly invertible
+##'        function in xi).
+##' @return numeric(3) specifying the initial values for xi, mu, sigma.
+##' @author Marius Hofert
+##' @note - xi = 0 does not have to be considered (initial xi can turn out to be
+##'         0 here)
+##'       - Idea: Fit the three parameters to three quantiles H^{-1}(p) for p,
+##'               for example, in {1/4, 1/2, 3/4}.
+fit_GEV_init <- function(x, p = c(1/4, 1/2, 3/4), cutoff = 3)
+{
+    stopifnot(length(p) == 3, cutoff > 0)
+    q <- quantile(x, probs = p, names = FALSE) # empirical p-quantiles
+    if(length(unique(q)) < 3) { # then hardcoded as in 'evir', 'QRM' or 'fExtremes'
+        sig.init <- sqrt(6 * var(x)) / pi # var for xi = 0 is (\sigma\pi)^2 / 6 => \sigma
+        ## Note: sigma is wrong in 'QRM' (pi inside sqrt()) but okay in 'evir', 'fExtremes', 'ismev'
+        return(c(0.1, mean(x) - 0.5772157 * sig.init, sig.init)) # 2nd: mean for xi is mu + sig * gamma => mu; gamma = -digamma(1) = Euler--Mascheroni constant
+    }
+    q.diff <- diff(q)
+    y <- q.diff[1]/q.diff[2] # (q[2] - q[1]) / (q[3] - q[2]) = (H^{-1}(p2) - H^{-1}(p1)) / (H^{-1}(p3) - H^{-1}(p2))
+    l <- log(-log(p)) # decreasing in p
+    a <- rev(diff(rev(l))) # l[1] - l[2]; l[2] - l[3]
+    a. <- a[1]/a[2]
+    ## Initial value for xi
+    xi.init <- if(y < 1/expm1(cutoff/a.)) {
+                   log1p(1/y)/a[2]
+               } else if(y < a.) {
+                   m <- a[2]/cutoff * log(a./(expm1(a.*cutoff)))
+                   log(y/a.) / m
+               } else if(y == a[1]/a[2]) {
+                   0
+               } else if(y <= expm1(a.*cutoff)) {
+                   m <- -a[1]/cutoff * log(a.*expm1(cutoff/a.))
+                   log(y/a.) / m
+               } else -log1p(y)/a[1]
+    ## Initial value for sigma
+    sig.init <- xi.init * q.diff[1] / ((-log(p[2]))^(-xi.init) - (-log(p[1]))^(-xi.init))
+    ## Initial value for mu
+    mu.init <- q[2] - sig.init/xi.init * ((-log(p[2]))^(-xi.init)-1)
+    ## Return
+    c(xi.init, mu.init, sig.init)
+}
+
+##' @title Log-likelihood of the GEV
+##' @param param numeric(3) giving xi, mu, sigma (all real here; if sigma <= 0
+##'        dGEV(, log = TRUE) returns -Inf)
+##' @param x numeric vector of data. In the block maxima method, these are the
+##'        block maxima (based on block size n)
+##' @return log-likelihood at xi, mu, sigma
+##' @author Marius Hofert
+logLik_GEV <- function(param, x)
+    sum(dGEV(x, xi = param[1], mu = param[2], sigma = param[3], log = TRUE))
+
+##' @title MLE for GEV Parameters
+##' @param x numeric vector of data. In the block maxima method, these are the
+##'        block maxima (based on block size n)
+##' @param estimate.cov logical indicating whether the asymptotic covariance
+##'        matrix of the parameter estimators is to be estimated
+##'        (inverse of observed Fisher information (negative Hessian
+##'        of log-likelihood evaluated at MLE))
+##' @param control see ?optim
+##' @param ... additional arguments passed to the underlying optim()
+##' @return list with the return value of optim() with the estimated asymptotic
+##'         covariance matrix of the parameter estimators
+##'         (Cramer--Rao bound = inverse of Fisher information = negative Hessian)
+##'         of the parameter estimators appended if estimate.cov.
+##' @author Marius Hofert
+##' @note - similar to copula:::fitCopula.ml()
+##'       - careful for xi <= -0.5 (very short, bounded upper tail):
+##'         MLE doesn't have standard asymptotic properties.
+fit_GEV <- function(x, estimate.cov = TRUE, control = list(), ...)
+{
+    ## Compute initial values; see test
+    init <- fit_GEV_init(x)
+    ## Fit
+    control <- c(as.list(control), fnscale = -1) # maximization (overwrites possible additionally passed 'fnscale')
+    fit <- optim(init, fn = function(param) logLik_GEV(param, x = x),
+                 hessian = estimate.cov, control = control, ...)
+    ## Estimate of the asymptotic covariance matrix of the parameter estimators
+    ## Note: manually; see QRM::fit.GEV and also copula:::fitCopula.ml():
+    ##       fisher <- -hessian(logLik_GEV(fit$par, x = x)) # observed Fisher information (estimate of Fisher information)
+    ##       Cov <- solve(fisher)
+    ##       std.err <- sqrt(diag(Cov)) # see also ?fit_GEV
+    Cov <- if(estimate.cov) {
+               negHessianInv <- catch(solve(-fit$hessian))
+               if(is(negHessianInv, "error")) {
+                   warning("Hessian matrix not invertible: ", negHessianInv$error)
+                   matrix(NA_real_, 0, 0)
+               } else negHessianInv$value # result on warning or on 'worked'
+           } else matrix(NA_real_, 0, 0)
+    ## Return (could create an object here)
+    if(estimate.cov) c(fit, list(Cov = Cov)) else fit
+}

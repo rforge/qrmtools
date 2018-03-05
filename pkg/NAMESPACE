@@ -29,6 +29,8 @@ export(
     "dGEV", "pGEV", "qGEV", "rGEV",
     "dGPD", "pGPD", "qGPD", "rGPD",
     "dPar", "pPar", "qPar", "rPar",
+    ## Fitting
+    "logLik_GEV", "fit_GEV",
     ## Risk measures
     "VaR_np", "VaR_t", "VaR_Par", "ES_np", "ES_t", "ES_Par",
     "gVaR", "gEX",
