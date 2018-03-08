@@ -37,6 +37,11 @@ fit_GEV(x, init = NULL, estimate.cov = TRUE, control = list(), ...)
   parameter estimators, if \code{estimate.cov}.
 }
 \details{
+  Initial values are computed from \eqn{\xi=0}{xi = 0}. This is done
+  to guarantee that the log-likelihood evaluates to a finite number,
+  but note that the MLE seems to be (easily) affected by this
+  (and any other hardcoded) choice.
+
   Caution: See Coles (2001, p. 55) for how to interpret \eqn{\xi\le
     -0.5}{xi <= -0.5}; in particular, the standard asymptotic properties
   of the MLE do not apply.

@@ -121,85 +121,64 @@ rGEV <- function(n, xi, mu = 0, sigma = 1)
 
 ## ## Other packages
 ## - QRM:
-##   + fit.GEV() uses hard-coded values (with wrong sig; see below)
+##   + fit.GEV() uses hard-coded value for xi and mu and sigma from case xi = 0
+##     (see below)
 ## - Renext:
 ##   + also based on optim()
-##   + fGEV.MAX() -> calls parIni.MAX(); detailed in "Renext Computing Details" (but not available)
+##   + fGEV.MAX() -> calls parIni.MAX(); detailed in "Renext Computing Details"
+##     (but not available)
 ##   + some sort of weird procedure based on a regression idea of some sort
 ##   + good 'caution': log-lik = Inf for xi <= -1 but optimization
-##     done in unconstrained way. Typically xi > -1, but if xi <= -1, then meaningless.
+##     done in unconstrained way. Typically xi > -1, but if xi <= -1, then
+##     meaningless.
 ##     For xi < -0.5, treat with care.
 ## - evd:
 ##   + also based on optim()
 ##   + fextreme(): requires 'start' to be provided
 ##   + fgev(): requires 'start' to be provided
 ## - evir:
-##   + ./R -> bmax.R -> gev(): hardcoded xi = 0.1 as 'QRM' *BUT* has 'pi' on the outside!, so different sigma
+##   + ./R -> bmax.R -> gev(): hardcoded xi = 0.1 as 'QRM'
 ## - extRemes:
-##   + fevd(): huge, uses optim() with 'init.pars', can provide 'initial' or determine them
-##   + 'initial' is determine (on 'find.init') via L moments or moments and hard-coded
-##     (xi = 0.01, mu = 0, sig = 1) on failure of both methods
+##   + fevd(): huge, uses optim() with 'init.pars', can provide 'initial' or
+##     determine them
+##   + 'initial' is determine (on 'find.init') via L moments or moments and
+##     hard-coded (xi = 0.01, mu = 0, sig = 1) on failure of both methods
 ## - fExtremes:
-##   + gevFit() -> .gevFit() -> .gevmleFit(): uses optim(), hardcoded initial values as 'QRM' (refers to evir for that)
+##   + gevFit() -> .gevFit() -> .gevmleFit(): uses optim(), hardcoded initial
+##     values as 'QRM' (refers to evir for that)
 ## - ismev:
 ##   + gev.fit(): uses optim(), hardcoded initial values as in 'QRM'
 ## - lmom:
 ##   + pelp(): based on optim(), 'start' needs to be provided
 ## - texmex:
-##   + evm() -> evm.default() -> evmFit(): based on optim(); uses 'family$start(data)'
-##     if start not provided (see also .pdf)
+##   + evm() -> evm.default() -> evmFit(): based on optim(); uses
+##     'family$start(data)' if start not provided (see also .pdf)
 ##   + 'start()' is a function and for the GEV found in ./R/gev.R
-##   + start() returns a longer vector (unclear why) but seems to use mean() as initial value for mu
-##     and log(IQR(data)/2) as initial value for xi; quite unclear
-##   + points out that GPD MLE will often fail with small sample size
-##   + probably closest to what we do but still different
+##   + start() returns a longer vector (unclear why) but seems to use mean()
+##     as initial value for mu and log(IQR(data)/2) as initial value for xi;
+##     quite unclear
+##   + points out that MLE will often fail with small sample size
 
 ##' @title Computing Initial Values for MLE of the GEV
 ##' @param x numeric vector of data. In the block maxima method, these are the
 ##'        block maxima (based on block size n).
-##' @param p numeric(3) specifying the probabilities used to compute the initial
-##'        values (should be in (0,1) and in strictly increasing order).
-##' @param cutoff numeric(1) specifying the cutoff point beyond which
-##'        exp(-cutoff) is truncated to 0 (to get an explicitly invertible
-##'        function in xi).
 ##' @return numeric(3) specifying the initial values for xi, mu, sigma.
 ##' @author Marius Hofert
-##' @note - xi = 0 does not have to be considered (initial xi can turn out to be
-##'         0 here)
-##'       - Idea: Fit the three parameters to three quantiles H^{-1}(p) for p,
-##'               for example, in {1/4, 1/2, 3/4}.
-fit_GEV_init <- function(x, p = c(1/4, 1/2, 3/4), cutoff = 3)
+##' @note Used to have a nice quantile-matching idea here, but this (as any
+##'       other method) could lead to 1 + xi (x - mu) / sigma <= 0 for some
+##'       data x and thus log-likelihood = -Inf, so optim() stops with error:
+##'       "Error in optim(init, fn = function(param) logLik_GEV(param, x = x),
+##'        hessian = estimate.cov: function cannot be evaluated at initial
+##'        parameters"
+fit_GEV_init <- function(x)
 {
-    stopifnot(length(p) == 3, cutoff > 0)
-    q <- quantile(x, probs = p, names = FALSE) # empirical p-quantiles
-    if(length(unique(q)) < 3) { # then hardcoded as in 'evir', 'QRM' or 'fExtremes'
-        sig.init <- sqrt(6 * var(x)) / pi # var for xi = 0 is (\sigma\pi)^2 / 6 => \sigma
-        ## Note: sigma is wrong in 'QRM' (pi inside sqrt()) but okay in 'evir', 'fExtremes', 'ismev'
-        return(c(0.1, mean(x) - 0.5772157 * sig.init, sig.init)) # 2nd: mean for xi is mu + sig * gamma => mu; gamma = -digamma(1) = Euler--Mascheroni constant
-    }
-    q.diff <- diff(q)
-    y <- q.diff[1]/q.diff[2] # (q[2] - q[1]) / (q[3] - q[2]) = (H^{-1}(p2) - H^{-1}(p1)) / (H^{-1}(p3) - H^{-1}(p2))
-    l <- log(-log(p)) # decreasing in p
-    a <- rev(diff(rev(l))) # l[1] - l[2]; l[2] - l[3]
-    a. <- a[1]/a[2]
-    ## Initial value for xi
-    xi.init <- if(y < 1/expm1(cutoff/a.)) {
-                   log1p(1/y)/a[2]
-               } else if(y < a.) {
-                   m <- a[2]/cutoff * log(a./(expm1(a.*cutoff)))
-                   log(y/a.) / m
-               } else if(y == a[1]/a[2]) {
-                   0
-               } else if(y <= expm1(a.*cutoff)) {
-                   m <- -a[1]/cutoff * log(a.*expm1(cutoff/a.))
-                   log(y/a.) / m
-               } else -log1p(y)/a[1]
-    ## Initial value for sigma
-    sig.init <- xi.init * q.diff[1] / ((-log(p[2]))^(-xi.init) - (-log(p[1]))^(-xi.init))
-    ## Initial value for mu
-    mu.init <- q[2] - sig.init/xi.init * ((-log(p[2]))^(-xi.init)-1)
-    ## Return
-    c(xi.init, mu.init, sig.init)
+    ## Idea: - Use xi = 0 here => mu and sigma explicit in terms of mean and
+    ##         variance (method-of-moment estimator for mu, sigma).
+    ##         This guarantees that 1 + xi (x - mu) / sigma > 0, so a finite
+    ##         log-likelihood.
+    ##       - As in 'QRM', 'evir', 'fExtremes', 'ismev'
+    sig.init <- sqrt(6 * var(x)) / pi # var for xi = 0 is (\sigma\pi)^2 / 6 => \sigma
+    c(0, mean(x) - 0.5772157 * sig.init, sig.init) # mean for xi is mu + sig * gamma => mu; gamma = -digamma(1) = Euler--Mascheroni constant
 }
 
 ##' @title Log-likelihood of the GEV
