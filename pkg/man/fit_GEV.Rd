@@ -18,7 +18,7 @@ fit_GEV(x, init = NULL, estimate.cov = TRUE, control = list(), ...)
     block maxima.}
   \item{init}{vector of length three specifying the initial values
     for \eqn{\xi}{xi}, \eqn{\mu}{mu}, \eqn{\sigma}{sigma};
-    if \code{NULL}, determined by a procedure to find initial values.}
+    if \code{NULL}, determined internally.}
   \item{estimate.cov}{\code{\link{logical}} indicating whether the
     asymptotic covariance matrix of the parameter estimators is to be
     estimated (inverse of observed Fisher information (negative Hessian
