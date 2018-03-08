@@ -81,9 +81,8 @@ fit_GEV_init <- function(x, method = c("zero.xi", "quantile.matching", "prob.wei
         ## Match probability-weighted moments
         y <- (3*b2-b0) / (2*b1-b0) # evaluation point of h^{-1}
         y <- max(y, 1) # sanity
-        h.prime.m1 <- (log(3) * 3^(-1) * (2^(-1) - 1) - log(2) * 2^(-1) * (3^(-1) - 1)) / (2^(-1) - 1)^2 # h'(-1)
-        xi.init <- if(y <= 4/3 + h.prime.m1 * (1.455495 + 1)) { # y <= h approximation at 1.455495
-                       (y - 4/3) / h.prime.m1 - 1 # invert tangent in -1
+        xi.init <- if(y <= (2/3) * (2-log(3/4)) * (1.455495 + 1)) { # y <= h approximation at 1.455495
+                       (2-(3/2)*y) / log(3/4) - 1 # invert tangent in -1
                    } else { # invert (3/2)^xi
                        log(y) / log(3/2)
                    }
