@@ -11,7 +11,7 @@ importFrom("zoo", "index")
 importFrom("xts", "as.xts")
 importFrom("methods", "hasArg")
 importFrom("stats", "dnorm", "dt", "integrate", "pnorm", "qnorm", "qt",
-           "runif", "uniroot", "qqline", "var")
+           "runif", "uniroot", "qqline", "var", "filter")
 importFrom("grDevices", "colorRampPalette")
 importFrom("grDevices", "dev.off")
 importFrom("graphics", "image", "mtext", "plot", "rug", "abline")
@@ -43,7 +43,7 @@ export(
     ## Graphics
     "NA_plot", "matrix_plot", "matrix_density_plot", "pp_plot", "qq_plot",
     ## Time Series
-    "fit_ARMA_GARCH",
+    "fit_ARMA_GARCH", "fit_GARCH_11",
     ## Result/warning/error catching
     "catch",
     ## Returns
