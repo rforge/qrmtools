@@ -37,10 +37,16 @@ fit_GEV(x, init = NULL, estimate.cov = TRUE, control = list(), ...)
   parameter estimators, if \code{estimate.cov}.
 }
 \details{
-  Initial values are computed from \eqn{\xi=0}{xi = 0}. This is done
-  to guarantee that the log-likelihood evaluates to a finite number,
-  but note that the MLE seems to be (easily) affected by this
-  (and any other hardcoded) choice.
+  Initial values are computed from \eqn{\xi = 0}{xi = 0} (but actually
+  with a small positive value as Nelder--Mead could fail otherwise).
+  Furthermore, \eqn{\sigma}{sigma} (obtained from the case
+  \eqn{\xi = 0}{xi = 0} is doubled in order to guarantee a finite
+  log-likelihood for the first evaluation (at the initial values).
+
+  After several experiments (see the source code), one can safely
+  say that finding initial values for fitting GEVs via MLE is
+  non-trivial; see also the block maxima method script about the
+  Black Monday event on \url{qrmtutorial.org}.
 
   Caution: See Coles (2001, p. 55) for how to interpret \eqn{\xi\le
     -0.5}{xi <= -0.5}; in particular, the standard asymptotic properties
@@ -65,30 +71,6 @@ n <- 1000
 set.seed(271)
 X <- rGEV(n, xi = xi, mu = mu, sigma = sig)
 
-## Plot the log-likelihood for fixed mu and sigma (as generated)
-xi. <- seq(-0.1, 0.8, length.out = 65)
-LL <- sapply(xi., function(xi..) logLik_GEV(c(xi.., mu, sig), x = X))
-plot(xi., LL, type = "l", xlab = expression(xi),
-     ylab = expression("Log-likelihood for fixed"~mu~"and"~sigma))
-## => Numerically non-trivial (for this seed!)
-
-## Plot the profile likelihood for given xi's
-## Note: optim() fails if logLik_GEV is -Inf (which can happen for the specified
-##       xi's). We could simply choose a smaller xi range to avoid this problem
-##       but simply not call optim() in these cases (these cases are not
-##       interesting anyways)
-pLL <- sapply(xi., function(xi..) {
-    nuisance.init <- qrmtools:::fit_GEV_init(X)[2:3] # initialize mu, sigma
-    if(!is.finite(logLik_GEV(c(xi.., nuisance.init), x = X))) {
-        NA
-    } else {
-        optim(nuisance.init, fn = function(nuisance)
-            logLik_GEV(c(xi.., nuisance), x = X),
-            control = list(fnscale = -1))$value
-    }
-})
-plot(xi., pLL, type = "l", xlab = expression(xi), ylab = "Profile log-likelihood")
-
 ## Fit
 (fit <- fit_GEV(X))
 (est <- fit$par) # estimates of xi, mu, sigma
@@ -96,5 +78,30 @@ stopifnot(all.equal(est[1], xi, tol = 0.07),
           all.equal(est[2], mu, tol = 0.12),
           all.equal(est[3], sig, tol = 0.06))
 sqrt(diag(fit$Cov)) # estimated asymp. variances of MLEs = std. errors of MLEs
+
+## Plot the log-likelihood in xi for fixed mu and sigma (fixed as generated)
+xi. <- seq(-0.1, 0.8, length.out = 65)
+logLik <- sapply(xi., function(xi..) logLik_GEV(c(xi.., mu, sig), x = X))
+plot(xi., logLik, type = "l", xlab = expression(xi),
+     ylab = expression("Log-likelihood for fixed"~mu~"and"~sigma))
+## => Numerically quite challenging (for this seed!)
+
+## Plot the profile likelihood for these xi's
+## Note: As initial values for the nuisance parameters mu, sigma, we
+##       use their values in the case xi = 0 (for all fixed xi = xi. as above
+##       in particular those xi != 0). Furthermore, for the given data X
+##       and xi = xi., we make sure the initial value for sigma is so large
+##       that the density is not 0 and thus the log-likelihood is finite.
+pLL <- sapply(xi., function(xi..) {
+    sig.init <- sqrt(6 * var(X)) / pi
+    mu.init <- mean(X) - sig.init * 0.5772157
+    while(!is.finite(logLik_GEV(c(xi.., mu.init, sig.init), x = X)))
+        sig.init <- sig.init * 2
+    optim(c(mu.init, sig.init), fn = function(nuis)
+                logLik_GEV(c(xi.., nuis), x = X),
+    		        control = list(fnscale = -1))$value
+})
+plot(xi., pLL, type = "l", xlab = expression(xi),
+     ylab = "Profile log-likelihood")
 }
 \keyword{distribution}
