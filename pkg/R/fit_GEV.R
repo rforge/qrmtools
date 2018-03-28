@@ -51,24 +51,30 @@
 ##'          see Hosking, Wallis, Wood (1985)
 ##' @return numeric(3) specifying the initial values for xi, mu, sigma.
 ##' @author Marius Hofert
-##' @note Used to have a nice quantile-matching idea here, but this (as any
-##'       other method) could lead to 1 + xi (x - mu) / sigma <= 0 for some
-##'       data x and thus log-likelihood = -Inf, so optim() stops with error:
-##'       "Error in optim(init, fn = function(param) logLik_GEV(param, x = x),
-##'        hessian = estimate.cov: function cannot be evaluated at initial
-##'        parameters"
-fit_GEV_init <- function(x, method = c("zero.xi", "quantile.matching", "prob.weighted.moments"))
+##' @note 1) All methods except 'zero.xi' can lead to 1 + xi (x - mu) / sigma <= 0
+##'          for some data x and thus log-likelihood = -Inf, so optim() stops with error:
+##'          "Error in optim(init, fn = function(param) logLik_GEV(param, x = x),
+##'          hessian = estimate.cov: function cannot be evaluated at initial
+##'          parameters"
+##'          => below we guarantee to get a finite log-likelihood
+##'             (by doubling sigma) no matter what the input
+##'       2) Other options as default method are 'zero.xi' with xi = 0 (exact) but
+##'          method = "BFGS", or 'prob.weighted.moments"
+fit_GEV_init <- function(x, method = c("zero.xi", "prob.weighted.moments", "quantile.matching"))
 {
     method <- match.arg(method)
-    switch(method,
+    init <- switch(method,
     "zero.xi" = {
         ## Idea: - Use xi = 0 here => mu and sigma explicit in terms of mean and
         ##         variance (method-of-moment estimator for mu, sigma).
         ##         This guarantees that 1 + xi (x - mu) / sigma > 0, so a finite
         ##         log-likelihood.
         ##       - As in 'QRM', 'evir', 'fExtremes', 'ismev'
+        ##       - Note that xi = 0 can fail for method = "Nelder-Mead"
+        ##         (seen for the Black Monday example)
+        ##         => .Machine$double.eps works
         sig.init <- sqrt(6 * var(x)) / pi # var for xi = 0 is (\sigma\pi)^2 / 6 => \sigma
-        c(0, mean(x) - 0.5772157 * sig.init, sig.init) # mean for xi is mu + sig * gamma => mu; gamma = -digamma(1) = Euler--Mascheroni constant
+        c(.Machine$double.eps, mean(x) - 0.5772157 * sig.init, sig.init) # mean for xi is mu + sig * gamma => mu; gamma = -digamma(1) = Euler--Mascheroni constant
     },
     "prob.weighted.moments" = {
         ## b_r = estimator / sample version of M_{1,r,0}
@@ -98,10 +104,6 @@ fit_GEV_init <- function(x, method = c("zero.xi", "quantile.matching", "prob.wei
                    } else {
                        b0 - sig.init / xi.init * (gamma(1-xi.init) - 1)
                    }
-        ## Force initial values to produce non-zero density
-        sig.bound <- max(-xi.init * (x - mu.init))
-        if(sig.init <= sig.bound)
-            sig.init <- 1.05 * sig.bound # blow up by 5%
         ## Return
         c(xi.init, mu.init, sig.init)
     },
@@ -139,15 +141,20 @@ fit_GEV_init <- function(x, method = c("zero.xi", "quantile.matching", "prob.wei
                    } else {
                        q[2] - sig.init/xi.init * ((-log(p[2]))^(-xi.init)-1)
                    }
-        ## Force initial values to produce non-zero density
-        sig.bound <- max(-xi.init * (x - mu.init))
-        if(sig.init <= sig.bound)
-            sig.init <- 1.05 * sig.bound # blow up by 5%
-
         ## Return
         c(xi.init, mu.init, sig.init)
     },
     stop("Wrong 'method'"))
+    ## Force initial values to produce finite log-likelihood
+    ## Formerly:
+    ## if(method != "zero.xi") { # only for 'zero.xi', a non-zero density is guaranteed
+    ##     sig.bound <- max(-init[1] * (x - init[2]))
+    ##     if(init[3] <= sig.bound)
+    ##         init[3] <- 1.05 * sig.bound # blow up by 5%
+    ## }
+    while(!is.finite(logLik_GEV(init, x = x))) init[2] <- init[2] * 2
+    ## Return
+    init
 }
 
 ##' @title Log-likelihood of the GEV
@@ -182,10 +189,14 @@ logLik_GEV <- function(param, x)
 fit_GEV <- function(x, init = NULL, estimate.cov = TRUE, control = list(), ...)
 {
     ## Checks
-    stopifnot(is.numeric(x), is.null(init) || (length(init) == 3),
+    stopifnot(is.numeric(x), is.null(init) || is.character(init) || (length(init) == 3),
               is.logical(estimate.cov), is.list(control))
     ## Compute initial values
-    if(is.null(init)) init <- fit_GEV_init(x)
+    if(is.null(init)) {
+        init <- fit_GEV_init(x)
+    } else if(is.character(init)) { # easter egg
+        init <- fit_GEV_init(x, method = match.arg(init, choices = eval(formals(fit_GEV_init)$method)))
+    }
     ## Fit
     control <- c(as.list(control), fnscale = -1) # maximization (overwrites possible additionally passed 'fnscale')
     fit <- optim(init, fn = function(param) logLik_GEV(param, x = x),

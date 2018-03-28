@@ -12,13 +12,15 @@ dGEV <- function(x, xi, mu = 0, sigma = 1, log = FALSE)
 {
     if(sigma <= 0)
         return(if(log) -Inf else 0)
-    y <- (x - mu) / sigma
+    y <- (x - mu) / sigma # sigma > 0
     if(xi == 0) { # xi == 0
         res <- -log(sigma) - (y + exp(-y))
+        ## Note: - for mu >> x, y << 0 => exp(-y) = Inf => density correctly 0 then
+        ##       - y should be >= -log(.Machine$double.xmax) for exp(-y) < Inf
     } else { # xi != 0
         res <- rep(-Inf, length(y)) # correctly extend log-density
         xiy <- xi * y
-        ii <- 1 + xiy > 0
+        ii <- 1 + xiy > 0 # those indices for which density is positive
         res[ii] <- -log(sigma) + (-1/xi - 1) * log1p(xiy[ii]) - (1 + xiy[ii])^(-1/xi)
     }
     if(log) res else exp(res)
