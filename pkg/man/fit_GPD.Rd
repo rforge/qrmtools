@@ -1,47 +1,64 @@
 \name{fit_GPD}
+\alias{fit_GPD_MOM}
+\alias{fit_GPD_PWM}
 \alias{logLik_GPD}
 \alias{fit_GPD_MLE}
-\title{Maximum Likelihood Fitting of the Generalized Pareto Distribution}
+\title{Parameter Estimators of the Generalized Pareto Distribution}
 \description{
-  Log-likelihood and maximum-likelihood fitting for the generalized
-  Pareto distribution (GPD).
+  Method-of-moments estimator, probability weighted moments estimator,
+  log-likelihood and maximum-likelihood estimator for the parameters of
+  the generalized Pareto distribution (GPD).
 }
 \usage{
+fit_GPD_MOM(x)
+fit_GPD_PWM(x)
+
 logLik_GPD(param, x)
-fit_GPD_MLE(x, init = NULL, estimate.cov = TRUE, control = list(), ...)
+fit_GPD_MLE(x, init = c("PWM", "MOM", "xi0"),
+            estimate.cov = TRUE, control = list(), ...)
 }
 \arguments{
-  \item{param}{vector containing the value of the shape \eqn{\xi}{xi} (a
-    real) and scale \eqn{\beta}{beta}
-    (positive real) parameters of the GPD in this order.}
   \item{x}{numeric vector of data. In the peaks-over-threshold method,
     these are the excesses (exceedances minus threshold).}
-  \item{init}{vector of length two specifying the initial values
-    for \eqn{\xi}{xi} and \eqn{\beta}{beta};
-    if \code{NULL}, determined internally.}
+  \item{param}{\code{numeric(2)} containing the value of the
+    shape \eqn{\xi}{xi} (a real) and scale \eqn{\beta}{beta}
+    (positive real) parameters of the GPD in this order.}
+  \item{init}{\code{character} string specifying the method for
+    computing initial values. Can also be \code{numeric(2)}
+    for directly providing \eqn{\xi}{xi} and \eqn{\beta}{beta}.}
   \item{estimate.cov}{\code{\link{logical}} indicating whether the
     asymptotic covariance matrix of the parameter estimators is to be
     estimated (inverse of observed Fisher information (negative Hessian
-    of log-likelihood evaluated at MLE)).}
+    of log-likelihood evaluated at MLE)) and standard errors for the
+    estimators of \eqn{\xi}{xi} and \eqn{\beta}{beta}
+    returned, too.}
   \item{control}{\code{\link{list}}; passed to the underlying
     \code{\link{optim}()}.}
   \item{\dots}{additional arguments passed to the underlying
     \code{\link{optim}()}.}
 }
 \value{
+  \code{fit_GEV_MOM()} and \code{fit_GEV_PWM()} return a
+  \code{numeric(3)} giving the parameter estimates for the GPD.
+
   \code{logLik_GPD()} computes the log-likelihood of the GPD
   (\code{-Inf} if not admissible).
 
   \code{fit_GPD_MLE()} returns the return object of \code{\link{optim}()}
-  and, appended, the estimated asymptotic covariance matrix of the
-  parameter estimators, if \code{estimate.cov}.
+  and, appended, the estimated asymptotic covariance matrix and
+  standard errors of the parameter estimators, if \code{estimate.cov}.
 }
 \details{
-  Initial values are computed via probability weighted moments.
-  Note that, in contrast to the GEV, there is no guarantee that
-  the log-likelihood at the initial value is finite and so the
-  underlying
-  \code{\link{optim}()} may fail.
+  \code{fit_GPD_MOM()} computes the method-of-moments (MOM) estimator.
+
+  \code{fit_GPD_PWM()} computes the probability weighted moments (PWM)
+  estimator of Hosking and Wallis (1987); see also Landwehr et al. (1979).
+
+  \code{fit_GPD_MLE()} uses, as default, \code{fit_GPD_PWM()} for
+  computing initial values. The former requires the data \code{x}
+  to be non-negative and adjusts \eqn{\beta}{beta} if \eqn{\xi}{xi} is
+  negative, so that the log-likelihood at the initial value should be
+  finite.
 }
 \author{Marius Hofert}
 \references{
@@ -65,12 +82,18 @@ n <- 1000
 set.seed(271)
 X <- rGPD(n, xi = xi, beta = beta)
 
-## Fit
-(fit <- fit_GPD_MLE(X))
-(est <- fit$par) # estimates of xi, mu, sigma
+## Fitting via matching moments
+(fit.m <- fit_GPD_MOM(X))
+
+## Fitting via PWMs
+(fit.PWM <- fit_GPD_PWM(X))
+
+## Fitting via MLE
+(fit.MLE <- fit_GPD_MLE(X))
+(est <- fit.MLE$par) # estimates of xi, mu, sigma
 stopifnot(all.equal(est[["xi"]],   xi,   tol = 0.12),
           all.equal(est[["beta"]], beta, tol = 0.11))
-fit$SE # estimated asymp. variances of MLEs = std. errors of MLEs
+fit.MLE$SE # estimated asymp. variances of MLEs = std. errors of MLEs
 
 ## Plot the log-likelihood in xi for fixed beta (fixed as generated)
 xi. <- seq(-0.1, 0.8, length.out = 65)

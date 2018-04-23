@@ -30,8 +30,8 @@ export(
     "dGPD", "pGPD", "qGPD", "rGPD",
     "dPar", "pPar", "qPar", "rPar",
     ## Fitting
-    "logLik_GEV", "fit_GEV_MLE",
-    "logLik_GPD", "fit_GPD_MLE",
+    "fit_GEV_quantile", "fit_GEV_PWM", "logLik_GEV", "fit_GEV_MLE",
+    "fit_GPD_MOM", "fit_GPD_PWM", "logLik_GPD", "fit_GPD_MLE",
     ## Risk measures
     "VaR_np", "VaR_t", "VaR_Par", "ES_np", "ES_t", "ES_Par",
     "gVaR", "gEX",

@@ -31,61 +31,47 @@
 ##   + start() returns a longer vector (unclear why) but seems to use log(mean())
 ##     as initial value for xi and 1e-05 for beta; quite unclear
 
-##' @title Computing Initial Values for MLE of the GPD
+
+### Method-of-moments estimator ################################################
+
+##' @title Method-Of-Moments Estimator
 ##' @param x numeric vector of data. In the POT method, these are the excesses
 ##'        over a sufficiently high threshold.
-##' @param method character indicating the method to be used:
-##'        - PWM: Matching probability-weighted moments; see Hosking and Wallis (1987).
-##'               Findings of the latter:
-##'               + MLE requires n ~>= 500 to be efficient
-##'               + MoM reliable for xi > 0.2
-##'               + PWM recommended for xi > 0.
-##'               Note that their '-k' and 'alpha' is our 'xi' and 'beta'.
-##'        - MoM: method-of-moments estimator
-##'        - xi0: uses xi = 0 and method-of-moment estimators based on that case
-##' @return numeric(2) specifying the initial values for xi, beta.
+##' @return numeric(2) with estimates of xi, beta
 ##' @author Marius Hofert
-##' @note - No method guarantees a support of IR for the density and thus, for
-##'         some data x, can lead to log-likelihood = -Inf, so optim() stops with error:
-##'         "Error in optim(init, fn = function(param) logLik_GPD(param, x = x),
-##'          hessian = estimate.cov: function cannot be evaluated at initial
-##'          parameters"
-##'       - Could be taken apart and exported (fit_GPD_PWM(), for example)
-fit_GPD_init <- function(x, method = c("PWM", "MoM", "xi0"))
+##' @note See Hosking and Wallis (1987) and Landwehr, Matalas, Wallis (1979)
+fit_GPD_MOM <- function(x)
 {
-    method <- match.arg(method)
-    init <- switch(method,
-    "PWM" = {
-        ## a_s = estimator (unbiased according to Landwehr, Matalas, Wallis (1979)) / a sample version of M_{1,0,s} = E(X (1-F(X))^s)
-        x. <- sort(as.numeric(x)) # Caution! If is.xts(x), then sort won't do anything!
-        n <- length(x.)
-        k <- 1:n
-        a0 <- mean(x)
-        a1 <- mean(x. * (n-k)/(n-1))
-        ## Alternatively (see QRM and Hosking and Wallis (1987)): a1 <- mean(x. * (1-p)) where p <- (k-0.35)/n
-        ## Estimators of xi and beta based on a0 and a1
-        c(2 - a0/(a0 - 2 * a1), max((2 * a0 * a1) / (a0 - 2 * a1), .Machine$double.eps)) # xi, beta (> 0)
-    },
-    "MoM" = {
-        mu.hat <- mean(x)
-        sig2.hat <- var(x)
-        xi.hat <- (1-mu.hat^2/sig2.hat)/2
-        c(xi.hat, max(mu.hat*(1-xi.hat), .Machine$double.eps)) # xi, beta (> 0)
-    },
-    "xi0" = {
-        ## Idea: use xi = 0
-        c(0, mean(x)) # mean for xi = 0 is beta => beta
-    },
-    stop("Wrong 'method'"))
-    ## Force initial values to produce finite log-likelihood if xi < 0
-    ## (all x need to be in [0, -beta/xi) => choose beta = -xi * max(x) * 1.01)
-    if(init[1] < 0) {
-        mx <- max(x)
-        if(mx >= -init[2]/init[1]) init[2] <- -init[1] * mx * 1.01 # beta = -xi * max(x) * 1.01
-    }
-    ## Return
-    init
+    mu.hat <- mean(x)
+    sig2.hat <- var(x)
+    xi.hat <- (1-mu.hat^2/sig2.hat)/2
+    c(xi = xi.hat, beta = max(mu.hat*(1-xi.hat), .Machine$double.eps)) # xi, beta (> 0)
 }
+
+
+### Probability weighted moments estimator #####################################
+
+##' @title Probability Weighted Moments Estimator
+##' @param x numeric vector of data. In the POT method, these are the excesses
+##'        over a sufficiently high threshold.
+##' @return numeric(2) with estimates of xi, beta
+##' @author Marius Hofert
+##' @note See Hosking and Wallis (1987) and Landwehr, Matalas, Wallis (1979)
+fit_GPD_PWM <- function(x)
+{
+    ## a_s = estimator (unbiased according to Landwehr, Matalas, Wallis (1979)) / a sample version of M_{1,0,s} = E(X (1-F(X))^s)
+    x. <- sort(as.numeric(x)) # CAUTION: If is.xts(x), then sort won't do anything!
+    n <- length(x.)
+    k <- 1:n
+    a0 <- mean(x)
+    a1 <- mean(x. * (n-k)/(n-1))
+    ## Alternatively (see QRM and Hosking and Wallis (1987)): a1 <- mean(x. * (1-p)) where p <- (k-0.35)/n
+    ## Estimators of xi and beta based on a0 and a1
+    c(xi = 2 - a0/(a0 - 2 * a1), beta = max((2 * a0 * a1) / (a0 - 2 * a1), .Machine$double.eps)) # xi, beta (> 0)
+}
+
+
+### Maximum likelihood estimator ###############################################
 
 ##' @title Log-likelihood of the GPD
 ##' @param param numeric(2) giving xi, beta (all real here; if beta <= 0
@@ -100,8 +86,12 @@ logLik_GPD <- function(param, x)
 ##' @title MLE for GPD Parameters
 ##' @param x numeric vector of data. In the POT method, these are the excesses
 ##'        over a sufficiently high threshold.
-##' @param init numeric(2) giving the initial values for xi, beta; if NULL,
-##'        determined by a procedure to find initial values
+##' @param init numeric(2) giving the initial values for xi, beta.
+##'        Findings of Hosking and Wallis (1987):
+##'        - MLE requires n ~>= 500 to be efficient
+##'        - MoM reliable for xi > 0.2
+##'        - PWM recommended for xi > 0.
+##'        Note that their '-k' and 'alpha' is our 'xi' and 'beta'.
 ##' @param estimate.cov logical indicating whether the asymptotic covariance
 ##'        matrix of the parameter estimators is to be estimated
 ##'        (inverse of observed Fisher information (negative Hessian
@@ -114,28 +104,52 @@ logLik_GPD <- function(param, x)
 ##'         of the parameter estimators appended if estimate.cov.
 ##' @author Marius Hofert
 ##' @note - Note that for no initial xi is the support of the density IR and thus
-##'         the log-likelihood could be -Inf is (some) x are out of the support.
-##'         This would lead to a failure of optim() at init (log-likelihood needs
-##'         to be finite).
+##'         the log-likelihood could be -Inf if (some) x are out of the support.
+##'         We avoid this here by a) requiring x >= 0 and b) adjusting beta so
+##'         that the log-likelihood is finite at the initial value.
 ##'       - Most of the results generalize to the case where the GPD has another
 ##'         parameter for the location (like mu for the GEV distribution). If this
 ##'         mu would be chosen <= min(x), then one could probably guarantee a
 ##'         finite log-likelihood.
 ##'       - Similar to copula:::fitCopula.ml()
 ##'       - *Expected* information is available, too; see QRM::fit.GPD()
-fit_GPD_MLE <- function(x, init = NULL, estimate.cov = TRUE, control = list(), ...)
+fit_GPD_MLE <- function(x, init = c("PWM", "MOM", "xi0"), estimate.cov = TRUE, control = list(), ...)
 {
     ## Checks
-    stopifnot(is.numeric(x), is.null(init) || is.character(init) || (length(init) == 2),
+    isnum <- is.numeric(init)
+    stopifnot(is.numeric(x), is.character(init) || (isnum && length(init) == 2),
               is.logical(estimate.cov), is.list(control))
     if(any(x < 0))
         stop("The support for the two-parameter GPD distribution is >= 0.")
-    ## Compute initial values
-    if(is.null(init)) {
-        init <- fit_GPD_init(x)
-    } else if(is.character(init)) { # easter egg
-        init <- fit_GPD_init(x, method = match.arg(init, choices = eval(formals(fit_GPD_init)$method)))
+
+    ## Initial values
+    if(!isnum) {
+        switch(match.arg(init),
+        "PWM" = {
+            init <- fit_GPD_PWM(x)
+            ## Force initial values to produce finite log-likelihood
+            ## (all x need to be in [0, -beta/xi) => choose beta = -xi * max(x) * 1.01)
+            if(init[1] < 0) { # xi < 0
+                mx <- max(x)
+                if(mx >= -init[2]/init[1]) init[2] <- -init[1] * mx * 1.01 # beta = -xi * max(x) * 1.01
+            }
+        },
+        "MOM" = {
+            init <- fit_GPD_MOM(x)
+            ## Force initial values to produce finite log-likelihood
+            ## (all x need to be in [0, -beta/xi) => choose beta = -xi * max(x) * 1.01)
+            if(init[1] < 0) { # xi < 0
+                mx <- max(x)
+                if(mx >= -init[2]/init[1]) init[2] <- -init[1] * mx * 1.01 # beta = -xi * max(x) * 1.01
+            }
+        },
+        "xi0" = {
+            ## Idea: Use xi = 0
+            init <- c(0, mean(x)) # mean for xi = 0 is beta => beta
+        },
+        stop("Wrong 'init'"))
     }
+
     ## Fit
     control <- c(as.list(control), fnscale = -1) # maximization (overwrites possible additionally passed 'fnscale')
     fit <- optim(init, fn = function(param) logLik_GPD(param, x = x),
@@ -146,7 +160,7 @@ fit_GPD_MLE <- function(x, init = NULL, estimate.cov = TRUE, control = list(), .
     ##       It is: (0, (-n+sum(x)/beta)/beta) for xi != 0 and
     ##       ( (1/xi^2)*sum(log1p(xi*x/beta))-(xi+1)*sum(xi*x/(beta+xi*x)),
     ##         -n/beta + (1+1/xi) * sum((xi*x/beta)/(beta+xi*x)) )
-    ##
+
     ## Estimate of the asymptotic covariance matrix and standard errors
     ## of the parameter estimators
     ## Note: manually:
@@ -170,6 +184,7 @@ fit_GPD_MLE <- function(x, init = NULL, estimate.cov = TRUE, control = list(), .
         Cov <- matrix(NA_real_, 0, 0)
         SE <- numeric(0)
     }
+
     ## Return (could create an object here)
     c(fit, list(Cov = Cov, SE = SE))
 }

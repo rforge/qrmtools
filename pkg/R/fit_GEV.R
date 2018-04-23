@@ -40,124 +40,99 @@
 ##     quite unclear
 ##   + points out that MLE will often fail with small sample size
 
-##' @title Computing Initial Values for MLE of the GEV
+
+### Quantile based estimator ###################################################
+
+##' @title Quantile Based Estimator
 ##' @param x numeric vector of data. In the block maxima method, these are the
 ##'        block maxima (based on block size n).
-##' @param method character indicating the method to be used:
-##'        - xi0: uses xi = 0 and method-of-moment estimators based on that case
-##'        - PWM: Matching probability-weighted moments;
-##'          see Hosking, Wallis, Wood (1985)
-##'        - quant.match: chooses xi, mu, sigma such that the empirical
-##'          1/4-, 1/2-, 3/4-quantile are matched
-##' @return numeric(3) specifying the initial values for xi, mu, sigma.
+##' @param p numeric(3) specifying the probabilities whose quantiles are
+##'        matched
+##' @param cutoff value after which exp(-x) is truncated to 0
+##' @return numeric(3) with estimates of xi, mu, sigma
 ##' @author Marius Hofert
-##' @note 1) No method except 'xi0' guarantees that 1 + xi (x - mu) / sigma > 0
-##'          and thus that the log-likelihood > -Inf for all data points; if
-##'          log-likelihood == 0, optim() stops with error:
-##'          "Error in optim(init, fn = function(param) logLik_GEV(param, x = x),
-##'          hessian = estimate.cov: function cannot be evaluated at initial
-##'          parameters"
-##'          => below we guarantee to get a finite log-likelihood
-##'             (by doubling sigma) no matter what the input
-##'       2) Other options as default method are 'xi0' with xi = 0 (exact) but
-##'          method = "BFGS", or 'PWM"
-fit_GEV_init <- function(x, method = c("xi0", "PWM", "quant.match"))
+##' @note Determines xi, mu, sigma such that the empirical p-quantiles are matched
+fit_GEV_quantile <- function(x, p = c(0.25, 0.5, 0.75), cutoff = 3)
 {
-    method <- match.arg(method)
-    init <- switch(method,
-    "xi0" = {
-        ## Idea: - Use xi = 0 here => mu and sigma explicit in terms of mean and
-        ##         variance (method-of-moment estimator for mu, sigma).
-        ##         This guarantees that 1 + xi (x - mu) / sigma > 0, so a finite
-        ##         log-likelihood.
-        ##       - As in 'QRM', 'evir', 'fExtremes', 'ismev'
-        ##       - Note that xi = 0 can fail for method = "Nelder-Mead"
-        ##         (seen for the Black Monday example)
-        ##         => .Machine$double.eps works
-        sig.hat <- sqrt(6 * var(x)) / pi # var for xi = 0 is (\sigma\pi)^2 / 6 => \sigma
-        c(.Machine$double.eps, mean(x) - 0.5772157 * sig.hat, sig.hat) # mean for xi is mu + sig * gamma => mu; gamma = -digamma(1) = Euler--Mascheroni constant
-    },
-    "PWM" = {
-        ## b_r = estimator (unbiased according to Landwehr and Wallis (1979)) / a sample version of M_{1,r,0} = E(X F(X)^r)
-        x. <- sort(as.numeric(x)) # Caution! If is.xts(x), then sort won't do anything!
-        n <- length(x.)
-        k <- 1:n
-        b0 <- mean(x)
-        b1 <- mean(x. * (k-1)/(n-1))
-        b2 <- mean(x. * (k-1)*(k-2)/((n-1)*(n-2)))
-        ## Match probability-weighted moments
-        y <- (3*b2-b0) / (2*b1-b0) # evaluation point of h^{-1}
-        y <- max(y, 1) # sanity
-        xi.hat <- if(y <= (2/3) * (2-log(3/4)) * (1.455495 + 1)) { # y <= h approximation at 1.455495
-                       (2-(3/2)*y) / log(3/4) - 1 # invert tangent in -1
-                   } else { # invert (3/2)^xi
-                       log(y) / log(3/2)
-                   }
-        if(xi.hat >= 1) # should not happen (according to Hosking, Wallis, Wood (1985))
-            xi.hat <- 0.95 # set here due to gamma() function call below
-        sig.hat <- if(xi.hat == 0) {
-                        (2 * b1 - b0) / log(2)
-                    } else {
-                        (2 * b1 - b0) * xi.hat / (gamma(1 - xi.hat) * (2^xi.hat - 1))
-                    }
-        mu.hat <- if(xi.hat == 0) {
-                       b0 - sig.hat * 0.5772157 # ... Euler--Mascheroni constant
-                   } else {
-                       b0 - sig.hat / xi.hat * (gamma(1-xi.hat) - 1)
-                   }
-        ## Return
-        c(xi.hat, mu.hat, sig.hat)
-    },
-    "quant.match" = {
-        p <- c(0.25, 0.5, 0.75) # probabilities whose quantiles are matched (could be made an argument)
-        cutoff <- 3 # value after which exp(-x) is truncated to 0 (could be made an argument)
-        q <- quantile(x, probs = p, names = FALSE) # empirical p-quantiles
-        if(length(unique(q)) < 3) {
-            fit_GEV_init(x, method = "xi0")
-        }
-        q.diff <- diff(q)
-        y <- q.diff[1]/q.diff[2] # (q[2] - q[1]) / (q[3] - q[2]) = (H^{-1}(p2) - H^{-1}(p1)) / (H^{-1}(p3) - H^{-1}(p2))
-        l <- log(-log(p)) # decreasing in p
-        a <- rev(diff(rev(l))) # l[1] - l[2]; l[2] - l[3]
-        a. <- a[1]/a[2]
-        ## Initial value for xi
-        xi.hat <- if(y < 1/expm1(cutoff/a.)) {
-                       log1p(1/y)/a[2]
-                   } else if(y <= a.) {
-                       m1 <- a[2]/cutoff * log(a./(expm1(a.*cutoff)))
-                       log(y/a.) / m1
-                   } else if(y <= expm1(a.*cutoff)) {
-                       m2 <- -a[1]/cutoff * log(a.*expm1(cutoff/a.))
-                       log(y/a.) / m2
-                   } else -log1p(y)/a[1]
-        ## Initial value for sigma
-        sig.hat <- if(xi.hat == 0) {
-                        q.diff[1] / (-l[2] + l[1])
-                    } else {
-                        xi.hat * q.diff[1] / ((-log(p[2]))^(-xi.hat) - (-log(p[1]))^(-xi.hat))
-                    }
-        ## Initial value for mu
-        mu.hat <- if(xi.hat == 0) {
-                       q[2] + sig.hat * l[2]
-                   } else {
-                       q[2] - sig.hat/xi.hat * ((-log(p[2]))^(-xi.hat)-1)
-                   }
-        ## Return
-        c(xi.hat, mu.hat, sig.hat)
-    },
-    stop("Wrong 'method'"))
-    ## Force initial values to produce finite log-likelihood
-    ## Formerly:
-    ## if(method != "xi0") { # only for 'xi0', a non-zero density is guaranteed
-    ##     sig.bound <- max(-init[1] * (x - init[2]))
-    ##     if(init[3] <= sig.bound)
-    ##         init[3] <- 1.05 * sig.bound # blow up by 5%
-    ## }
-    while(!is.finite(logLik_GEV(init, x = x)) && is.finite(init[3])) init[3] <- init[3] * 2
-    ## Note: if !is.finite(init[3]), there's nothing we can do...
+    stopifnot(length(p) == 3, 0 < p, p < 1, cutoff > 0)
+    q <- quantile(x, probs = p, names = FALSE) # empirical p-quantiles
+    if(length(unique(q)) < 3)
+        stop("quantile(x, probs = p) does not return unique quantiles.")
+    q.diff <- diff(q)
+    y <- q.diff[1]/q.diff[2] # (q[2] - q[1]) / (q[3] - q[2]) = (H^{-1}(p2) - H^{-1}(p1)) / (H^{-1}(p3) - H^{-1}(p2))
+    l <- log(-log(p)) # decreasing in p
+    a <- rev(diff(rev(l))) # l[1] - l[2]; l[2] - l[3]
+    a. <- a[1]/a[2]
+    ## Initial value for xi
+    xi.hat <- if(y < 1/expm1(cutoff/a.)) {
+                  log1p(1/y)/a[2]
+              } else if(y <= a.) {
+                  m1 <- a[2]/cutoff * log(a./(expm1(a.*cutoff)))
+                  log(y/a.) / m1
+              } else if(y <= expm1(a.*cutoff)) {
+                  m2 <- -a[1]/cutoff * log(a.*expm1(cutoff/a.))
+                  log(y/a.) / m2
+              } else -log1p(y)/a[1]
+    ## Initial value for sigma
+    sig.hat <- if(xi.hat == 0) {
+                   q.diff[1] / (-l[2] + l[1])
+               } else {
+                   xi.hat * q.diff[1] / ((-log(p[2]))^(-xi.hat) - (-log(p[1]))^(-xi.hat))
+               }
+    ## Initial value for mu
+    mu.hat <- if(xi.hat == 0) {
+                  q[2] + sig.hat * l[2]
+              } else {
+                  q[2] - sig.hat/xi.hat * ((-log(p[2]))^(-xi.hat)-1)
+              }
     ## Return
-    init
+    c(xi = xi.hat, mu = mu.hat, sigma = sig.hat)
 }
+
+
+### Probability weighted moments estimator #####################################
+
+##' @title Probability Weighted Moments Estimator
+##' @param x numeric vector of data. In the block maxima method, these are the
+##'        block maxima (based on block size n).
+##' @return numeric(3) with estimates of xi, mu, sigma
+##' @author Marius Hofert
+##' @note See Hosking, Wallis, Wood (1985) and Landwehr and Wallis (1979)
+fit_GEV_PWM <- function(x)
+{
+    ## b_r = estimator (unbiased according to Landwehr and Wallis (1979)) / a sample version of M_{1,r,0} = E(X F(X)^r)
+    x. <- sort(as.numeric(x)) # CAUTION: If is.xts(x), then sort won't do anything!
+    n <- length(x.)
+    k <- 1:n
+    b0 <- mean(x)
+    b1 <- mean(x. * (k-1)/(n-1))
+    b2 <- mean(x. * (k-1)*(k-2)/((n-1)*(n-2)))
+    ## Match probability-weighted moments
+    y <- (3*b2-b0) / (2*b1-b0) # evaluation point of h^{-1}
+    y <- max(y, 1) # sanity
+    xi.hat <- if(y <= (2/3) * (2-log(3/4)) * (1.455495 + 1)) { # y <= h approximation at 1.455495
+                  (2-(3/2)*y) / log(3/4) - 1 # invert tangent in -1
+              } else { # invert (3/2)^xi
+                  log(y) / log(3/2)
+              }
+    if(xi.hat >= 1) # should not happen (according to Hosking, Wallis, Wood (1985))
+        xi.hat <- 0.95 # set here due to gamma() function call below
+    sig.hat <- if(xi.hat == 0) {
+                   (2 * b1 - b0) / log(2)
+               } else {
+                   (2 * b1 - b0) * xi.hat / (gamma(1 - xi.hat) * (2^xi.hat - 1))
+               }
+    mu.hat <- if(xi.hat == 0) {
+                  b0 - sig.hat * 0.5772157 # ... Euler--Mascheroni constant
+              } else {
+                  b0 - sig.hat / xi.hat * (gamma(1-xi.hat) - 1)
+              }
+    ## Return
+    c(xi = xi.hat, mu = mu.hat, sigma = sig.hat)
+}
+
+
+### Maximum likelihood estimator ###############################################
 
 ##' @title Log-likelihood of the GEV
 ##' @param param numeric(3) giving xi, mu, sigma (all real here; if sigma <= 0
@@ -172,8 +147,7 @@ logLik_GEV <- function(param, x)
 ##' @title MLE for GEV Parameters
 ##' @param x numeric vector of data. In the block maxima method, these are the
 ##'        block maxima (based on block size n)
-##' @param init numeric(3) giving the initial values for xi, mu, sigma; if NULL,
-##'        determined by a procedure to find initial values
+##' @param init numeric(3) or string giving the initial values for xi, mu, sigma
 ##' @param estimate.cov logical indicating whether the asymptotic covariance
 ##'        matrix of the parameter estimators is to be estimated
 ##'        (inverse of observed Fisher information (negative Hessian
@@ -185,25 +159,66 @@ logLik_GEV <- function(param, x)
 ##'         (Cramer--Rao bound = inverse of Fisher information = negative Hessian)
 ##'         of the parameter estimators appended if estimate.cov.
 ##' @author Marius Hofert
-##' @note - similar to copula:::fitCopula.ml()
-##'       - careful for xi <= -0.5 (very short, bounded upper tail):
-##'         MLE doesn't have standard asymptotic properties.
-fit_GEV_MLE <- function(x, init = NULL, estimate.cov = TRUE, control = list(), ...)
+##' @note 1) similar to copula:::fitCopula.ml()
+##'       2) careful for xi <= -0.5 (very short, bounded upper tail):
+##'          MLE doesn't have standard asymptotic properties.
+##'       3) No method except 'xi0' guarantees that 1 + xi (x - mu) / sigma > 0
+##'          and thus that the log-likelihood > -Inf for all data points; if
+##'          log-likelihood == 0, optim() stops with error:
+##'          "Error in optim(init, fn = function(param) logLik_GEV(param, x = x),
+##'          hessian = estimate.cov: function cannot be evaluated at initial
+##'          parameters"
+##'          => below we guarantee to get a finite log-likelihood by doubling sigma
+##'       4) Other options as default method are 'xi0' with xi = 0 (exact) but
+##'          method = "BFGS", or 'PWM"
+fit_GEV_MLE <- function(x, init = c("xi0", "PWM", "quantile"),
+                        estimate.cov = TRUE, control = list(), ...)
 {
     ## Checks
-    stopifnot(is.numeric(x), is.null(init) || is.character(init) || (length(init) == 3),
+    isnum <- is.numeric(init)
+    stopifnot(is.numeric(x), is.character(init) || (isnum && length(init) == 3),
               is.logical(estimate.cov), is.list(control))
-    ## Compute initial values
-    if(is.null(init)) {
-        init <- fit_GEV_init(x)
-    } else if(is.character(init)) { # easter egg
-        init <- fit_GEV_init(x, method = match.arg(init, choices = eval(formals(fit_GEV_init)$method)))
+
+    ## Initial values
+    if(!isnum) {
+        switch(match.arg(init),
+        "xi0" = {
+            ## Idea: - Use xi = 0 here => mu and sigma explicit in terms of mean and
+            ##         variance (method-of-moment estimator for mu, sigma).
+            ##         This guarantees that 1 + xi (x - mu) / sigma > 0, so a finite
+            ##         log-likelihood.
+            ##       - As in 'QRM', 'evir', 'fExtremes', 'ismev'
+            ##       - Note that xi = 0 can fail for method = "Nelder-Mead"
+            ##         (seen for the Black Monday example)
+            ##         => .Machine$double.eps works
+            sig.hat <- sqrt(6 * var(x)) / pi # var for xi = 0 is (\sigma\pi)^2 / 6 => \sigma
+            init <- c(.Machine$double.eps, mean(x) - 0.5772157 * sig.hat, sig.hat) # mean for xi is mu + sig * gamma => mu; gamma = -digamma(1) = Euler--Mascheroni constant
+        },
+        "PWM" = {
+            init <- fit_GEV_PWM(x)
+            ## Force initial values to produce finite log-likelihood
+            ## Formerly:
+            ## if(method != "xi0") { # only for 'xi0', a non-zero density is guaranteed
+            ##     sig.bound <- max(-init[1] * (x - init[2]))
+            ##     if(init[3] <= sig.bound)
+            ##         init[3] <- 1.05 * sig.bound # blow up by 5%
+            ## }
+            while(!is.finite(logLik_GEV(init, x = x)) && is.finite(init[3])) init[3] <- init[3] * 2
+            ## Note: if !is.finite(init[3]), there's nothing we can do...
+        },
+        "quantile" = {
+            init <- fit_GEV_quantile(x)
+            while(!is.finite(logLik_GEV(init, x = x)) && is.finite(init[3])) init[3] <- init[3] * 2
+        },
+        stop("Wrong 'init'"))
     }
+
     ## Fit
     control <- c(as.list(control), fnscale = -1) # maximization (overwrites possible additionally passed 'fnscale')
     fit <- optim(init, fn = function(param) logLik_GEV(param, x = x),
                  hessian = estimate.cov, control = control, ...)
     names(fit$par) <- c("xi", "mu", "sigma")
+
     ## Estimate of the asymptotic covariance matrix and standard errors
     ## of the parameter estimators
     ## Note: manually; see QRM::fit.GEV and also copula:::fitCopula.ml():
@@ -227,6 +242,10 @@ fit_GEV_MLE <- function(x, init = NULL, estimate.cov = TRUE, control = list(), .
         Cov <- matrix(NA_real_, 0, 0)
         SE <- numeric(0)
     }
+
     ## Return (could create an object here)
     c(fit, list(Cov = Cov, SE = SE))
 }
+
+
+

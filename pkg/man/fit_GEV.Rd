@@ -1,52 +1,75 @@
 \name{fit_GEV}
+\alias{fit_GEV_quantile}
+\alias{fit_GEV_PWM}
 \alias{logLik_GEV}
 \alias{fit_GEV_MLE}
-\title{Maximum Likelihood Fitting of the Generalized Extreme Value Distribution}
+\title{Parameter Estimators of the Generalized Extreme Value Distribution}
 \description{
-  Log-likelihood and maximum-likelihood fitting for the generalized
-  extreme value distribution (GEV).
+  Quantile matching estimator, probability weighted moments estimator,
+  log-likelihood and maximum-likelihood estimator for the parameters of
+  the generalized extreme value distribution (GEV).
 }
 \usage{
+fit_GEV_quantile(x, p = c(0.25, 0.5, 0.75), cutoff = 3)
+fit_GEV_PWM(x)
+
 logLik_GEV(param, x)
-fit_GEV_MLE(x, init = NULL, estimate.cov = TRUE, control = list(), ...)
+fit_GEV_MLE(x, init = c("xi0", "PWM", "quantile"),
+            estimate.cov = TRUE, control = list(), ...)
 }
 \arguments{
-  \item{param}{vector containing the value of the shape \eqn{\xi}{xi} (a
-    real), location \eqn{\mu}{mu} (a real) and scale \eqn{\sigma}{sigma}
-    (positive real) parameters of the GEV distribution in this order.}
   \item{x}{numeric vector of data. In the block maxima method, these are the
     block maxima.}
-  \item{init}{vector of length three specifying the initial values
-    for \eqn{\xi}{xi}, \eqn{\mu}{mu}, \eqn{\sigma}{sigma};
-    if \code{NULL}, determined internally.}
+  \item{p}{\code{numeric(3)} specifying the probabilities whose quantiles are
+    matched.}
+  \item{cutoff}{positive \eqn{z} after which \eqn{\exp(-z)}{exp(-z)}
+    is truncated to 0.}
+  \item{param}{\code{numeric(3)} containing the value of the shape
+    \eqn{\xi}{xi} (a real), location \eqn{\mu}{mu} (a real) and scale
+    \eqn{\sigma}{sigma} (positive real) parameters of the GEV
+    distribution in this order.}
+  \item{init}{\code{character} string specifying the method for
+    computing initial values. Can also be \code{numeric(3)}
+    for directly providing \eqn{\xi}{xi}, \eqn{\mu}{mu}, \eqn{\sigma}{sigma}.}
   \item{estimate.cov}{\code{\link{logical}} indicating whether the
     asymptotic covariance matrix of the parameter estimators is to be
     estimated (inverse of observed Fisher information (negative Hessian
-    of log-likelihood evaluated at MLE)).}
+    of log-likelihood evaluated at MLE)) and standard errors for the
+    estimators of \eqn{\xi}{xi}, \eqn{\mu}{mu}, \eqn{\sigma}{sigma}
+    returned, too.}
   \item{control}{\code{\link{list}}; passed to the underlying
     \code{\link{optim}()}.}
   \item{\dots}{additional arguments passed to the underlying
     \code{\link{optim}()}.}
 }
 \value{
+  \code{fit_GEV_quantile()} and \code{fit_GEV_PWM()} return a
+  \code{numeric(3)} giving the parameter estimates for the GEV
+  distribution.
+
   \code{logLik_GEV()} computes the log-likelihood of the GEV
   distribution (\code{-Inf} if not admissible).
 
   \code{fit_GEV_MLE()} returns the return object of \code{\link{optim}()}
-  and, appended, the estimated asymptotic covariance matrix of the
-  parameter estimators, if \code{estimate.cov}.
+  and, appended, the estimated asymptotic covariance matrix and
+  standard errors of the parameter estimators, if \code{estimate.cov}.
 }
 \details{
-  Initial values are computed from \eqn{\xi = 0}{xi = 0} (but actually
-  with a small positive value as Nelder--Mead could fail otherwise).
-  Furthermore, \eqn{\sigma}{sigma} (obtained from the case
-  \eqn{\xi = 0}{xi = 0} is doubled in order to guarantee a finite
-  log-likelihood for the first evaluation (at the initial values).
+  \code{fit_GEV_quantile()} matches the empirical \code{p}-quantiles.
 
-  After several experiments (see the source code), one can safely
-  say that finding initial values for fitting GEVs via MLE is
-  non-trivial; see also the block maxima method script about the
-  Black Monday event on \url{qrmtutorial.org}.
+  \code{fit_GEV_PWM()} computes the probability weighted moments (PWM)
+  estimator of Hosking et al. (1985); see also Landwehr and Wallis (1979).
+
+  \code{fit_GEV_MLE()} uses, as default, the case \eqn{\xi = 0}{xi = 0}
+  for computing initial values; this is actually a small positive value
+  since Nelder--Mead could fail otherwise. For the other available
+  methods for computing initial values, \eqn{\sigma}{sigma} (obtained
+  from the case \eqn{\xi = 0}{xi = 0}) is doubled in order to guarantee
+  a finite log-likelihood at the initial values. After several
+  experiments (see the source code), one can safely say that finding
+  initial values for fitting GEVs via MLE is non-trivial; see also the
+  block maxima method script about the Black Monday event on
+  \url{qrmtutorial.org}.
 
   Caution: See Coles (2001, p. 55) for how to interpret \eqn{\xi\le
     -0.5}{xi <= -0.5}; in particular, the standard asymptotic properties
@@ -81,13 +104,19 @@ n <- 1000
 set.seed(271)
 X <- rGEV(n, xi = xi, mu = mu, sigma = sig)
 
-## Fit
-(fit <- fit_GEV_MLE(X))
-(est <- fit$par) # estimates of xi, mu, sigma
+## Fitting via matching quantiles
+(fit.q <- fit_GEV_quantile(X))
+
+## Fitting via PWMs
+(fit.PWM <- fit_GEV_PWM(X))
+
+## Fitting via MLE
+(fit.MLE <- fit_GEV_MLE(X))
+(est <- fit.MLE$par) # estimates of xi, mu, sigma
 stopifnot(all.equal(est[["xi"]],    xi,  tol = 0.07),
           all.equal(est[["mu"]],    mu,  tol = 0.12),
           all.equal(est[["sigma"]], sig, tol = 0.06))
-fit$SE # estimated asymp. variances of MLEs = std. errors of MLEs
+fit.MLE$SE # estimated asymp. variances of MLEs = std. errors of MLEs
 
 ## Plot the log-likelihood in xi for fixed mu and sigma (fixed as generated)
 xi. <- seq(-0.1, 0.8, length.out = 65)
