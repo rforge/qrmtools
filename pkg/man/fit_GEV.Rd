@@ -84,10 +84,10 @@ X <- rGEV(n, xi = xi, mu = mu, sigma = sig)
 ## Fit
 (fit <- fit_GEV_MLE(X))
 (est <- fit$par) # estimates of xi, mu, sigma
-stopifnot(all.equal(est[1], xi, tol = 0.07),
-          all.equal(est[2], mu, tol = 0.12),
-          all.equal(est[3], sig, tol = 0.06))
-sqrt(diag(fit$Cov)) # estimated asymp. variances of MLEs = std. errors of MLEs
+stopifnot(all.equal(est[["xi"]],    xi,  tol = 0.07),
+          all.equal(est[["mu"]],    mu,  tol = 0.12),
+          all.equal(est[["sigma"]], sig, tol = 0.06))
+fit$SE # estimated asymp. variances of MLEs = std. errors of MLEs
 
 ## Plot the log-likelihood in xi for fixed mu and sigma (fixed as generated)
 xi. <- seq(-0.1, 0.8, length.out = 65)
@@ -105,8 +105,8 @@ plot(xi., logLik, type = "l", xlab = expression(xi),
 pLL <- sapply(xi., function(xi..) {
     sig.init <- sqrt(6 * var(X)) / pi
     mu.init <- mean(X) - sig.init * 0.5772157
-    while(!is.finite(logLik_GEV(c(xi.., mu.init, sig.init), x = X)))
-        sig.init <- sig.init * 2
+    while(!is.finite(logLik_GEV(c(xi.., mu.init, sig.init), x = X)) &&
+          is.finite(sig.init)) sig.init <- sig.init * 2
     optim(c(mu.init, sig.init), fn = function(nuis)
                 logLik_GEV(c(xi.., nuis), x = X),
     		        control = list(fnscale = -1))$value

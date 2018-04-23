@@ -57,20 +57,20 @@ fit_GPD_init <- function(x, method = c("PWM", "MoM", "xi0"))
     init <- switch(method,
     "PWM" = {
         ## a_s = estimator (unbiased according to Landwehr, Matalas, Wallis (1979)) / a sample version of M_{1,0,s} = E(X (1-F(X))^s)
-        x. <- sort(x)
+        x. <- sort(as.numeric(x)) # Caution! If is.xts(x), then sort won't do anything!
         n <- length(x.)
         k <- 1:n
         a0 <- mean(x)
         a1 <- mean(x. * (n-k)/(n-1))
-        a2 <- mean(x. * (n-k)*(n-k-1)/((n-1)*(n-2)))
-        ## Estimators of xi and beta based on a0, a1, a2
-        c(2 - a0/(a0 - 2 * a1) , (2 * a0 * a1) / (a0 - 2 * a1)) # xi, beta
+        ## Alternatively (see QRM and Hosking and Wallis (1987)): a1 <- mean(x. * (1-p)) where p <- (k-0.35)/n
+        ## Estimators of xi and beta based on a0 and a1
+        c(2 - a0/(a0 - 2 * a1), max((2 * a0 * a1) / (a0 - 2 * a1), .Machine$double.eps)) # xi, beta (> 0)
     },
     "MoM" = {
         mu.hat <- mean(x)
         sig2.hat <- var(x)
         xi.hat <- (1-mu.hat^2/sig2.hat)/2
-        c(xi.hat, mu.hat*(1-xi.hat)) # xi, beta
+        c(xi.hat, max(mu.hat*(1-xi.hat), .Machine$double.eps)) # xi, beta (> 0)
     },
     "xi0" = {
         ## Idea: use xi = 0
@@ -140,24 +140,36 @@ fit_GPD_MLE <- function(x, init = NULL, estimate.cov = TRUE, control = list(), .
     control <- c(as.list(control), fnscale = -1) # maximization (overwrites possible additionally passed 'fnscale')
     fit <- optim(init, fn = function(param) logLik_GPD(param, x = x),
                  hessian = estimate.cov, control = control, ...)
+    names(fit$par) <- c("xi", "beta")
     ## Note: Could incorporate the gradient of the log-likelihood (w.r.t. xi, beta)
     ##       for the methods "BFGS", "CG" and "L-BFGS-B".
     ##       It is: (0, (-n+sum(x)/beta)/beta) for xi != 0 and
     ##       ( (1/xi^2)*sum(log1p(xi*x/beta))-(xi+1)*sum(xi*x/(beta+xi*x)),
     ##         -n/beta + (1+1/xi) * sum((xi*x/beta)/(beta+xi*x)) )
     ##
-    ## Estimate of the asymptotic covariance matrix of the parameter estimators
+    ## Estimate of the asymptotic covariance matrix and standard errors
+    ## of the parameter estimators
     ## Note: manually:
     ##       fisher <- -hessian(logLik_GPD(fit$par, x = x)) # observed Fisher information (estimate of Fisher information)
     ##       Cov <- solve(fisher)
     ##       std.err <- sqrt(diag(Cov)) # see also ?fit_GPD_MLE
-    Cov <- if(estimate.cov) {
-               negHessianInv <- catch(solve(-fit$hessian))
-               if(is(negHessianInv, "error")) {
-                   warning("Hessian matrix not invertible: ", negHessianInv$error)
-                   matrix(NA_real_, 0, 0)
-               } else negHessianInv$value # result on warning or on 'worked'
-           } else matrix(NA_real_, 0, 0)
+    if(estimate.cov) {
+        negHessianInv <- catch(solve(-fit$hessian))
+        if(is(negHessianInv, "error")) {
+            warning("Hessian matrix not invertible: ", negHessianInv$error)
+            Cov <- matrix(NA_real_, 0, 0)
+            SE <- numeric(0)
+        } else {
+            Cov <- negHessianInv$value # result on warning or on 'worked'
+            rownames(Cov) <- c("xi", "beta")
+            colnames(Cov) <- c("xi", "beta")
+            SE <- sqrt(diag(Cov))
+            names(SE) <- c("xi", "beta")
+        }
+    } else {
+        Cov <- matrix(NA_real_, 0, 0)
+        SE <- numeric(0)
+    }
     ## Return (could create an object here)
-    if(estimate.cov) c(fit, list(Cov = Cov)) else fit
+    c(fit, list(Cov = Cov, SE = SE))
 }

@@ -79,7 +79,7 @@ fit_GEV_init <- function(x, method = c("xi0", "PWM", "quant.match"))
     },
     "PWM" = {
         ## b_r = estimator (unbiased according to Landwehr and Wallis (1979)) / a sample version of M_{1,r,0} = E(X F(X)^r)
-        x. <- sort(x)
+        x. <- sort(as.numeric(x)) # Caution! If is.xts(x), then sort won't do anything!
         n <- length(x.)
         k <- 1:n
         b0 <- mean(x)
@@ -153,7 +153,8 @@ fit_GEV_init <- function(x, method = c("xi0", "PWM", "quant.match"))
     ##     if(init[3] <= sig.bound)
     ##         init[3] <- 1.05 * sig.bound # blow up by 5%
     ## }
-    while(!is.finite(logLik_GEV(init, x = x))) init[2] <- init[2] * 2
+    while(!is.finite(logLik_GEV(init, x = x)) && is.finite(init[3])) init[3] <- init[3] * 2
+    ## Note: if !is.finite(init[3]), there's nothing we can do...
     ## Return
     init
 }
@@ -202,18 +203,30 @@ fit_GEV_MLE <- function(x, init = NULL, estimate.cov = TRUE, control = list(), .
     control <- c(as.list(control), fnscale = -1) # maximization (overwrites possible additionally passed 'fnscale')
     fit <- optim(init, fn = function(param) logLik_GEV(param, x = x),
                  hessian = estimate.cov, control = control, ...)
-    ## Estimate of the asymptotic covariance matrix of the parameter estimators
+    names(fit$par) <- c("xi", "mu", "sigma")
+    ## Estimate of the asymptotic covariance matrix and standard errors
+    ## of the parameter estimators
     ## Note: manually; see QRM::fit.GEV and also copula:::fitCopula.ml():
     ##       fisher <- -hessian(logLik_GEV(fit$par, x = x)) # observed Fisher information (estimate of Fisher information)
     ##       Cov <- solve(fisher)
     ##       std.err <- sqrt(diag(Cov)) # see also ?fit_GEV_MLE
-    Cov <- if(estimate.cov) {
-               negHessianInv <- catch(solve(-fit$hessian))
-               if(is(negHessianInv, "error")) {
-                   warning("Hessian matrix not invertible: ", negHessianInv$error)
-                   matrix(NA_real_, 0, 0)
-               } else negHessianInv$value # result on warning or on 'worked'
-           } else matrix(NA_real_, 0, 0)
+    if(estimate.cov) {
+        negHessianInv <- catch(solve(-fit$hessian))
+        if(is(negHessianInv, "error")) {
+            warning("Hessian matrix not invertible: ", negHessianInv$error)
+            Cov <- matrix(NA_real_, 0, 0)
+            SE <- numeric(0)
+        } else {
+            Cov <- negHessianInv$value # result on warning or on 'worked'
+            rownames(Cov) <- c("xi", "mu", "sigma")
+            colnames(Cov) <- c("xi", "mu", "sigma")
+            SE <- sqrt(diag(Cov))
+            names(SE) <- c("xi", "mu", "sigma")
+        }
+    } else {
+        Cov <- matrix(NA_real_, 0, 0)
+        SE <- numeric(0)
+    }
     ## Return (could create an object here)
-    if(estimate.cov) c(fit, list(Cov = Cov)) else fit
+    c(fit, list(Cov = Cov, SE = SE))
 }
