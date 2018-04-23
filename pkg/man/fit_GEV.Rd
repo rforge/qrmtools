@@ -1,14 +1,14 @@
 \name{fit_GEV}
 \alias{logLik_GEV}
-\alias{fit_GEV}
-\title{Maximum Likelihood Fitting of Generalized Extreme Value Distributions}
+\alias{fit_GEV_MLE}
+\title{Maximum Likelihood Fitting of the Generalized Extreme Value Distribution}
 \description{
   Log-likelihood and maximum-likelihood fitting for the generalized
   extreme value distribution (GEV).
 }
 \usage{
 logLik_GEV(param, x)
-fit_GEV(x, init = NULL, estimate.cov = TRUE, control = list(), ...)
+fit_GEV_MLE(x, init = NULL, estimate.cov = TRUE, control = list(), ...)
 }
 \arguments{
   \item{param}{vector containing the value of the shape \eqn{\xi}{xi} (a
@@ -30,9 +30,9 @@ fit_GEV(x, init = NULL, estimate.cov = TRUE, control = list(), ...)
 }
 \value{
   \code{logLik_GEV()} computes the log-likelihood of the GEV
-  (\code{-Inf} if not admissible).
+  distribution (\code{-Inf} if not admissible).
 
-  \code{fit_GEV()} returns the return object of \code{\link{optim}()}
+  \code{fit_GEV_MLE()} returns the return object of \code{\link{optim}()}
   and, appended, the estimated asymptotic covariance matrix of the
   parameter estimators, if \code{estimate.cov}.
 }
@@ -54,9 +54,19 @@ fit_GEV(x, init = NULL, estimate.cov = TRUE, control = list(), ...)
 }
 \author{Marius Hofert}
 \references{
-   McNeil, A. J., Frey, R., and Embrechts, P. (2015).
+   McNeil, A. J., Frey, R. and Embrechts, P. (2015).
    \emph{Quantitative Risk Management: Concepts, Techniques, Tools}.
    Princeton University Press.
+
+   Hosking, J. R. M., Wallis, J. R. and Wood, E. F. (1985).
+   Estimation of the Generalized Extreme-Value Distribution by the
+   Method of Probability-Weighted Moments. \emph{Technometrics}
+   \bold{27}(3), 251--261.
+
+   Landwehr, J. M. and Wallis, J. R. (1979).
+   Probability Weighted Moments Compared With Some Traditional
+   Techniques in Estimating Gumbel Parameters and Quantiles.
+   \emph{Water Resourches Research} \bold{15}(5), 1055--1064.
 
    Coles, S. (2001).
    \emph{An Introduction to Statistical Modeling of Extreme Values}.
@@ -72,7 +82,7 @@ set.seed(271)
 X <- rGEV(n, xi = xi, mu = mu, sigma = sig)
 
 ## Fit
-(fit <- fit_GEV(X))
+(fit <- fit_GEV_MLE(X))
 (est <- fit$par) # estimates of xi, mu, sigma
 stopifnot(all.equal(est[1], xi, tol = 0.07),
           all.equal(est[2], mu, tol = 0.12),
@@ -83,12 +93,12 @@ sqrt(diag(fit$Cov)) # estimated asymp. variances of MLEs = std. errors of MLEs
 xi. <- seq(-0.1, 0.8, length.out = 65)
 logLik <- sapply(xi., function(xi..) logLik_GEV(c(xi.., mu, sig), x = X))
 plot(xi., logLik, type = "l", xlab = expression(xi),
-     ylab = expression("Log-likelihood for fixed"~mu~"and"~sigma))
+     ylab = expression("GEV distribution log-likelihood for fixed"~mu~"and"~sigma))
 ## => Numerically quite challenging (for this seed!)
 
 ## Plot the profile likelihood for these xi's
 ## Note: As initial values for the nuisance parameters mu, sigma, we
-##       use their values in the case xi = 0 (for all fixed xi = xi. as above
+##       use their values in the case xi = 0 (for all fixed xi = xi.,
 ##       in particular those xi != 0). Furthermore, for the given data X
 ##       and xi = xi., we make sure the initial value for sigma is so large
 ##       that the density is not 0 and thus the log-likelihood is finite.
@@ -102,6 +112,6 @@ pLL <- sapply(xi., function(xi..) {
     		        control = list(fnscale = -1))$value
 })
 plot(xi., pLL, type = "l", xlab = expression(xi),
-     ylab = "Profile log-likelihood")
+     ylab = "GEV distribution profile log-likelihood")
 }
 \keyword{distribution}

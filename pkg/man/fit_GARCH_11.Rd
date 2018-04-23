@@ -66,7 +66,7 @@ uspec <- ugarchspec(variance.model = list(model = "sGARCH",
                                       omega = 0.1, # alpha_0
                                       alpha1 = 0.2, # alpha_1
                                       beta1 = 0.3)) # beta_1
-X <- ugarchpath(uspec, n.sim = 5e4, rseed = 271) # sample (set.seed() fails!)
+X <- ugarchpath(uspec, n.sim = 1e4, rseed = 271) # sample (set.seed() fails!)
 X.t <- as.numeric(X@path$seriesSim) # actual path (X_t)
 
 ## Fitting via ugarchfit()
@@ -77,19 +77,19 @@ uspec. <- ugarchspec(variance.model = list(model = "sGARCH",
 fit <- ugarchfit(uspec., data = X.t)
 coef(fit) # fitted mu, alpha_0, alpha_1, beta_1
 Z <- fit@fit$z # standardized residuals
-stopifnot(all.equal(mean(Z), 0, tol = 1e-3),
+stopifnot(all.equal(mean(Z), 0, tol = 1e-2),
           all.equal(var(Z),  1, tol = 1e-3))
 
 ## Fitting via fit_GARCH_11()
 fit. <- fit_GARCH_11(X.t)
 fit.$coef # fitted alpha_0, alpha_1, beta_1
 Z. <- fit.$Z.t # standardized residuals
-stopifnot(all.equal(mean(Z.), 0, tol = 1e-3),
+stopifnot(all.equal(mean(Z.), 0, tol = 5e-3),
           all.equal(var(Z.),  1, tol = 1e-3))
 
 ## Compare
 stopifnot(all.equal(fit.$coef, coef(fit)[c("omega", "alpha1", "beta1")],
-                    tol = 1e-3, check.attributes = FALSE)) # fitted coefficients
+                    tol = 5e-3, check.attributes = FALSE)) # fitted coefficients
 summary(Z. - Z) # standardized residuals
 
 
@@ -105,7 +105,7 @@ uspec <- ugarchspec(variance.model = list(model = "sGARCH",
                                       alpha1 = 0.2, # alpha_1
                                       beta1 = 0.3, # beta_1
                                       shape = 4)) # nu
-X <- ugarchpath(uspec, n.sim = 5e4, rseed = 271) # sample (set.seed() fails!)
+X <- ugarchpath(uspec, n.sim = 1e4, rseed = 271) # sample (set.seed() fails!)
 X.t <- as.numeric(X@path$seriesSim) # actual path (X_t)
 
 ## Fitting via ugarchfit()
@@ -123,8 +123,8 @@ stopifnot(all.equal(mean(Z), 0, tol = 1e-2),
 fit. <- fit_GARCH_11(X.t, distr = "st")
 c(fit.$coef, fit.$df) # fitted alpha_0, alpha_1, beta_1, nu
 Z. <- fit.$Z.t # standardized residuals
-stopifnot(all.equal(mean(Z.), 0, tol = 1e-2),
-          all.equal(var(Z.),  1, tol = 1e-2))
+stopifnot(all.equal(mean(Z.), 0, tol = 2e-2),
+          all.equal(var(Z.),  1, tol = 2e-2))
 
 ## Compare
 fit.coef <- coef(fit)[c("omega", "alpha1", "beta1", "shape")]

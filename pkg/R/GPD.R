@@ -9,21 +9,18 @@
 ##' @author Marius Hofert
 dGPD <- function(x, xi, beta, log = FALSE)
 {
-    stopifnot(beta > 0)
-    x <- if(xi >= 0) pmax(x, 0) else pmin(pmax(x, 0), -beta/xi) # correctly extend
+    l <- length(x)
+    if(beta <= 0)
+        return(rep(if(log) -Inf else 0, l)) # for logLik_GPD()
     if(xi == 0) { # xi == 0
-        if(log) {
-            -x/beta-log(beta)
-        } else {
-            exp(-x/beta)/beta
-        }
+        res <- -x/beta-log(beta)
     } else { # xi != 0
-        if(log) {
-            -(1/xi+1)*log1p(xi*x/beta)-log(beta)
-        } else {
-            (1+xi*x/beta)^(-(1/xi+1))/beta
-        }
+        ## Note: If xi < 0, the support is [0, -beta/xi]
+        res <- rep(-Inf, l) # correctly extend log-density
+        ii <- if(xi > 0) 0 <= x else 0 <= x & x < -beta/xi # those indices for which density is positive
+        res[ii] <- -(1/xi + 1) * log1p(xi * x[ii] / beta) - log(beta)
     }
+    if(log) res else exp(res)
 }
 
 ##' @title Distribution function of the GPD(xi, beta) distribution (vectorized in q)

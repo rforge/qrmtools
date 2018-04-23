@@ -44,27 +44,28 @@
 ##' @param x numeric vector of data. In the block maxima method, these are the
 ##'        block maxima (based on block size n).
 ##' @param method character indicating the method to be used:
-##'        - zero.xi: uses xi = 0 and method-of-moment estimators based on that case
-##'        - quantile.matching: chooses xi, mu, sigma such that the empirical
-##'          1/4-, 1/2-, 3/4-quantile are matched
-##'        - prob.weighted.moments: Matching probability-weighted moments;
+##'        - xi0: uses xi = 0 and method-of-moment estimators based on that case
+##'        - PWM: Matching probability-weighted moments;
 ##'          see Hosking, Wallis, Wood (1985)
+##'        - quant.match: chooses xi, mu, sigma such that the empirical
+##'          1/4-, 1/2-, 3/4-quantile are matched
 ##' @return numeric(3) specifying the initial values for xi, mu, sigma.
 ##' @author Marius Hofert
-##' @note 1) All methods except 'zero.xi' can lead to 1 + xi (x - mu) / sigma <= 0
-##'          for some data x and thus log-likelihood = -Inf, so optim() stops with error:
+##' @note 1) No method except 'xi0' guarantees that 1 + xi (x - mu) / sigma > 0
+##'          and thus that the log-likelihood > -Inf for all data points; if
+##'          log-likelihood == 0, optim() stops with error:
 ##'          "Error in optim(init, fn = function(param) logLik_GEV(param, x = x),
 ##'          hessian = estimate.cov: function cannot be evaluated at initial
 ##'          parameters"
 ##'          => below we guarantee to get a finite log-likelihood
 ##'             (by doubling sigma) no matter what the input
-##'       2) Other options as default method are 'zero.xi' with xi = 0 (exact) but
-##'          method = "BFGS", or 'prob.weighted.moments"
-fit_GEV_init <- function(x, method = c("zero.xi", "prob.weighted.moments", "quantile.matching"))
+##'       2) Other options as default method are 'xi0' with xi = 0 (exact) but
+##'          method = "BFGS", or 'PWM"
+fit_GEV_init <- function(x, method = c("xi0", "PWM", "quant.match"))
 {
     method <- match.arg(method)
     init <- switch(method,
-    "zero.xi" = {
+    "xi0" = {
         ## Idea: - Use xi = 0 here => mu and sigma explicit in terms of mean and
         ##         variance (method-of-moment estimator for mu, sigma).
         ##         This guarantees that 1 + xi (x - mu) / sigma > 0, so a finite
@@ -73,46 +74,46 @@ fit_GEV_init <- function(x, method = c("zero.xi", "prob.weighted.moments", "quan
         ##       - Note that xi = 0 can fail for method = "Nelder-Mead"
         ##         (seen for the Black Monday example)
         ##         => .Machine$double.eps works
-        sig.init <- sqrt(6 * var(x)) / pi # var for xi = 0 is (\sigma\pi)^2 / 6 => \sigma
-        c(.Machine$double.eps, mean(x) - 0.5772157 * sig.init, sig.init) # mean for xi is mu + sig * gamma => mu; gamma = -digamma(1) = Euler--Mascheroni constant
+        sig.hat <- sqrt(6 * var(x)) / pi # var for xi = 0 is (\sigma\pi)^2 / 6 => \sigma
+        c(.Machine$double.eps, mean(x) - 0.5772157 * sig.hat, sig.hat) # mean for xi is mu + sig * gamma => mu; gamma = -digamma(1) = Euler--Mascheroni constant
     },
-    "prob.weighted.moments" = {
-        ## b_r = estimator / sample version of M_{1,r,0}
+    "PWM" = {
+        ## b_r = estimator (unbiased according to Landwehr and Wallis (1979)) / a sample version of M_{1,r,0} = E(X F(X)^r)
         x. <- sort(x)
         n <- length(x.)
-        i <- 1:n
+        k <- 1:n
         b0 <- mean(x)
-        b1 <- mean((i-1)/(n-1) * x.)
-        b2 <- mean((i-1)*(i-2)/((n-1)*(n-2)) * x.)
+        b1 <- mean(x. * (k-1)/(n-1))
+        b2 <- mean(x. * (k-1)*(k-2)/((n-1)*(n-2)))
         ## Match probability-weighted moments
         y <- (3*b2-b0) / (2*b1-b0) # evaluation point of h^{-1}
         y <- max(y, 1) # sanity
-        xi.init <- if(y <= (2/3) * (2-log(3/4)) * (1.455495 + 1)) { # y <= h approximation at 1.455495
+        xi.hat <- if(y <= (2/3) * (2-log(3/4)) * (1.455495 + 1)) { # y <= h approximation at 1.455495
                        (2-(3/2)*y) / log(3/4) - 1 # invert tangent in -1
                    } else { # invert (3/2)^xi
                        log(y) / log(3/2)
                    }
-        if(xi.init >= 1) # should not happen (according to Hosking, Wallis, Wood (1985))
-            xi.init <- 0.95 # set here due to gamma() function call below
-        sig.init <- if(xi.init == 0) {
+        if(xi.hat >= 1) # should not happen (according to Hosking, Wallis, Wood (1985))
+            xi.hat <- 0.95 # set here due to gamma() function call below
+        sig.hat <- if(xi.hat == 0) {
                         (2 * b1 - b0) / log(2)
                     } else {
-                        (2 * b1 - b0) * xi.init / (gamma(1 - xi.init) * (2^xi.init - 1))
+                        (2 * b1 - b0) * xi.hat / (gamma(1 - xi.hat) * (2^xi.hat - 1))
                     }
-        mu.init <- if(xi.init == 0) {
-                       b0 - sig.init * 0.5772157 # ... Euler--Mascheroni constant
+        mu.hat <- if(xi.hat == 0) {
+                       b0 - sig.hat * 0.5772157 # ... Euler--Mascheroni constant
                    } else {
-                       b0 - sig.init / xi.init * (gamma(1-xi.init) - 1)
+                       b0 - sig.hat / xi.hat * (gamma(1-xi.hat) - 1)
                    }
         ## Return
-        c(xi.init, mu.init, sig.init)
+        c(xi.hat, mu.hat, sig.hat)
     },
-    "quantile.matching" = {
+    "quant.match" = {
         p <- c(0.25, 0.5, 0.75) # probabilities whose quantiles are matched (could be made an argument)
         cutoff <- 3 # value after which exp(-x) is truncated to 0 (could be made an argument)
         q <- quantile(x, probs = p, names = FALSE) # empirical p-quantiles
         if(length(unique(q)) < 3) {
-            fit_GEV_init(x, method = "zero.xi")
+            fit_GEV_init(x, method = "xi0")
         }
         q.diff <- diff(q)
         y <- q.diff[1]/q.diff[2] # (q[2] - q[1]) / (q[3] - q[2]) = (H^{-1}(p2) - H^{-1}(p1)) / (H^{-1}(p3) - H^{-1}(p2))
@@ -120,7 +121,7 @@ fit_GEV_init <- function(x, method = c("zero.xi", "prob.weighted.moments", "quan
         a <- rev(diff(rev(l))) # l[1] - l[2]; l[2] - l[3]
         a. <- a[1]/a[2]
         ## Initial value for xi
-        xi.init <- if(y < 1/expm1(cutoff/a.)) {
+        xi.hat <- if(y < 1/expm1(cutoff/a.)) {
                        log1p(1/y)/a[2]
                    } else if(y <= a.) {
                        m1 <- a[2]/cutoff * log(a./(expm1(a.*cutoff)))
@@ -130,24 +131,24 @@ fit_GEV_init <- function(x, method = c("zero.xi", "prob.weighted.moments", "quan
                        log(y/a.) / m2
                    } else -log1p(y)/a[1]
         ## Initial value for sigma
-        sig.init <- if(xi.init == 0) {
+        sig.hat <- if(xi.hat == 0) {
                         q.diff[1] / (-l[2] + l[1])
                     } else {
-                        xi.init * q.diff[1] / ((-log(p[2]))^(-xi.init) - (-log(p[1]))^(-xi.init))
+                        xi.hat * q.diff[1] / ((-log(p[2]))^(-xi.hat) - (-log(p[1]))^(-xi.hat))
                     }
         ## Initial value for mu
-        mu.init <- if(xi.init == 0) {
-                       q[2] + sig.init * l[2]
+        mu.hat <- if(xi.hat == 0) {
+                       q[2] + sig.hat * l[2]
                    } else {
-                       q[2] - sig.init/xi.init * ((-log(p[2]))^(-xi.init)-1)
+                       q[2] - sig.hat/xi.hat * ((-log(p[2]))^(-xi.hat)-1)
                    }
         ## Return
-        c(xi.init, mu.init, sig.init)
+        c(xi.hat, mu.hat, sig.hat)
     },
     stop("Wrong 'method'"))
     ## Force initial values to produce finite log-likelihood
     ## Formerly:
-    ## if(method != "zero.xi") { # only for 'zero.xi', a non-zero density is guaranteed
+    ## if(method != "xi0") { # only for 'xi0', a non-zero density is guaranteed
     ##     sig.bound <- max(-init[1] * (x - init[2]))
     ##     if(init[3] <= sig.bound)
     ##         init[3] <- 1.05 * sig.bound # blow up by 5%
@@ -186,7 +187,7 @@ logLik_GEV <- function(param, x)
 ##' @note - similar to copula:::fitCopula.ml()
 ##'       - careful for xi <= -0.5 (very short, bounded upper tail):
 ##'         MLE doesn't have standard asymptotic properties.
-fit_GEV <- function(x, init = NULL, estimate.cov = TRUE, control = list(), ...)
+fit_GEV_MLE <- function(x, init = NULL, estimate.cov = TRUE, control = list(), ...)
 {
     ## Checks
     stopifnot(is.numeric(x), is.null(init) || is.character(init) || (length(init) == 3),
@@ -205,7 +206,7 @@ fit_GEV <- function(x, init = NULL, estimate.cov = TRUE, control = list(), ...)
     ## Note: manually; see QRM::fit.GEV and also copula:::fitCopula.ml():
     ##       fisher <- -hessian(logLik_GEV(fit$par, x = x)) # observed Fisher information (estimate of Fisher information)
     ##       Cov <- solve(fisher)
-    ##       std.err <- sqrt(diag(Cov)) # see also ?fit_GEV
+    ##       std.err <- sqrt(diag(Cov)) # see also ?fit_GEV_MLE
     Cov <- if(estimate.cov) {
                negHessianInv <- catch(solve(-fit$hessian))
                if(is(negHessianInv, "error")) {

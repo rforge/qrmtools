@@ -419,23 +419,23 @@ ABRA(alpha, qF, N.exp = seq(8, 19, by = 1), absreltol = c(0, 0.01),
 \author{Marius Hofert}
 \references{
   Embrechts, P., Puccetti, G., \enc{Rüschendorf}{Rueschendorf}, L.,
-  Wang, R., Beleraj, A. (2014).  An Academic Response to Basel
+  Wang, R. and Beleraj, A. (2014).  An Academic Response to Basel
   3.5. \emph{Risks} \bold{2}(1), 25--48.
 
-  Embrechts, P., Puccetti, G., \enc{Rüschendorf}{Rueschendorf}, L. (2013).
+  Embrechts, P., Puccetti, G. and \enc{Rüschendorf}{Rueschendorf}, L. (2013).
   Model uncertainty and VaR aggregation. \emph{Journal of Banking \&
     Finance} \bold{37}, 2750--2764.
 
-  McNeil, A. J., Frey, R., and Embrechts, P. (2015).
+  McNeil, A. J., Frey, R. and Embrechts, P. (2015).
   \emph{Quantitative Risk Management: Concepts, Techniques, Tools}.
   Princeton University Press.
 
-  Hofert, M., Memartoluie, A., Saunders, D., Wirjanto, T. (2017).
+  Hofert, M., Memartoluie, A., Saunders, D. and Wirjanto, T. (2017).
   Improved Algorithms for Computing Worst
   Value-at-Risk. \emph{Statistics \& Risk Modeling}
   or, for an earlier version, \url{http://arxiv.org/abs/1505.02281}.
 
-  Bernard, C., \enc{Rüschendorf}{Rueschendorf}, L., Vanduffel,
+  Bernard, C., \enc{Rüschendorf}{Rueschendorf}, L. and Vanduffel,
   S. (2013). Value-at-Risk bounds with variance constraints.
   See \url{http://papers.ssrn.com/sol3/papers.cfm?abstract_id=2342068}.
 
