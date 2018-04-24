@@ -104,7 +104,7 @@ rGPD <- function(n, xi, beta)
 ### Par(theta, kappa) = GPD(1/theta, kappa/theta), theta > 0 distribution ######
 
 ## Note: - Hard-coded here to be vectorized in the main argument and theta
-##       - F(x) = 1 - (kappa / (kappa + x))^{theta}, theta > 0, kappa > 0, x >= 0
+##       - F(x) = 1 - (1+x/kappa)^{-theta}, theta > 0, kappa > 0, x >= 0
 ##       - E[X] = kappa / (theta-1) for all theta > 1 (see McNeil, Frey, Embrechts (2015))
 ##       - Var[X] = theta * kappa^2 / ((theta-2)(theta-1)^2) for all theta > 2 (see McNeil, Frey, Embrechts (2015))
 
