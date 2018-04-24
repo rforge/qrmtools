@@ -13,20 +13,20 @@
 }
 \usage{
 ## value-at-risk
-VaR_np(x, alpha, names = FALSE, type = 1, ...)
-VaR_t(alpha, mu = 0, sigma = 1, df = Inf)
-VaR_Par(alpha, shape, scale = 1)
+VaR_np(x, level, names = FALSE, type = 1, ...)
+VaR_t(level, mu = 0, sigma = 1, df = Inf)
+VaR_Par(level, shape, scale = 1)
 
 ## expected shortfall
-ES_np(x, alpha, method = c(">", ">="), verbose = FALSE, ...)
-ES_t(alpha, mu = 0, sigma = 1, df = Inf)
-ES_Par(alpha, shape, scale = 1)
+ES_np(x, level, method = c(">", ">="), verbose = FALSE, ...)
+ES_t(level, mu = 0, sigma = 1, df = Inf)
+ES_Par(level, shape, scale = 1)
 
 ## multivariate geometric value-at-risk and expectiles
-gVaR(x, alpha, start = colMeans(x),
-     method = if(length(alpha) == 1) "Brent" else "Nelder-Mead", ...)
-gEX(x, alpha, start = colMeans(x),
-    method = if(length(alpha) == 1) "Brent" else "Nelder-Mead", ...)
+gVaR(x, level, start = colMeans(x),
+     method = if(length(level) == 1) "Brent" else "Nelder-Mead", ...)
+gEX(x, level, start = colMeans(x),
+    method = if(length(level) == 1) "Brent" else "Nelder-Mead", ...)
 }
 \arguments{
   \item{x}{
@@ -36,11 +36,11 @@ gEX(x, alpha, start = colMeans(x),
       \item{otherwise}{\code{\link{vector}} of losses.}
     }
   }
-  \item{alpha}{
+  \item{level}{
     \describe{
       \item{\code{gVaR()}, \code{gEX()}}{\code{\link{vector}} or
-	\code{\link{matrix}} of	(rowwise) confidence levels (all in
-	\eqn{[0,1]}).}
+	\code{\link{matrix}} of	(rowwise) confidence levels \eqn{\alpha}{alpha}
+	(all in \eqn{[0,1]}).}
       \item{otherwise}{confidence level \eqn{\alpha\in[0,1]}{alpha in
 	  [0,1]}.}
     }
@@ -123,8 +123,8 @@ L <- rlnorm(1000, meanlog = -1, sdlog = 2) # L ~ LN(mu, sig^2)
 ##       - E(L) = exp(mu + (sig^2)/2), var(L) = (exp(sig^2)-1)*exp(2*mu + sig^2)
 ##         To obtain a sample with E(L) = a and var(L) = b, use:
 ##         mu = log(a)-log(1+b/a^2)/2 and sig = sqrt(log(1+b/a^2))
-VaR_np(L, alpha = 0.99)
-ES_np(L,  alpha = 0.99)
+VaR_np(L, level = 0.99)
+ES_np(L,  level = 0.99)
 
 ## Example 2.16 in McNeil, Frey, Embrechts (2015)
 V <- 10000 # value of the portfolio today
@@ -167,7 +167,7 @@ r <- 0.98 # radius
 alpha <- r * cbind(alpha1 = cos(phi), alpha2 = sin(phi)) # vector of confidence levels
 
 ## Compute geometric value-at-risk
-system.time(res <- gVaR(X, alpha = alpha))
+system.time(res <- gVaR(X, level = alpha))
 gvar <- t(sapply(seq_len(nrow(alpha)), function(i) {
     x <- res[[i]]
     if(x[["convergence"]] != 0) # 0 = 'converged'
@@ -177,7 +177,7 @@ gvar <- t(sapply(seq_len(nrow(alpha)), function(i) {
 })) # (N, 2)-matrix
 
 ## Compute geometric expectiles
-system.time(res <- gEX(X, alpha = alpha))
+system.time(res <- gEX(X, level = alpha))
 gex <- t(sapply(seq_len(nrow(alpha)), function(i) {
     x <- res[[i]]
     if(x[["convergence"]] != 0) # 0 = 'converged'

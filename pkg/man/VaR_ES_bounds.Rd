@@ -15,8 +15,8 @@
 }
 \usage{
 ## Homogeneous case
-crude_VaR_bounds(alpha, qF, d = NULL, ...)
-VaR_bounds_hom(alpha, d, method = c("Wang", "Wang.Par", "dual"),
+crude_VaR_bounds(level, qF, d = NULL, ...)
+VaR_bounds_hom(level, d, method = c("Wang", "Wang.Par", "dual"),
                interval = NULL, tol = NULL, ...)
 dual_bound(s, d, pF, tol = .Machine$double.eps^0.25, ...)
 
@@ -35,21 +35,21 @@ block_rearrange(X, tol = 0, tol.type = c("absolute", "relative"),
 
 ## User interfaces
 ## Rearrangement Algorithm
-RA(alpha, qF, N, abstol = 0, n.lookback = length(qF), max.ra = Inf,
+RA(level, qF, N, abstol = 0, n.lookback = length(qF), max.ra = Inf,
    method = c("worst.VaR", "best.VaR", "best.ES"), sample = TRUE)
 ## Adaptive Rearrangement Algorithm
-ARA(alpha, qF, N.exp = seq(8, 19, by = 1), reltol = c(0, 0.01),
+ARA(level, qF, N.exp = seq(8, 19, by = 1), reltol = c(0, 0.01),
     n.lookback = length(qF), max.ra = 10*length(qF),
     method = c("worst.VaR", "best.VaR", "best.ES"),
     sample = TRUE)
 ## Adaptive Block Rearrangement Algorithm
-ABRA(alpha, qF, N.exp = seq(8, 19, by = 1), absreltol = c(0, 0.01),
+ABRA(level, qF, N.exp = seq(8, 19, by = 1), absreltol = c(0, 0.01),
      n.lookback = NULL, max.ra = Inf,
      method = c("worst.VaR", "best.VaR", "best.ES"),
      sample = TRUE)
 }
 \arguments{
-  \item{alpha}{confidence level for VaR and ES (e.g., 0.99).}
+  \item{level}{confidence level \eqn{\alpha}{alpha} for VaR and ES (e.g., 0.99).}
   \item{d}{dimension (number of risk factors; \eqn{\ge 2}{ >= 2}). For
     \code{crude_VaR_bounds()}, \code{d} only needs to be given in
     the homogeneous case in which \code{qF} is a \code{\link{function}}.}
@@ -201,7 +201,7 @@ ABRA(alpha, qF, N.exp = seq(8, 19, by = 1), absreltol = c(0, 0.01),
       \item{\code{rearrange():}}{additional arguments passed to the underlying
        optimization function. Currently, this is only used if
        \code{method = "best.ES"} in which case the required confidence
-       level \eqn{\alpha}{alpha} must be provided as argument \code{alpha}.}
+       level \eqn{\alpha}{alpha} must be provided as argument \code{level}.}
     }}
 }
 \value{
@@ -512,10 +512,10 @@ RAworst <- RA(alpha, qF = rep(list(qF), d), N = ARAworst$N.used)
 
 ## Compare
 stopifnot(all.equal(c(ARAbest$bounds[1], ARAbest$bounds[2],
-                      RAbest$bounds[1],  RAbest$bounds[2]),
+                       RAbest$bounds[1],  RAbest$bounds[2]),
                     rep(VaRbounds[1], 4), tolerance = 0.004, check.names = FALSE))
 stopifnot(all.equal(c(ARAworst$bounds[1], ARAworst$bounds[2],
-                      RAworst$bounds[1],  RAworst$bounds[2]),
+                       RAworst$bounds[1],  RAworst$bounds[2]),
                     rep(VaRbounds[2], 4), tolerance = 0.003, check.names = FALSE))
 
 
@@ -537,11 +537,11 @@ ARAworst <- ARA(alpha, qF = rep(list(qF), d), reltol = c(0.001, 0.01))
 ## Rearrangement Algorithm (RA) with N as in ARA and abstol (roughly) chosen as in ARA
 RAbest  <- RA(alpha, qF = rep(list(qF), d), N = ARAbest$N.used,
               abstol = mean(tail(abs(diff(ARAbest$opt.row.sums$low)), n = 1),
-                          tail(abs(diff(ARAbest$opt.row.sums$up)), n = 1)),
+                            tail(abs(diff(ARAbest$opt.row.sums$up)), n = 1)),
               method = "best.VaR")
 RAworst <- RA(alpha, qF = rep(list(qF), d), N = ARAworst$N.used,
               abstol = mean(tail(abs(diff(ARAworst$opt.row.sums$low)), n = 1),
-                          tail(abs(diff(ARAworst$opt.row.sums$up)), n = 1)))
+                            tail(abs(diff(ARAworst$opt.row.sums$up)), n = 1)))
 
 ## Compare
 stopifnot(all.equal(c(VaR.W[1], ARAbest$bounds, RAbest$bounds),

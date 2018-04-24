@@ -101,7 +101,7 @@ Check `Wang_h_aux()`.
 d <- 8 # dimension
 alpha <- 0.99 # confidence level
 c <- seq(0, (1-alpha)/d, length.out = 129) # domain of h
-h.aux <- qrmtools:::Wang_h_aux(c, alpha = alpha, d = d, qF = qF)
+h.aux <- qrmtools:::Wang_h_aux(c, level = alpha, d = d, qF = qF)
 par(mar = c(5, 4+1, 4, 2) + 0.1) # increase space (for y axis label)
 plot(c, h.aux, type = "l", xlab = "c (in initial interval)",
      ylab = expression(frac(d-1,d)~{F^{-1}}(a[c])+frac(1,d)~{F^{-1}}(b[c])))
@@ -111,7 +111,7 @@ Check the objective function $h(c)$ (i.e., `Wang_h()` with numerical
 integration) on its domain. Note that $h$ is used to determine the root in the
 open interval $(0,(1-\alpha)/d)$ for computing worst Value-at-Risk.
 ```{r, fig.align = "center", fig.width = 6, fig.height = 6, fig.show = "hold"}
-h <- sapply(c, function(c.) qrmtools:::Wang_h(c., alpha = alpha, d = d, qF = qF))
+h <- sapply(c, function(c.) qrmtools:::Wang_h(c., level = alpha, d = d, qF = qF))
 if(doPDF)
     pdf(file = (file <- paste0("fig_worst_VaR_",alpha,"_hom_Wang_h_Par=2_d=",d,"_num.pdf")),
         width = 6, height = 6)
@@ -125,7 +125,7 @@ if(doPDF) dev.off()
 Check the objective function $h$ at the endpoints of its domain.
 ```{r}
 sapply(c(0, (1-alpha)/d), function(c.)
-       qrmtools:::Wang_h(c., alpha = alpha, d = d, qF = qF)) # -Inf, 0
+       qrmtools:::Wang_h(c., level = alpha, d = d, qF = qF)) # -Inf, 0
 ```
 
 $-\infty$ is not a problem for root finding (for $\theta > 1$; for $\theta <= 1$
@@ -135,9 +135,9 @@ problem.
 ```{r}
 method <- "Wang.Par" # this also holds for (the numerical) method = "Wang"
 th <- 0.99
-qrmtools:::Wang_h(0, alpha = alpha, d = d, method = method, shape = th) # NaN => uniroot() fails
+qrmtools:::Wang_h(0, level = alpha, d = d, method = method, shape = th) # NaN => uniroot() fails
 ## Note: Wang_h() is actually already NaN for c <= 1e-17
-qrmtools:::Wang_h_aux(0, alpha = alpha, d = d, method = method, shape = th) # Inf
+qrmtools:::Wang_h_aux(0, level = alpha, d = d, method = method, shape = th) # Inf
 ```
 
 A proper initial interval $[c_l,u_l]$ with $0<c_l<=c_u<(1-\alpha)/d$ (containing
@@ -161,7 +161,7 @@ c <- seq(0, (1-alpha)/d, length.out = 2^13+1)
 h <- matrix(, nrow = length(c), ncol = length(theta))
 for(j in 1:length(theta))
     h[,j] <- sapply(c, function(c.)
-        qrmtools:::Wang_h(c., alpha = alpha, d = d, method = "Wang.Par", shape = theta[j]))
+        qrmtools:::Wang_h(c., level = alpha, d = d, method = "Wang.Par", shape = theta[j]))
 z <- h
 z[z <= 0] <- NA # > 0 => makes log-scale possible
 ```
