@@ -57,6 +57,7 @@ fit_GPD_MOM <- function(x)
 ##' @return numeric(2) with estimates of xi, beta
 ##' @author Marius Hofert
 ##' @note See Hosking and Wallis (1987) and Landwehr, Matalas, Wallis (1979)
+##'       Note that their '-k' and 'alpha' are our 'xi' and 'beta'.
 fit_GPD_PWM <- function(x)
 {
     ## a_s = estimator (unbiased according to Landwehr, Matalas, Wallis (1979)) / a sample version of M_{1,0,s} = E(X (1-F(X))^s)
@@ -91,7 +92,6 @@ logLik_GPD <- function(param, x)
 ##'        - MLE requires n ~>= 500 to be efficient
 ##'        - MoM reliable for xi > 0.2
 ##'        - PWM recommended for xi > 0.
-##'        Note that their '-k' and 'alpha' is our 'xi' and 'beta'.
 ##' @param estimate.cov logical indicating whether the asymptotic covariance
 ##'        matrix of the parameter estimators is to be estimated
 ##'        (inverse of observed Fisher information (negative Hessian

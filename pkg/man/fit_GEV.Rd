@@ -106,9 +106,15 @@ X <- rGEV(n, xi = xi, mu = mu, sigma = sig)
 
 ## Fitting via matching quantiles
 (fit.q <- fit_GEV_quantile(X))
+stopifnot(all.equal(fit.q[["xi"]],    xi,  tol = 0.12),
+          all.equal(fit.q[["mu"]],    mu,  tol = 0.12),
+          all.equal(fit.q[["sigma"]], sig, tol = 0.005))
 
 ## Fitting via PWMs
 (fit.PWM <- fit_GEV_PWM(X))
+stopifnot(all.equal(fit.PWM[["xi"]],    xi,  tol = 0.16),
+          all.equal(fit.PWM[["mu"]],    mu,  tol = 0.15),
+          all.equal(fit.PWM[["sigma"]], sig, tol = 0.08))
 
 ## Fitting via MLE
 (fit.MLE <- fit_GEV_MLE(X))

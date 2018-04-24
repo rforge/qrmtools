@@ -98,6 +98,7 @@ fit_GEV_quantile <- function(x, p = c(0.25, 0.5, 0.75), cutoff = 3)
 ##' @return numeric(3) with estimates of xi, mu, sigma
 ##' @author Marius Hofert
 ##' @note See Hosking, Wallis, Wood (1985) and Landwehr and Wallis (1979)
+##'       Note that their '-k', 'xi' and 'alpha' are our our 'xi', 'mu' and 'sigma'.
 fit_GEV_PWM <- function(x)
 {
     ## b_r = estimator (unbiased according to Landwehr and Wallis (1979)) / a sample version of M_{1,r,0} = E(X F(X)^r)
@@ -107,25 +108,32 @@ fit_GEV_PWM <- function(x)
     b0 <- mean(x)
     b1 <- mean(x. * (k-1)/(n-1))
     b2 <- mean(x. * (k-1)*(k-2)/((n-1)*(n-2)))
-    ## Match probability-weighted moments
-    y <- (3*b2-b0) / (2*b1-b0) # evaluation point of h^{-1}
-    y <- max(y, 1) # sanity
-    xi.hat <- if(y <= (2/3) * (2-log(3/4)) * (1.455495 + 1)) { # y <= h approximation at 1.455495
-                  (2-(3/2)*y) / log(3/4) - 1 # invert tangent in -1
-              } else { # invert (3/2)^xi
-                  log(y) / log(3/2)
-              }
-    if(xi.hat >= 1) # should not happen (according to Hosking, Wallis, Wood (1985))
-        xi.hat <- 0.95 # set here due to gamma() function call below
+    ## Match probability weighted moments
+    ## 1) Theoretically:
+    ## xi <- seq(-10, 10, length.out = 65)
+    ## y <- (3^xi-1)/(2^xi-1)
+    ## plot(xi, y, type = "l") # => starts at 1 (xi = -Inf), increases exponentially)
+    y <- (3*b2-b0) / (2*b1-b0) # evaluation point of h^{-1} for h(xi) = (3^xi-1)/(2^xi-1) (>= 1)
+    if(y <= 1)
+        stop("Cannot invert auxiliary function h involved. Use a different estimator.")
+    ## xi.hat <- uniroot(function(x) (3^x-1)/(2^x-1) - y, interval = c(-100, 100))$root
+    ## 2) Hosking, Wallis, Wood (1985, (14)) suggest to approximate h^{-1}(y) via g^{-1}(c)
+    ##    for c = (2*b1-b0)/(3*b2-b0) - log(2)/log(3) and g^{-1}(c) = -(7.8590 + 2.9554*c)*c.
+    ##    This is equivalent to h^{-1}(y) = a/y^2 + b/y + c for a, b, c as follows.
+    a <- -2.9554
+    b <- -4.1297 # = -(7.8590-2.9554*log(4)/log(3))
+    c <- 3.782014 # = -(-7.8590*log(2)/log(3)+2.9554*(log(2)/log(3))^2)
+    xi.hat <- a/y^2 + b/y + c
+    ## Now compute the estimators for mu and sigma
     sig.hat <- if(xi.hat == 0) {
                    (2 * b1 - b0) / log(2)
                } else {
-                   (2 * b1 - b0) * xi.hat / (gamma(1 - xi.hat) * (2^xi.hat - 1))
+                   (2 * b1 - b0) * xi.hat / (gamma(1 - xi.hat) * (2^xi.hat - 1)) # sigma, see Hosking, Wallis, Wood (1985, (15))
                }
     mu.hat <- if(xi.hat == 0) {
                   b0 - sig.hat * 0.5772157 # ... Euler--Mascheroni constant
               } else {
-                  b0 - sig.hat / xi.hat * (gamma(1-xi.hat) - 1)
+                  b0 - sig.hat * (gamma(1-xi.hat) - 1) / xi.hat # mu, see Hosking, Wallis, Wood (1985, (15))
               }
     ## Return
     c(xi = xi.hat, mu = mu.hat, sigma = sig.hat)
@@ -147,7 +155,7 @@ logLik_GEV <- function(param, x)
 ##' @title MLE for GEV Parameters
 ##' @param x numeric vector of data. In the block maxima method, these are the
 ##'        block maxima (based on block size n)
-##' @param init numeric(3) or string giving the initial values for xi, mu, sigma
+##' @param init numeric(3) or string giving the initial values for xi, mu, sigma.
 ##' @param estimate.cov logical indicating whether the asymptotic covariance
 ##'        matrix of the parameter estimators is to be estimated
 ##'        (inverse of observed Fisher information (negative Hessian

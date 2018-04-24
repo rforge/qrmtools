@@ -83,10 +83,14 @@ set.seed(271)
 X <- rGPD(n, xi = xi, beta = beta)
 
 ## Fitting via matching moments
-(fit.m <- fit_GPD_MOM(X))
+(fit.MOM <- fit_GPD_MOM(X))
+stopifnot(all.equal(fit.MOM[["xi"]],   xi,   tol = 0.52),
+          all.equal(fit.MOM[["beta"]], beta, tol = 0.24))
 
 ## Fitting via PWMs
 (fit.PWM <- fit_GPD_PWM(X))
+stopifnot(all.equal(fit.PWM[["xi"]],   xi,   tol = 0.2),
+          all.equal(fit.PWM[["beta"]], beta, tol = 0.12))
 
 ## Fitting via MLE
 (fit.MLE <- fit_GPD_MLE(X))
