@@ -14,12 +14,12 @@
 \usage{
 ## value-at-risk
 VaR_np(x, level, names = FALSE, type = 1, ...)
-VaR_t(level, mu = 0, sigma = 1, df = Inf)
+VaR_t(level, loc = 0, scale = 1, df = Inf)
 VaR_Par(level, shape, scale = 1)
 
 ## expected shortfall
 ES_np(x, level, method = c(">", ">="), verbose = FALSE, ...)
-ES_t(level, mu = 0, sigma = 1, df = Inf)
+ES_t(level, loc = 0, scale = 1, df = Inf)
 ES_Par(level, shape, scale = 1)
 
 ## multivariate geometric value-at-risk and expectiles
@@ -47,12 +47,18 @@ gEX(x, level, start = colMeans(x),
   }
   \item{names}{see \code{?\link{quantile}}.}
   \item{type}{see \code{?\link{quantile}}.}
-  \item{mu}{location parameter.}
-  \item{sigma}{scale parameter, a positive number.}
+  \item{loc}{location parameter \eqn{\mu}{mu}.}
+  \item{scale}{
+    \describe{
+      \item{\code{VaR_t()}, \code{ES_t()}}{\eqn{$t$}{t} scale parameter
+	\eqn{\sigma}{sigma}, a positive number.}
+      \item{\code{VaR_Par()}, \code{ES_Par()}}{Pareto scale parameter
+	\eqn{\kappa}{kappa}, a positive number.}
+    }
+  }
   \item{df}{degrees of freedom, a positive number; choose \code{df = Inf}
     for the normal distribution.}
   \item{shape}{Pareto shape parameter \eqn{\theta}{theta}, a positive number.}
-  \item{scale}{Pareto scale parameter \eqn{\kappa}{kappa}, a positive number.}
   \item{start}{\code{\link{vector}} of initial values for the underlying
     \code{\link{optim}()}.}
   \item{method}{
@@ -131,10 +137,10 @@ V <- 10000 # value of the portfolio today
 sig <- 0.2/sqrt(250) # daily volatility (annualized volatility of 20%)
 nu <- 4 # degrees of freedom for the t distribution
 alpha <- seq(0.001, 0.999, length.out = 256) # confidence levels
-VaRnorm <- VaR_t(alpha, sigma = V*sig, df = Inf)
-VaRt4 <- VaR_t(alpha, sigma = V*sig*sqrt((nu-2)/nu), df = nu)
-ESnorm <- ES_t(alpha, sigma = V*sig, df = Inf)
-ESt4 <- ES_t(alpha, sigma = V*sig*sqrt((nu-2)/nu), df = nu)
+VaRnorm <- VaR_t(alpha, scale = V*sig, df = Inf)
+VaRt4 <- VaR_t(alpha, scale = V*sig*sqrt((nu-2)/nu), df = nu)
+ESnorm <- ES_t(alpha, scale = V*sig, df = Inf)
+ESt4 <- ES_t(alpha, scale = V*sig*sqrt((nu-2)/nu), df = nu)
 ran <- range(VaRnorm, VaRt4, ESnorm, ESt4)
 plot(alpha, VaRnorm, type = "l", ylim = ran, xlab = expression(alpha), ylab = "")
 lines(alpha, VaRt4, col = "royalblue3")

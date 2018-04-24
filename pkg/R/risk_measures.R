@@ -19,15 +19,15 @@ VaR_np <- function(x, level, names = FALSE, type = 1, ...)
 
 ##' @title Value-at-Risk for normal and t distributions
 ##' @param level confidence level alpha
-##' @param mu location
-##' @param sigma scale
+##' @param loc location mu
+##' @param scale scale sigma
 ##' @param df degrees of freedom; Inf for the normal distribution
 ##' @return Value-at-Risk
 ##' @author Marius Hofert
-VaR_t <- function(level, mu = 0, sigma = 1, df = Inf)
+VaR_t <- function(level, loc = 0, scale = 1, df = Inf)
 {
-    stopifnot(0 <= level, level <= 1, sigma > 0, df > 0)
-    mu + sigma * if(identical(df, Inf)) qnorm(level) else qt(level, df = df)
+    stopifnot(0 <= level, level <= 1, scale > 0, df > 0)
+    loc + scale * if(identical(df, Inf)) qnorm(level) else qt(level, df = df)
 }
 
 ##' @title Value-at-Risk for the Pareto distribution
@@ -80,15 +80,15 @@ ES_np <- function(x, level, method = c(">", ">="), verbose = FALSE, ...)
 
 ##' @title Expected shortfall for normal and t distributions
 ##' @param level confidence level alpha
-##' @param mu location
-##' @param sigma scale
+##' @param loc location mu
+##' @param scale scale sigma
 ##' @param df degrees of freedom; Inf for the normal distribution
 ##' @return Expected shortfall
 ##' @author Marius Hofert
-ES_t <- function(level, mu = 0, sigma = 1, df = Inf)
+ES_t <- function(level, loc = 0, scale = 1, df = Inf)
 {
-    stopifnot(0 <= level, level <= 1, sigma > 0, df > 0)
-    mu + (sigma/(1-level)) * if(identical(df, Inf)) dnorm(qnorm(level)) else
+    stopifnot(0 <= level, level <= 1, scale > 0, df > 0)
+    loc + (scale/(1-level)) * if(identical(df, Inf)) dnorm(qnorm(level)) else
     dt(qt(level, df = df), df = df) * (df + qt(level, df = df)^2) / (df-1)
 }
 
