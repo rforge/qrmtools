@@ -1,4 +1,4 @@
-### Fitting GPD(xi, beta) ######################################################
+### Fitting GPD(shape, scale) ##################################################
 
 ## ## Other packages
 ## - QRM:
@@ -15,9 +15,9 @@
 ## - evir:
 ##   + ./R -> pot.R -> gpd(): based on optim() with initial values
 ##     s2 <- var(excess)
-##     xi0 <- -0.5 * (((xbar * xbar)/s2) - 1)
-##     beta0 <- 0.5 * xbar * (((xbar * xbar)/s2) + 1)
-##     theta <- c(xi0, beta0)
+##     shape0 <- -0.5 * (((xbar * xbar)/s2) - 1)
+##     scale0 <- 0.5 * xbar * (((xbar * xbar)/s2) + 1)
+##     theta <- c(shape0, scale0)
 ##   + with hessian and observed information
 ## - fExtremes:
 ##   + gpdFit() -> .gpdmleFit(): as evir
@@ -29,7 +29,7 @@
 ##     'family$start(data)' if start not provided (see also .pdf)
 ##   + 'start()' is a function and for the GPD found in ./R/gpd.R
 ##   + start() returns a longer vector (unclear why) but seems to use log(mean())
-##     as initial value for xi and 1e-05 for beta; quite unclear
+##     as initial value for shape and 1e-05 for scale; quite unclear
 
 
 ### Method-of-moments estimator ################################################
@@ -37,15 +37,15 @@
 ##' @title Method-Of-Moments Estimator
 ##' @param x numeric vector of data. In the POT method, these are the excesses
 ##'        over a sufficiently high threshold.
-##' @return numeric(2) with estimates of xi, beta
+##' @return numeric(2) with estimates of shape and scale
 ##' @author Marius Hofert
 ##' @note See Hosking and Wallis (1987) and Landwehr, Matalas, Wallis (1979)
 fit_GPD_MOM <- function(x)
 {
-    mu.hat <- mean(x)
+    loc.hat <- mean(x)
     sig2.hat <- var(x)
-    xi.hat <- (1-mu.hat^2/sig2.hat)/2
-    c(xi = xi.hat, beta = max(mu.hat*(1-xi.hat), .Machine$double.eps)) # xi, beta (> 0)
+    shape.hat <- (1-loc.hat^2/sig2.hat)/2
+    c(shape = shape.hat, scale = max(loc.hat*(1-shape.hat), .Machine$double.eps)) # shape, scale (> 0)
 }
 
 
@@ -54,7 +54,7 @@ fit_GPD_MOM <- function(x)
 ##' @title Probability Weighted Moments Estimator
 ##' @param x numeric vector of data. In the POT method, these are the excesses
 ##'        over a sufficiently high threshold.
-##' @return numeric(2) with estimates of xi, beta
+##' @return numeric(2) with estimates of shape and scale
 ##' @author Marius Hofert
 ##' @note See Hosking and Wallis (1987) and Landwehr, Matalas, Wallis (1979)
 ##'       Note that their '-k' and 'alpha' are our 'xi' and 'beta'.
@@ -67,31 +67,31 @@ fit_GPD_PWM <- function(x)
     a0 <- mean(x)
     a1 <- mean(x. * (n-k)/(n-1))
     ## Alternatively (see QRM and Hosking and Wallis (1987)): a1 <- mean(x. * (1-p)) where p <- (k-0.35)/n
-    ## Estimators of xi and beta based on a0 and a1
-    c(xi = 2 - a0/(a0 - 2 * a1), beta = max((2 * a0 * a1) / (a0 - 2 * a1), .Machine$double.eps)) # xi, beta (> 0)
+    ## Estimators of shape and scale based on a0 and a1
+    c(shape = 2 - a0/(a0 - 2 * a1), scale = max((2 * a0 * a1) / (a0 - 2 * a1), .Machine$double.eps)) # shape, scale (> 0)
 }
 
 
 ### Maximum likelihood estimator ###############################################
 
 ##' @title Log-likelihood of the GPD
-##' @param param numeric(2) giving xi, beta (all real here; if beta <= 0
-##'        dGPD(, log = TRUE) returns -Inf)
+##' @param param numeric(2) giving shape and scale (all real here;
+##'        if scale <= 0 dGPD(, log = TRUE) returns -Inf)
 ##' @param x numeric vector of data. In the POT method, these are the excesses
 ##'        over a sufficiently high threshold.
-##' @return log-likelihood at xi, beta
+##' @return log-likelihood at shape and scale
 ##' @author Marius Hofert
 logLik_GPD <- function(param, x)
-    sum(dGPD(x, xi = param[1], beta = param[2], log = TRUE))
+    sum(dGPD(x, shape = param[1], scale = param[2], log = TRUE))
 
 ##' @title MLE for GPD Parameters
 ##' @param x numeric vector of data. In the POT method, these are the excesses
 ##'        over a sufficiently high threshold.
-##' @param init numeric(2) giving the initial values for xi, beta.
+##' @param init numeric(2) giving the initial values for shape and scale.
 ##'        Findings of Hosking and Wallis (1987):
 ##'        - MLE requires n ~>= 500 to be efficient
-##'        - MoM reliable for xi > 0.2
-##'        - PWM recommended for xi > 0.
+##'        - MoM reliable for shape > 0.2
+##'        - PWM recommended for shape > 0.
 ##' @param estimate.cov logical indicating whether the asymptotic covariance
 ##'        matrix of the parameter estimators is to be estimated
 ##'        (inverse of observed Fisher information (negative Hessian
@@ -103,9 +103,9 @@ logLik_GPD <- function(param, x)
 ##'         (Cramer--Rao bound = inverse of Fisher information = negative Hessian)
 ##'         of the parameter estimators appended if estimate.cov.
 ##' @author Marius Hofert
-##' @note - Note that for no initial xi is the support of the density IR and thus
+##' @note - Note that for no initial shape is the support of the density IR and thus
 ##'         the log-likelihood could be -Inf if (some) x are out of the support.
-##'         We avoid this here by a) requiring x >= 0 and b) adjusting beta so
+##'         We avoid this here by a) requiring x >= 0 and b) adjusting scale so
 ##'         that the log-likelihood is finite at the initial value.
 ##'       - Most of the results generalize to the case where the GPD has another
 ##'         parameter for the location (like mu for the GEV distribution). If this
@@ -113,7 +113,7 @@ logLik_GPD <- function(param, x)
 ##'         finite log-likelihood.
 ##'       - Similar to copula:::fitCopula.ml()
 ##'       - *Expected* information is available, too; see QRM::fit.GPD()
-fit_GPD_MLE <- function(x, init = c("PWM", "MOM", "xi0"), estimate.cov = TRUE, control = list(), ...)
+fit_GPD_MLE <- function(x, init = c("PWM", "MOM", "shape0"), estimate.cov = TRUE, control = list(), ...)
 {
     ## Checks
     isnum <- is.numeric(init)
@@ -128,24 +128,24 @@ fit_GPD_MLE <- function(x, init = c("PWM", "MOM", "xi0"), estimate.cov = TRUE, c
         "PWM" = {
             init <- fit_GPD_PWM(x)
             ## Force initial values to produce finite log-likelihood
-            ## (all x need to be in [0, -beta/xi) => choose beta = -xi * max(x) * 1.01)
-            if(init[1] < 0) { # xi < 0
+            ## (all x need to be in [0, -scale/shape) => choose scale = -shape * max(x) * 1.01)
+            if(init[1] < 0) { # shape < 0
                 mx <- max(x)
-                if(mx >= -init[2]/init[1]) init[2] <- -init[1] * mx * 1.01 # beta = -xi * max(x) * 1.01
+                if(mx >= -init[2]/init[1]) init[2] <- -init[1] * mx * 1.01 # scale = -shape * max(x) * 1.01
             }
         },
         "MOM" = {
             init <- fit_GPD_MOM(x)
             ## Force initial values to produce finite log-likelihood
-            ## (all x need to be in [0, -beta/xi) => choose beta = -xi * max(x) * 1.01)
-            if(init[1] < 0) { # xi < 0
+            ## (all x need to be in [0, -scale/shape) => choose scale = -shape * max(x) * 1.01)
+            if(init[1] < 0) { # shape < 0
                 mx <- max(x)
-                if(mx >= -init[2]/init[1]) init[2] <- -init[1] * mx * 1.01 # beta = -xi * max(x) * 1.01
+                if(mx >= -init[2]/init[1]) init[2] <- -init[1] * mx * 1.01 # scale = -shape * max(x) * 1.01
             }
         },
-        "xi0" = {
-            ## Idea: Use xi = 0
-            init <- c(0, mean(x)) # mean for xi = 0 is beta => beta
+        "shape0" = {
+            ## Idea: Use shape = 0
+            init <- c(0, mean(x)) # mean for shape = 0 is scale
         },
         stop("Wrong 'init'"))
     }
@@ -154,12 +154,12 @@ fit_GPD_MLE <- function(x, init = c("PWM", "MOM", "xi0"), estimate.cov = TRUE, c
     control <- c(as.list(control), fnscale = -1) # maximization (overwrites possible additionally passed 'fnscale')
     fit <- optim(init, fn = function(param) logLik_GPD(param, x = x),
                  hessian = estimate.cov, control = control, ...)
-    names(fit$par) <- c("xi", "beta")
-    ## Note: Could incorporate the gradient of the log-likelihood (w.r.t. xi, beta)
+    names(fit$par) <- c("shape", "scale")
+    ## Note: Could incorporate the gradient of the log-likelihood (w.r.t. shape, scale)
     ##       for the methods "BFGS", "CG" and "L-BFGS-B".
-    ##       It is: (0, (-n+sum(x)/beta)/beta) for xi != 0 and
-    ##       ( (1/xi^2)*sum(log1p(xi*x/beta))-(xi+1)*sum(xi*x/(beta+xi*x)),
-    ##         -n/beta + (1+1/xi) * sum((xi*x/beta)/(beta+xi*x)) )
+    ##       It is: (0, (-n+sum(x)/scale)/scale) for shape != 0 and
+    ##       ( (1/shape^2)*sum(log1p(shape*x/scale))-(shape+1)*sum(shape*x/(scale+shape*x)),
+    ##         -n/scale + (1+1/shape) * sum((shape*x/scale)/(scale+shape*x)) )
 
     ## Estimate of the asymptotic covariance matrix and standard errors
     ## of the parameter estimators
@@ -175,10 +175,10 @@ fit_GPD_MLE <- function(x, init = c("PWM", "MOM", "xi0"), estimate.cov = TRUE, c
             SE <- numeric(0)
         } else {
             Cov <- negHessianInv$value # result on warning or on 'worked'
-            rownames(Cov) <- c("xi", "beta")
-            colnames(Cov) <- c("xi", "beta")
+            rownames(Cov) <- c("shape", "scale")
+            colnames(Cov) <- c("shape", "scale")
             SE <- sqrt(diag(Cov))
-            names(SE) <- c("xi", "beta")
+            names(SE) <- c("shape", "scale")
         }
     } else {
         Cov <- matrix(NA_real_, 0, 0)

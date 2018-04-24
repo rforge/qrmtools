@@ -15,12 +15,12 @@
 ## value-at-risk
 VaR_np(x, alpha, names = FALSE, type = 1, ...)
 VaR_t(alpha, mu = 0, sigma = 1, df = Inf)
-VaR_Par(alpha, theta, kappa = 1)
+VaR_Par(alpha, shape, scale = 1)
 
 ## expected shortfall
 ES_np(x, alpha, method = c(">", ">="), verbose = FALSE, ...)
 ES_t(alpha, mu = 0, sigma = 1, df = Inf)
-ES_Par(alpha, theta, kappa = 1)
+ES_Par(alpha, shape, scale = 1)
 
 ## multivariate geometric value-at-risk and expectiles
 gVaR(x, alpha, start = colMeans(x),
@@ -51,8 +51,8 @@ gEX(x, alpha, start = colMeans(x),
   \item{sigma}{scale parameter, a positive number.}
   \item{df}{degrees of freedom, a positive number; choose \code{df = Inf}
     for the normal distribution.}
-  \item{theta}{Pareto shape parameter, a positive number.}
-  \item{kappa}{Pareto scale parameter, a positive number.}
+  \item{shape}{Pareto shape parameter \eqn{\theta}{theta}, a positive number.}
+  \item{scale}{Pareto scale parameter \eqn{\kappa}{kappa}, a positive number.}
   \item{start}{\code{\link{vector}} of initial values for the underlying
     \code{\link{optim}()}.}
   \item{method}{
@@ -160,7 +160,7 @@ set.seed(271) # for reproducibility
 U <- rCopula(n, cop = cop) # copula sample
 theta <- c(2.5, 4) # marginal Pareto parameters
 stopifnot(theta > 2) # need finite 2nd moments
-X <- sapply(1:2, function(j) qPar(U[,j], theta = theta[j])) # generate X
+X <- sapply(1:2, function(j) qPar(U[,j], shape = theta[j])) # generate X
 N <- 17 # number of angles (rather small here because of run time)
 phi <- seq(0, 2*pi, length.out = N) # angles
 r <- 0.98 # radius

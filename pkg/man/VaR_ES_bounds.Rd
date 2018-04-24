@@ -188,8 +188,8 @@ ABRA(alpha, qF, N.exp = seq(8, 19, by = 1), absreltol = c(0, 0.01),
 	% are passed on to
 	the underlying \code{\link{integrate}()}. For
         \code{method = "Wang.Par"}
-	the ellipsis argument must contain the parameter
-	\eqn{\theta>0}{theta>0} of the Pareto distribution.
+	the ellipsis argument must contain the parameter \code{shape}
+	(the shape parameter \eqn{\theta>0}{theta>0} of the Pareto distribution).
 	For \code{method = "dual"}, the ellipsis argument must contain the
 	distribution function \code{pF()} and the initial interval
 	\code{interval} for the outer root finding procedure (not for
@@ -456,7 +456,7 @@ ABRA(alpha, qF, N.exp = seq(8, 19, by = 1), absreltol = c(0, 0.01),
 alpha <- 0.95
 d <- 8
 theta <- 3
-qF <- rep(list(function(p) qPar(p, theta = theta)), d)
+qF <- rep(list(function(p) qPar(p, shape = theta)), d)
 
 ## Worst VaR
 N <- 5e4
@@ -490,8 +490,8 @@ stopifnot(RA.best.ES$converged,
 
 alpha <- 0.99 # VaR confidence level
 th <- 2 # Pareto parameter theta
-qF <- function(p, theta = th) qPar(p, theta = theta) # Pareto quantile function
-pF <- function(q, theta = th) pPar(q, theta = theta) # Pareto distribution function
+qF <- function(p, theta = th) qPar(p, shape = theta) # Pareto quantile function
+pF <- function(q, theta = th) pPar(q, shape = theta) # Pareto distribution function
 
 
 ### 2.1 The case d = 2 #########################################################
@@ -526,7 +526,7 @@ d <- 8 # dimension
 ## Compute VaR bounds with various methods
 I <- crude_VaR_bounds(alpha, qF = qF, d = d) # crude bound
 VaR.W     <- VaR_bounds_hom(alpha, d = d, method = "Wang", qF = qF)
-VaR.W.Par <- VaR_bounds_hom(alpha, d = d, method = "Wang.Par", theta = th)
+VaR.W.Par <- VaR_bounds_hom(alpha, d = d, method = "Wang.Par", shape = th)
 VaR.dual  <- VaR_bounds_hom(alpha, d = d, method = "dual", interval = I, pF = pF)
 
 ## Adaptive Rearrangement Algorithm (ARA) (with different relative tolerances)
@@ -589,7 +589,7 @@ N <- 2e4 # we use a smaller N here to save run time
 eps <- 0.1 # absolute tolerance
 xi <- c(1.19, 1.17, 1.01, 1.39, 1.23, 1.22, 0.85, 0.98)
 beta <- c(774, 254, 233, 412, 107, 243, 314, 124)
-qF.lst <- lapply(1:8, function(j){ function(p) qGPD(p, xi = xi[j], beta = beta[j])})
+qF.lst <- lapply(1:8, function(j){ function(p) qGPD(p, shape = xi[j], scale = beta[j])})
 set.seed(271)
 res.best <- RA(0.99, qF = qF.lst, N = N, abstol = eps, method = "best.VaR")
 print(format(res.best$bounds, scientific = TRUE), quote = FALSE) # close to first value of 1st row

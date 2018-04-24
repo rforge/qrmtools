@@ -32,11 +32,12 @@ VaR_t <- function(alpha, mu = 0, sigma = 1, df = Inf)
 
 ##' @title Value-at-Risk for the Pareto distribution
 ##' @param alpha confidence level
-##' @param theta Pareto parameter
-##' @param kappa Pareto parameter
+##' @param shape Pareto parameter theta
+##' @param scale Pareto parameter kappa
 ##' @return Value-at-Risk
 ##' @author Marius Hofert
-VaR_Par <- function(alpha, theta, kappa = 1) qPar(alpha, theta = theta, kappa = kappa)
+VaR_Par <- function(alpha, shape, scale = 1)
+    qPar(alpha, shape = shape, scale = scale)
 
 
 ### 2 Expected shortfall #######################################################
@@ -93,14 +94,14 @@ ES_t <- function(alpha, mu = 0, sigma = 1, df = Inf)
 
 ##' @title Expected shortfall for the Pareto distribution
 ##' @param alpha confidence level
-##' @param theta Pareto parameter
-##' @param kappa Pareto parameter
+##' @param shape Pareto parameter theta
+##' @param scale Pareto parameter kappa
 ##' @return Expected shortfall
 ##' @author Marius Hofert
-ES_Par <- function(alpha, theta, kappa = 1)
+ES_Par <- function(alpha, shape, scale = 1)
 {
-    stopifnot(0 <= alpha, alpha <= 1, theta > 1, kappa > 0)
-    kappa * ((theta / (theta-1)) * (1-alpha)^(-1/theta) - 1)
+    stopifnot(0 <= alpha, alpha <= 1, shape > 1, scale > 0)
+    scale * ((shape / (shape-1)) * (1-alpha)^(-1/shape) - 1)
 }
 
 

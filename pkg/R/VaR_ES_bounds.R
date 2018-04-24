@@ -110,7 +110,7 @@ dual_bound <- function(s, d, pF, tol = .Machine$double.eps^0.25, ...)
 ##' @param d dimension d
 ##' @param method character string giving the method
 ##'        generic = numerical integration; Wang.Par = Pareto distibution
-##' @param ... ellipsis argument containing theta (for method = "Wang.Par")
+##' @param ... ellipsis argument containing shape (for method = "Wang.Par")
 ##'        or qF (for method = "generic")
 ##' @return Right-hand side term in Prop. 3.1
 ##' @author Marius Hofert
@@ -127,10 +127,10 @@ Wang_h_aux <- function(c, alpha, d, method = c("generic", "Wang.Par"), ...)
         qF(a)*(d-1)/d + qF(b)/d
     },
     "Wang.Par" = {
-        ## We don't use qF(a)*(d-1)/d + qF(b)/d for qF(x) = qPar(x, theta = theta)
+        ## We don't use qF(a)*(d-1)/d + qF(b)/d for qF(x) = qPar(x, shape = shape)
         ## here as qF(b) = qF(1-c) and 1-c == 1 for small c > 0 => numerically,
         ## qF(b) = Inf then.
-        th <- ddd$theta # needs 'theta'
+        th <- ddd$shape # needs 'shape'
         t1 <- (1-alpha)/c-(d-1)
         (c^(-1/th)/d) * ((d-1)*t1^(-1/th) + 1) - 1 # checked (= qF(a)*(d-1)/d + qF(b)/d)
     },
@@ -168,7 +168,7 @@ Wang_h <- function(c, alpha, d, method = c("generic", "Wang.Par"), ...)
         }
     },
     "Wang.Par" = {
-        th <- ddd$theta # needs 'theta'
+        th <- ddd$shape # needs 'shape'
         if(c == (1-alpha)/d) { # Properly deal with limit c = (1-alpha)/d
             ((1-alpha)/d)^(-1/th) - 1
         } else {
@@ -232,12 +232,12 @@ VaR_bounds_hom <- function(alpha, d, method = c("Wang", "Wang.Par", "dual"),
 
     if(d == 2) { # See Embrechts, Puccetti, Rueschendorf (2013, Prop. 2)
         if(method == "Wang.Par") {
-            theta <- NULL # make CRAN check happy
-            if(!hasArg(theta))
-                stop("The Pareto case requires the parameter theta")
-            th <- list(...)$theta
-            stopifnot(length(th) == 1, th > 0) # check theta here
-            qF <- function(p) qPar(p, theta = th)
+            shape <- NULL # make CRAN check happy
+            if(!hasArg(shape))
+                stop("The Pareto case requires the parameter 'shape'")
+            th <- list(...)$shape
+            stopifnot(length(th) == 1, th > 0) # check shape here
+            qF <- function(p) qPar(p, shape = th)
             return( c((1-alpha)^(-1/th)-1, 2*(((1-alpha)/2)^(-1/th)-1)) )
         } else {
             qF <- NULL # make CRAN check happy
@@ -265,11 +265,11 @@ VaR_bounds_hom <- function(alpha, d, method = c("Wang", "Wang.Par", "dual"),
                        d * do.call(int, ddd))
                },
                "Wang.Par" = {
-                   theta <- NULL # make CRAN check happy
-                   if(!hasArg(theta))
-                       stop("Method 'Wang.Par' requires the parameter theta")
-                   th <- list(...)$theta
-                   stopifnot(length(th) == 1, th > 0) # check theta here
+                   shape <- NULL # make CRAN check happy
+                   if(!hasArg(shape))
+                       stop("Method 'Wang.Par' requires the parameter 'shape'")
+                   th <- list(...)$shape
+                   stopifnot(length(th) == 1, th > 0) # check shape here
                    Ibar <- if(th == 1) {
                        -log1p(-alpha) - alpha
                    } else {
@@ -319,24 +319,24 @@ VaR_bounds_hom <- function(alpha, d, method = c("Wang", "Wang.Par", "dual"),
 
                ## Critical here (see vignette): smaller tolerance and extending the initial interval
 
-               ## Check 'theta'
-               theta <- NULL # make CRAN check happy
-               if(!hasArg(theta))
-                   stop("Method 'Wang.Par' requires the parameter theta")
-               th <- list(...)$theta
-               stopifnot(length(th) == 1, th > 0) # check theta here
+               ## Check 'shape'
+               shape <- NULL # make CRAN check happy
+               if(!hasArg(shape))
+                   stop("Method 'Wang.Par' requires the parameter 'shape'")
+               th <- list(...)$shape
+               stopifnot(length(th) == 1, th > 0) # check shape here
 
                ## Compute uniroot() initial interval
                if(is.null(interval)) {
                    low <- if(th > 1) {
                        r <- (1-alpha)/((d/(th-1)+1)^th + d-1)
-                       r/2 # adjustment to guarantee numerically that h is of opposite sign (required for very large theta)
+                       r/2 # adjustment to guarantee numerically that h is of opposite sign (required for very large shape)
                    } else if(th == 1) {
                        e <- exp(1)
                        (1-alpha)/((d+1)^(e/(e-1))+d-1)
                    } else {
                        r <- (1-th)*(1-alpha)/d
-                       r/2 # adjustment to guarantee numerically that h is of opposite sign (required for very small theta)
+                       r/2 # adjustment to guarantee numerically that h is of opposite sign (required for very small shape)
                    }
                    up <- if(th == 1) {
                        (1-alpha)/(3*d/2-1)
@@ -353,7 +353,7 @@ VaR_bounds_hom <- function(alpha, d, method = c("Wang", "Wang.Par", "dual"),
                ## Root-finding on 'interval'
                h <- function(c) Wang_h(c, alpha = alpha, d = d, method = "Wang.Par", ...)
                c <- uniroot(h, interval = interval, tol = tol)$root
-               d * Wang_h_aux(c, alpha = alpha, d = d, method = "Wang.Par", theta = th)
+               d * Wang_h_aux(c, alpha = alpha, d = d, method = "Wang.Par", shape = th)
 
            },
            "dual" = {

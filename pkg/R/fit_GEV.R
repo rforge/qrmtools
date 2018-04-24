@@ -1,29 +1,29 @@
-### Fitting GEV(xi, mu, sigma) #################################################
+### Fitting GEV(shape, loc, scale) #############################################
 
 ## ## Other packages
 ## - QRM:
-##   + fit.GEV() uses hard-coded value for xi and mu and sigma from case xi = 0
+##   + fit.GEV() uses hard-coded value for shape and loc and scale from case shape = 0
 ##     (see below)
 ## - Renext:
 ##   + also based on optim()
 ##   + fGEV.MAX() -> calls parIni.MAX(); detailed in "Renext Computing Details"
 ##     (but not available)
 ##   + some sort of weird procedure based on a regression idea of some sort
-##   + good 'caution': log-lik = Inf for xi <= -1 but optimization
-##     done in unconstrained way. Typically xi > -1, but if xi <= -1, then
+##   + good 'caution': log-lik = Inf for shape <= -1 but optimization
+##     done in unconstrained way. Typically shape > -1, but if shape <= -1, then
 ##     meaningless.
-##     For xi < -0.5, treat with care.
+##     For shape < -0.5, treat with care.
 ## - evd:
 ##   + also based on optim()
 ##   + fextreme(): requires 'start' to be provided
 ##   + fgev(): requires 'start' to be provided
 ## - evir:
-##   + ./R -> bmax.R -> gev(): hardcoded xi = 0.1 as 'QRM'
+##   + ./R -> bmax.R -> gev(): hardcoded shape = 0.1 as 'QRM'
 ## - extRemes:
 ##   + fevd(): huge, uses optim() with 'init.pars', can provide 'initial' or
 ##     determine them
 ##   + 'initial' is determine (on 'find.init') via L moments or moments and
-##     hard-coded (xi = 0.01, mu = 0, sig = 1) on failure of both methods
+##     hard-coded (shape = 0.01, loc = 0, sig = 1) on failure of both methods
 ## - fExtremes:
 ##   + gevFit() -> .gevFit() -> .gevmleFit(): uses optim(), hardcoded initial
 ##     values as 'QRM' (refers to evir for that)
@@ -36,7 +36,7 @@
 ##     'family$start(data)' if start not provided (see also .pdf)
 ##   + 'start()' is a function and for the GEV found in ./R/gev.R
 ##   + start() returns a longer vector (unclear why) but seems to use mean()
-##     as initial value for mu and log(IQR(data)/2) as initial value for xi;
+##     as initial value for loc and log(IQR(data)/2) as initial value for shape;
 ##     quite unclear
 ##   + points out that MLE will often fail with small sample size
 
@@ -49,9 +49,9 @@
 ##' @param p numeric(3) specifying the probabilities whose quantiles are
 ##'        matched
 ##' @param cutoff value after which exp(-x) is truncated to 0
-##' @return numeric(3) with estimates of xi, mu, sigma
+##' @return numeric(3) with estimates of shape, loc, scale
 ##' @author Marius Hofert
-##' @note Determines xi, mu, sigma such that the empirical p-quantiles are matched
+##' @note Determines shape, loc, scale such that the empirical p-quantiles are matched
 fit_GEV_quantile <- function(x, p = c(0.25, 0.5, 0.75), cutoff = 3)
 {
     stopifnot(length(p) == 3, 0 < p, p < 1, cutoff > 0)
@@ -63,8 +63,8 @@ fit_GEV_quantile <- function(x, p = c(0.25, 0.5, 0.75), cutoff = 3)
     l <- log(-log(p)) # decreasing in p
     a <- rev(diff(rev(l))) # l[1] - l[2]; l[2] - l[3]
     a. <- a[1]/a[2]
-    ## Initial value for xi
-    xi.hat <- if(y < 1/expm1(cutoff/a.)) {
+    ## Initial value for shape
+    shape.hat <- if(y < 1/expm1(cutoff/a.)) {
                   log1p(1/y)/a[2]
               } else if(y <= a.) {
                   m1 <- a[2]/cutoff * log(a./(expm1(a.*cutoff)))
@@ -73,20 +73,20 @@ fit_GEV_quantile <- function(x, p = c(0.25, 0.5, 0.75), cutoff = 3)
                   m2 <- -a[1]/cutoff * log(a.*expm1(cutoff/a.))
                   log(y/a.) / m2
               } else -log1p(y)/a[1]
-    ## Initial value for sigma
-    sig.hat <- if(xi.hat == 0) {
+    ## Initial value for scale
+    scale.hat <- if(shape.hat == 0) {
                    q.diff[1] / (-l[2] + l[1])
                } else {
-                   xi.hat * q.diff[1] / ((-log(p[2]))^(-xi.hat) - (-log(p[1]))^(-xi.hat))
+                   shape.hat * q.diff[1] / ((-log(p[2]))^(-shape.hat) - (-log(p[1]))^(-shape.hat))
                }
-    ## Initial value for mu
-    mu.hat <- if(xi.hat == 0) {
-                  q[2] + sig.hat * l[2]
+    ## Initial value for loc
+    loc.hat <- if(shape.hat == 0) {
+                  q[2] + scale.hat * l[2]
               } else {
-                  q[2] - sig.hat/xi.hat * ((-log(p[2]))^(-xi.hat)-1)
+                  q[2] - scale.hat/shape.hat * ((-log(p[2]))^(-shape.hat)-1)
               }
     ## Return
-    c(xi = xi.hat, mu = mu.hat, sigma = sig.hat)
+    c(shape = shape.hat, loc = loc.hat, scale = scale.hat)
 }
 
 
@@ -95,10 +95,10 @@ fit_GEV_quantile <- function(x, p = c(0.25, 0.5, 0.75), cutoff = 3)
 ##' @title Probability Weighted Moments Estimator
 ##' @param x numeric vector of data. In the block maxima method, these are the
 ##'        block maxima (based on block size n).
-##' @return numeric(3) with estimates of xi, mu, sigma
+##' @return numeric(3) with estimates of shape, loc, scale
 ##' @author Marius Hofert
 ##' @note See Hosking, Wallis, Wood (1985) and Landwehr and Wallis (1979)
-##'       Note that their '-k', 'xi' and 'alpha' are our our 'xi', 'mu' and 'sigma'.
+##'       Note that their '-k', 'xi' and 'alpha' are our 'xi', 'mu' and 'sigma'.
 fit_GEV_PWM <- function(x)
 {
     ## b_r = estimator (unbiased according to Landwehr and Wallis (1979)) / a sample version of M_{1,r,0} = E(X F(X)^r)
@@ -110,52 +110,52 @@ fit_GEV_PWM <- function(x)
     b2 <- mean(x. * (k-1)*(k-2)/((n-1)*(n-2)))
     ## Match probability weighted moments
     ## 1) Theoretically:
-    ## xi <- seq(-10, 10, length.out = 65)
-    ## y <- (3^xi-1)/(2^xi-1)
-    ## plot(xi, y, type = "l") # => starts at 1 (xi = -Inf), increases exponentially)
-    y <- (3*b2-b0) / (2*b1-b0) # evaluation point of h^{-1} for h(xi) = (3^xi-1)/(2^xi-1) (>= 1)
+    ## shape <- seq(-10, 10, length.out = 65)
+    ## y <- (3^shape-1)/(2^shape-1)
+    ## plot(shape, y, type = "l") # => starts at 1 (shape = -Inf), increases exponentially)
+    y <- (3*b2-b0) / (2*b1-b0) # evaluation point of h^{-1} for h(shape) = (3^shape-1)/(2^shape-1) (>= 1)
     if(y <= 1)
         stop("Cannot invert auxiliary function h involved. Use a different estimator.")
-    ## xi.hat <- uniroot(function(x) (3^x-1)/(2^x-1) - y, interval = c(-100, 100))$root
+    ## shape.hat <- uniroot(function(x) (3^x-1)/(2^x-1) - y, interval = c(-100, 100))$root
     ## 2) Hosking, Wallis, Wood (1985, (14)) suggest to approximate h^{-1}(y) via g^{-1}(c)
     ##    for c = (2*b1-b0)/(3*b2-b0) - log(2)/log(3) and g^{-1}(c) = -(7.8590 + 2.9554*c)*c.
     ##    This is equivalent to h^{-1}(y) = a/y^2 + b/y + c for a, b, c as follows.
     a <- -2.9554
     b <- -4.1297 # = -(7.8590-2.9554*log(4)/log(3))
     c <- 3.782014 # = -(-7.8590*log(2)/log(3)+2.9554*(log(2)/log(3))^2)
-    xi.hat <- a/y^2 + b/y + c
-    ## Now compute the estimators for mu and sigma
-    sig.hat <- if(xi.hat == 0) {
+    shape.hat <- a/y^2 + b/y + c
+    ## Now compute the estimators for loc and scale
+    scale.hat <- if(shape.hat == 0) {
                    (2 * b1 - b0) / log(2)
                } else {
-                   (2 * b1 - b0) * xi.hat / (gamma(1 - xi.hat) * (2^xi.hat - 1)) # sigma, see Hosking, Wallis, Wood (1985, (15))
+                   (2 * b1 - b0) * shape.hat / (gamma(1 - shape.hat) * (2^shape.hat - 1)) # scale, see Hosking, Wallis, Wood (1985, (15))
                }
-    mu.hat <- if(xi.hat == 0) {
-                  b0 - sig.hat * 0.5772157 # ... Euler--Mascheroni constant
+    loc.hat <- if(shape.hat == 0) {
+                  b0 - scale.hat * 0.5772157 # ... Euler--Mascheroni constant
               } else {
-                  b0 - sig.hat * (gamma(1-xi.hat) - 1) / xi.hat # mu, see Hosking, Wallis, Wood (1985, (15))
+                  b0 - scale.hat * (gamma(1-shape.hat) - 1) / shape.hat # loc, see Hosking, Wallis, Wood (1985, (15))
               }
     ## Return
-    c(xi = xi.hat, mu = mu.hat, sigma = sig.hat)
+    c(shape = shape.hat, loc = loc.hat, scale = scale.hat)
 }
 
 
 ### Maximum likelihood estimator ###############################################
 
 ##' @title Log-likelihood of the GEV
-##' @param param numeric(3) giving xi, mu, sigma (all real here; if sigma <= 0
+##' @param param numeric(3) giving shape, loc, scale (all real here; if scale <= 0
 ##'        dGEV(, log = TRUE) returns -Inf)
 ##' @param x numeric vector of data. In the block maxima method, these are the
 ##'        block maxima (based on block size n)
-##' @return log-likelihood at xi, mu, sigma
+##' @return log-likelihood at shape, loc, scale
 ##' @author Marius Hofert
 logLik_GEV <- function(param, x)
-    sum(dGEV(x, xi = param[1], mu = param[2], sigma = param[3], log = TRUE))
+    sum(dGEV(x, shape = param[1], loc = param[2], scale = param[3], log = TRUE))
 
 ##' @title MLE for GEV Parameters
 ##' @param x numeric vector of data. In the block maxima method, these are the
 ##'        block maxima (based on block size n)
-##' @param init numeric(3) or string giving the initial values for xi, mu, sigma.
+##' @param init numeric(3) or string giving the initial values for shape, loc, scale.
 ##' @param estimate.cov logical indicating whether the asymptotic covariance
 ##'        matrix of the parameter estimators is to be estimated
 ##'        (inverse of observed Fisher information (negative Hessian
@@ -168,18 +168,18 @@ logLik_GEV <- function(param, x)
 ##'         of the parameter estimators appended if estimate.cov.
 ##' @author Marius Hofert
 ##' @note 1) similar to copula:::fitCopula.ml()
-##'       2) careful for xi <= -0.5 (very short, bounded upper tail):
+##'       2) careful for shape <= -0.5 (very short, bounded upper tail):
 ##'          MLE doesn't have standard asymptotic properties.
-##'       3) No method except 'xi0' guarantees that 1 + xi (x - mu) / sigma > 0
+##'       3) No method except 'shape0' guarantees that 1 + shape (x - loc) / scale > 0
 ##'          and thus that the log-likelihood > -Inf for all data points; if
 ##'          log-likelihood == 0, optim() stops with error:
 ##'          "Error in optim(init, fn = function(param) logLik_GEV(param, x = x),
 ##'          hessian = estimate.cov: function cannot be evaluated at initial
 ##'          parameters"
-##'          => below we guarantee to get a finite log-likelihood by doubling sigma
-##'       4) Other options as default method are 'xi0' with xi = 0 (exact) but
+##'          => below we guarantee to get a finite log-likelihood by doubling scale
+##'       4) Other options as default method are 'shape0' with shape = 0 (exact) but
 ##'          method = "BFGS", or 'PWM"
-fit_GEV_MLE <- function(x, init = c("xi0", "PWM", "quantile"),
+fit_GEV_MLE <- function(x, init = c("shape0", "PWM", "quantile"),
                         estimate.cov = TRUE, control = list(), ...)
 {
     ## Checks
@@ -190,26 +190,26 @@ fit_GEV_MLE <- function(x, init = c("xi0", "PWM", "quantile"),
     ## Initial values
     if(!isnum) {
         switch(match.arg(init),
-        "xi0" = {
-            ## Idea: - Use xi = 0 here => mu and sigma explicit in terms of mean and
-            ##         variance (method-of-moment estimator for mu, sigma).
-            ##         This guarantees that 1 + xi (x - mu) / sigma > 0, so a finite
+        "shape0" = {
+            ## Idea: - Use shape = 0 here => loc and scale explicit in terms of mean and
+            ##         variance (method-of-moment estimator for loc, scale).
+            ##         This guarantees that 1 + shape (x - loc) / scale > 0, so a finite
             ##         log-likelihood.
             ##       - As in 'QRM', 'evir', 'fExtremes', 'ismev'
-            ##       - Note that xi = 0 can fail for method = "Nelder-Mead"
+            ##       - Note that shape = 0 can fail for method = "Nelder-Mead"
             ##         (seen for the Black Monday example)
             ##         => .Machine$double.eps works
-            sig.hat <- sqrt(6 * var(x)) / pi # var for xi = 0 is (\sigma\pi)^2 / 6 => \sigma
-            init <- c(.Machine$double.eps, mean(x) - 0.5772157 * sig.hat, sig.hat) # mean for xi is mu + sig * gamma => mu; gamma = -digamma(1) = Euler--Mascheroni constant
+            scale.hat <- sqrt(6 * var(x)) / pi # var for shape = 0 is (scale \pi)^2 / 6 => scale
+            init <- c(.Machine$double.eps, mean(x) - 0.5772157 * scale.hat, scale.hat) # mean for shape is loc + sig * gamma => loc; gamma = -digamma(1) = Euler--Mascheroni constant
         },
         "PWM" = {
             init <- fit_GEV_PWM(x)
             ## Force initial values to produce finite log-likelihood
             ## Formerly:
-            ## if(method != "xi0") { # only for 'xi0', a non-zero density is guaranteed
-            ##     sig.bound <- max(-init[1] * (x - init[2]))
-            ##     if(init[3] <= sig.bound)
-            ##         init[3] <- 1.05 * sig.bound # blow up by 5%
+            ## if(method != "shape0") { # only for 'shape0', a non-zero density is guaranteed
+            ##     scale.bound <- max(-init[1] * (x - init[2]))
+            ##     if(init[3] <= scale.bound)
+            ##         init[3] <- 1.05 * scale.bound # blow up by 5%
             ## }
             while(!is.finite(logLik_GEV(init, x = x)) && is.finite(init[3])) init[3] <- init[3] * 2
             ## Note: if !is.finite(init[3]), there's nothing we can do...
@@ -225,7 +225,7 @@ fit_GEV_MLE <- function(x, init = c("xi0", "PWM", "quantile"),
     control <- c(as.list(control), fnscale = -1) # maximization (overwrites possible additionally passed 'fnscale')
     fit <- optim(init, fn = function(param) logLik_GEV(param, x = x),
                  hessian = estimate.cov, control = control, ...)
-    names(fit$par) <- c("xi", "mu", "sigma")
+    names(fit$par) <- c("shape", "loc", "scale")
 
     ## Estimate of the asymptotic covariance matrix and standard errors
     ## of the parameter estimators
@@ -241,10 +241,10 @@ fit_GEV_MLE <- function(x, init = c("xi0", "PWM", "quantile"),
             SE <- numeric(0)
         } else {
             Cov <- negHessianInv$value # result on warning or on 'worked'
-            rownames(Cov) <- c("xi", "mu", "sigma")
-            colnames(Cov) <- c("xi", "mu", "sigma")
+            rownames(Cov) <- c("shape", "loc", "scale")
+            colnames(Cov) <- c("shape", "loc", "scale")
             SE <- sqrt(diag(Cov))
-            names(SE) <- c("xi", "mu", "sigma")
+            names(SE) <- c("shape", "loc", "scale")
         }
     } else {
         Cov <- matrix(NA_real_, 0, 0)
