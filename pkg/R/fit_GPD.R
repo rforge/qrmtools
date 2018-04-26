@@ -35,8 +35,8 @@
 ### Method-of-moments estimator ################################################
 
 ##' @title Method-Of-Moments Estimator
-##' @param x numeric vector of data. In the POT method, these are the excesses
-##'        over a sufficiently high threshold.
+##' @param x numeric vector of data. In the peaks-over-threshold method,
+##'        these are the excesses over a sufficiently high threshold.
 ##' @return numeric(2) with estimates of shape and scale
 ##' @author Marius Hofert
 ##' @note See Hosking and Wallis (1987) and Landwehr, Matalas, Wallis (1979)
@@ -52,8 +52,8 @@ fit_GPD_MOM <- function(x)
 ### Probability weighted moments estimator #####################################
 
 ##' @title Probability Weighted Moments Estimator
-##' @param x numeric vector of data. In the POT method, these are the excesses
-##'        over a sufficiently high threshold.
+##' @param x numeric vector of data. In the peaks-over-threshold method,
+##'        these are the excesses over a sufficiently high threshold.
 ##' @return numeric(2) with estimates of shape and scale
 ##' @author Marius Hofert
 ##' @note See Hosking and Wallis (1987) and Landwehr, Matalas, Wallis (1979)
@@ -77,16 +77,16 @@ fit_GPD_PWM <- function(x)
 ##' @title Log-likelihood of the GPD
 ##' @param param numeric(2) giving shape and scale (all real here;
 ##'        if scale <= 0 dGPD(, log = TRUE) returns -Inf)
-##' @param x numeric vector of data. In the POT method, these are the excesses
-##'        over a sufficiently high threshold.
+##' @param x numeric vector of data. In the peaks-over-threshold method,
+##'        these are the excesses over a sufficiently high threshold.
 ##' @return log-likelihood at shape and scale
 ##' @author Marius Hofert
 logLik_GPD <- function(param, x)
     sum(dGPD(x, shape = param[1], scale = param[2], log = TRUE))
 
 ##' @title MLE for GPD Parameters
-##' @param x numeric vector of data. In the POT method, these are the excesses
-##'        over a sufficiently high threshold.
+##' @param x numeric vector of data. In the peaks-over-threshold method,
+##'        these are the excesses over a sufficiently high threshold.
 ##' @param init numeric(2) giving the initial values for shape and scale.
 ##'        Findings of Hosking and Wallis (1987):
 ##'        - MLE requires n ~>= 500 to be efficient

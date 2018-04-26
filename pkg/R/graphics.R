@@ -1,4 +1,4 @@
-### Graphical tools ############################################################
+### General graphical tools ####################################################
 
 ##' @title Image Indicating NAs in a Data Set
 ##' @param x matrix (ideally an xts object)
@@ -92,8 +92,8 @@ matrix_plot <- function(x, ylim = rev(c(0.5, nrow(x) + 0.5)),
 
 ##' @title Density Plot of the Values from a Lower Triangular Matrix
 ##' @param x matrix
-##' @param xlab x-axis label
-##' @param main title
+##' @param xlab x-axis label; see plot()
+##' @param main title; see plot()
 ##' @param text see mtext()
 ##' @param side see mtext()
 ##' @param line see mtext()
