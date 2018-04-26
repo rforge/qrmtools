@@ -1,4 +1,5 @@
-- make sure Alex is mentioned as author
+- EVT: implement QRM::plotTail() (should work similarly to edf_plot()) and QRM::xiplot()
+- Improve run time of mean_excess_plot() (see slow script ./R/05_Extreme_Value_Theory/05_Mean_excess_plots.R => sample size 50000)
 
 ### (A)RA
 - Maybe write do.call(cbind()) and .rowSums(do.call(cbind())) as C functions

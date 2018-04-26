@@ -30,10 +30,19 @@ VaR_t <- function(level, loc = 0, scale = 1, df = Inf)
     loc + scale * if(identical(df, Inf)) qnorm(level) else qt(level, df = df)
 }
 
+##' @title Value-at-Risk for the GPD
+##' @param level confidence level alpha
+##' @param shape parameter xi
+##' @param scale parameter beta
+##' @return Value-at-Risk
+##' @author Marius Hofert
+VaR_GPD <- function(level, shape, scale)
+    qGPD(level, shape = shape, scale = scale)
+
 ##' @title Value-at-Risk for the Pareto distribution
 ##' @param level confidence level alpha
-##' @param shape Pareto parameter theta
-##' @param scale Pareto parameter kappa
+##' @param shape parameter theta
+##' @param scale parameter kappa
 ##' @return Value-at-Risk
 ##' @author Marius Hofert
 VaR_Par <- function(level, shape, scale = 1)
@@ -92,10 +101,23 @@ ES_t <- function(level, loc = 0, scale = 1, df = Inf)
     dt(qt(level, df = df), df = df) * (df + qt(level, df = df)^2) / (df-1)
 }
 
+##' @title Expected shortfall for the GPD
+##' @param level confidence level alpha
+##' @param shape parameter xi
+##' @param scale parameter beta
+##' @return Expected shortfall
+##' @author Marius Hofert
+ES_GPD <- function(level, shape, scale)
+{
+    stopifnot(0 <= level, level <= 1, shape < 1, scale > 0)
+    VaR <- VaR_GPD(level, shape = shape, scale = scale)
+    VaR + (scale + shape * VaR)/(1-shape) # VaR + mean excess function at VaR
+}
+
 ##' @title Expected shortfall for the Pareto distribution
 ##' @param level confidence level alpha
-##' @param shape Pareto parameter theta
-##' @param scale Pareto parameter kappa
+##' @param shape parameter theta
+##' @param scale parameter kappa
 ##' @return Expected shortfall
 ##' @author Marius Hofert
 ES_Par <- function(level, shape, scale = 1)

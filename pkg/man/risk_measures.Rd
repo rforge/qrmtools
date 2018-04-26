@@ -1,9 +1,11 @@
 \name{risk_measures}
 \alias{VaR_np}
 \alias{VaR_t}
+\alias{VaR_GPD}
 \alias{VaR_Par}
 \alias{ES_np}
 \alias{ES_t}
+\alias{ES_GPD}
 \alias{ES_Par}
 \alias{gVaR}
 \alias{gEX}
@@ -15,11 +17,13 @@
 ## value-at-risk
 VaR_np(x, level, names = FALSE, type = 1, ...)
 VaR_t(level, loc = 0, scale = 1, df = Inf)
+VaR_GPD(level, shape, scale)
 VaR_Par(level, shape, scale = 1)
 
 ## expected shortfall
 ES_np(x, level, method = c(">", ">="), verbose = FALSE, ...)
 ES_t(level, loc = 0, scale = 1, df = Inf)
+ES_GPD(level, shape, scale)
 ES_Par(level, shape, scale = 1)
 
 ## multivariate geometric value-at-risk and expectiles
@@ -48,17 +52,26 @@ gEX(x, level, start = colMeans(x),
   \item{names}{see \code{?\link{quantile}}.}
   \item{type}{see \code{?\link{quantile}}.}
   \item{loc}{location parameter \eqn{\mu}{mu}.}
+  \item{shape}{
+    \describe{
+      \item{\code{VaR_GPD()}, \code{ES_GPD()}}{GPD shape parameter
+	\eqn{\xi}{xi}, a real number.}
+      \item{\code{VaR_Par()}, \code{ES_Par()}}{Pareto shape parameter
+	\eqn{\theta}{theta}, a positive number.}
+    }
+  }
   \item{scale}{
     \describe{
       \item{\code{VaR_t()}, \code{ES_t()}}{\eqn{$t$}{t} scale parameter
 	\eqn{\sigma}{sigma}, a positive number.}
+      \item{\code{VaR_GPD()}, \code{ES_GPD()}}{GPD scale parameter
+	\eqn{\beta}{beta}, a positive number.}
       \item{\code{VaR_Par()}, \code{ES_Par()}}{Pareto scale parameter
 	\eqn{\kappa}{kappa}, a positive number.}
     }
   }
   \item{df}{degrees of freedom, a positive number; choose \code{df = Inf}
     for the normal distribution.}
-  \item{shape}{Pareto shape parameter \eqn{\theta}{theta}, a positive number.}
   \item{start}{\code{\link{vector}} of initial values for the underlying
     \code{\link{optim}()}.}
   \item{method}{
@@ -92,6 +105,9 @@ gEX(x, level, start = colMeans(x),
 
   \code{VaR_t()}, \code{ES_t()} compute value-at-risk and expected
   shortfall for the \eqn{t} (or normal) distribution.
+
+  \code{VaR_GPD()}, \code{ES_GPD()} compute value-at-risk and expected
+  shortfall for the generalized Pareto distribution (GPD).
 
   \code{VaR_Par()}, \code{ES_Par()} compute value-at-risk and expected
   shortfall for the Pareto distribution.
