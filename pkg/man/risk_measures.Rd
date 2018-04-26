@@ -3,10 +3,12 @@
 \alias{VaR_t}
 \alias{VaR_GPD}
 \alias{VaR_Par}
+\alias{VaR_POT}
 \alias{ES_np}
 \alias{ES_t}
 \alias{ES_GPD}
 \alias{ES_Par}
+\alias{ES_POT}
 \alias{gVaR}
 \alias{gEX}
 \title{Risk Measures}
@@ -19,12 +21,14 @@ VaR_np(x, level, names = FALSE, type = 1, ...)
 VaR_t(level, loc = 0, scale = 1, df = Inf)
 VaR_GPD(level, shape, scale)
 VaR_Par(level, shape, scale = 1)
+VaR_POT(level, x, threshold, shape, scale)
 
 ## expected shortfall
 ES_np(x, level, method = c(">", ">="), verbose = FALSE, ...)
 ES_t(level, loc = 0, scale = 1, df = Inf)
 ES_GPD(level, shape, scale)
 ES_Par(level, shape, scale = 1)
+ES_POT(level, x, threshold, shape, scale)
 
 ## multivariate geometric value-at-risk and expectiles
 gVaR(x, level, start = colMeans(x),
@@ -72,6 +76,8 @@ gEX(x, level, start = colMeans(x),
   }
   \item{df}{degrees of freedom, a positive number; choose \code{df = Inf}
     for the normal distribution.}
+  \item{threshold}{threhold \eqn{u}{u} (used to estimate the exceedance
+    probability based on the data \code{x}).}
   \item{start}{\code{\link{vector}} of initial values for the underlying
     \code{\link{optim}()}.}
   \item{method}{

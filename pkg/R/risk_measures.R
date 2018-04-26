@@ -2,7 +2,7 @@
 
 ### 1 Value-at-Risk ############################################################
 
-##' @title Nonparametric VaR estimator
+##' @title Nonparametric VaR Estimator
 ##' @param x vector of losses
 ##' @param level confidence level alpha
 ##' @param names see ?quantile
@@ -17,7 +17,7 @@
 VaR_np <- function(x, level, names = FALSE, type = 1, ...)
     quantile(x, probs = level, names = names, type = type, ...) # vectorized in x and level
 
-##' @title Value-at-Risk for normal and t distributions
+##' @title Value-at-Risk for Normal and t Distributions
 ##' @param level confidence level alpha
 ##' @param loc location mu
 ##' @param scale scale sigma
@@ -39,7 +39,7 @@ VaR_t <- function(level, loc = 0, scale = 1, df = Inf)
 VaR_GPD <- function(level, shape, scale)
     qGPD(level, shape = shape, scale = scale)
 
-##' @title Value-at-Risk for the Pareto distribution
+##' @title Value-at-Risk for the Pareto Distribution
 ##' @param level confidence level alpha
 ##' @param shape parameter theta
 ##' @param scale parameter kappa
@@ -48,10 +48,27 @@ VaR_GPD <- function(level, shape, scale)
 VaR_Par <- function(level, shape, scale = 1)
     qPar(level, shape = shape, scale = scale)
 
+##' @title Semi-parametric VaR Estimator in the POT Method
+##' @param level confidence level alpha
+##' @param x data (original, not exceedances or excesses)
+##' @param threshold threshold u
+##' @param shape parameter xi
+##' @param scale parameter beta
+##' @return Value-at-Risk
+##' @author Marius Hofert
+VaR_POT <- function(level, x, threshold, shape, scale)
+{
+    p.exceed <- mean(x > threshold) # estimated exceedance probability bar{F}(u)
+    if(p.exceed == 0)
+        stop("No threshold exceedances to non-parametrically estimate the exceedance probability.")
+    stopifnot(p.exceed <= level, level <= 1, scale > 0)
+    threshold + (scale/shape) * (((1-level)/p.exceed)^(-shape) - 1)
+}
+
 
 ### 2 Expected shortfall #######################################################
 
-##' @title Nonparametric expected shortfall estimator
+##' @title Nonparametric Expected Shortfall Estimator
 ##' @param x vector of losses
 ##' @param level confidence level alpha
 ##' @param method method
@@ -87,7 +104,7 @@ ES_np <- function(x, level, method = c(">", ">="), verbose = FALSE, ...)
     }, NA_real_)
 }
 
-##' @title Expected shortfall for normal and t distributions
+##' @title Expected Shortfall for Normal and t Distributions
 ##' @param level confidence level alpha
 ##' @param loc location mu
 ##' @param scale scale sigma
@@ -101,7 +118,7 @@ ES_t <- function(level, loc = 0, scale = 1, df = Inf)
     dt(qt(level, df = df), df = df) * (df + qt(level, df = df)^2) / (df-1)
 }
 
-##' @title Expected shortfall for the GPD
+##' @title Expected Shortfall for the GPD
 ##' @param level confidence level alpha
 ##' @param shape parameter xi
 ##' @param scale parameter beta
@@ -114,7 +131,7 @@ ES_GPD <- function(level, shape, scale)
     VaR + (scale + shape * VaR)/(1-shape) # VaR + mean excess function at VaR
 }
 
-##' @title Expected shortfall for the Pareto distribution
+##' @title Expected Shortfall for the Pareto Distribution
 ##' @param level confidence level alpha
 ##' @param shape parameter theta
 ##' @param scale parameter kappa
@@ -124,6 +141,21 @@ ES_Par <- function(level, shape, scale = 1)
 {
     stopifnot(0 <= level, level <= 1, shape > 1, scale > 0)
     scale * ((shape / (shape-1)) * (1-level)^(-1/shape) - 1)
+}
+
+##' @title Semi-parametric ES Estimator in the POT Method
+##' @param level confidence level alpha
+##' @param x data (original, not exceedances or excesses)
+##' @param threshold threshold u
+##' @param shape parameter xi
+##' @param scale parameter beta
+##' @return Expected shortfall
+##' @author Marius Hofert
+ES_POT <- function(level, x, threshold, shape, scale)
+{
+    stopifnot(shape < 1, scale > 0) # rest checked in VaR_POT()
+    VaR <- VaR_POT(level, x = x, threshold = threshold, shape = shape, scale = scale)
+    (VaR + scale - shape * threshold) / (1 - shape)
 }
 
 
@@ -201,4 +233,3 @@ gEX <- function(x, level, start = colMeans(x),
               method = method, ...)
     }
 }
-
