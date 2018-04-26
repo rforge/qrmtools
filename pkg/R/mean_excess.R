@@ -5,9 +5,9 @@
 ##' @param omit number of unique last observations to be omitted
 ##'        from the sorted data (as mean excess estimator becomes unreliable for
 ##'        these observations as thresholds)
-##' @return Two-column matrix with the sorted data without the largest
-##'         omit-many data points (first column) and the sample mean excess
-##'         function evaluated at these data points.
+##' @return Two-column matrix giving the sorted data without the omit-largest
+##'         unique values (first column) and the corresponding values of the
+##'         sample mean excess function (second column).
 ##' @author Marius Hofert
 ##' @note - Main idea:
 ##'         1)              e_n(u) = (sum_{i=1}^n (X_{(i)}-u) I(X_{(i)} > u)) / sum_{i=1}^n I(X_{(i)} > u)
@@ -45,7 +45,7 @@ mean_excess <- function(x, omit = 3)
 ##' @param xlab x-axis label; see plot()
 ##' @param ylab y-axis label; see plot()
 ##' @param ... additional arguments passed to the underlying plot()
-##' @return plot()
+##' @return invisible()
 ##' @author Marius Hofert
 ##' @note - Note that QRM::MEplot() only considers *unique* values. In particular,
 ##'         each value in the plot then appears equally often (which is actually
@@ -57,4 +57,7 @@ mean_excess <- function(x, omit = 3)
 ##'         would be good but then probably too slow.
 mean_excess_plot <- function(x, omit = 3, xlab = "Threshold",
                              ylab = "Mean excess over threshold", ...)
+{
     plot(mean_excess(x, omit = omit), xlab = xlab, ylab = ylab, ...)
+    invisible()
+}

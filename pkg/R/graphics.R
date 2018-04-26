@@ -41,7 +41,7 @@ NA_plot <- function(x, col = c("black", "white"), xlab = "Time", ylab = "Compone
 ##' @param col default colors for the color key
 ##' @param col.regions see levelplot()
 ##' @param ... additional arguments passed to levelplot()
-##' @return level plot
+##' @return the plot, a Trellis object
 ##' @author Marius Hofert
 ##' @note - Another option would be:
 ##'         corrplot::corrplot(err, method = "color", col = grey(seq(0.4, 1, length.out = 200)),
@@ -201,5 +201,48 @@ qq_plot <-  function(x, FUN = qnorm, xlab = "Theoretical quantiles", ylab = "Sam
         },
         stop("Wrong 'method'"))
     }
+    invisible()
+}
+
+##' @title Plot of an Empirical Distribution Function Possibly Overlaid
+##' @param x data of which the empirical distribution function is to be plotted
+##' @param FUN function to be plotted additionally (unless NULL)
+##' @param FUN.args list of arguments of lines() for drawing FUN
+##' @param xlim x-axis limit for determining where to evaluate ecdf(x)
+##' @param q numeric vector of quantiles where FUN is evaluated; if of length 2,
+##'        FUN is evaluated at length.out-many points in q[1] to q[2] (exponential
+##'        scale if log = TRUE)
+##' @param length.out number of points for constructing a sequence between q[1] and
+##'        q[2] unless length(q) > 2.
+##' @param log logical indicating whether the x-axis is given in logarithmic scale
+##' @param xlab x-axis label
+##' @param ylab y-axis label
+##' @param ... additional arguments passed to the underlying plot()
+##' @return invisible()
+##' @author Marius Hofert
+edf_plot <- function(x, FUN = NULL, FUN.args = NULL,
+                     xlim = c(min(x), extendrange(x)[2]),
+                     q = c(max(x[1], xlim[1]), xlim[2]), length.out = 129,
+                     log = FALSE, xlab = "Value", ylab = "Probability", ...)
+{
+    ## Data and checks
+    x <- sort(as.numeric(x)) # for ecdf()
+    stopifnot(length(x) >= 2, is.null(FUN) || is.function(FUN),
+              is.null(FUN.args) || is.list(FUN.args), length(xlim) == 2,
+              length(q) >= 2, length.out >= 2, is.logical(log))
+    ## Determine good range where to plot edf(x) (and FUN)
+    if(length(q) == 2) {
+        q <- if(log) {
+                 10^seq(log(q[1], 10), log(q[2], 10), length.out = length.out)
+             } else {
+                 seq(q[1], q[2], length.out = length.out)
+             }
+    }
+    ## Empirical df
+    z <- c(xlim[1], x, xlim[2]) # evaluation points
+    edf <- ecdf(x)(z) # empirical df evaluated at z
+    ## Plotting
+    plot(z, edf, type = "s", xlab = xlab, ylab = ylab, log = if(log) "x" else "", ...)
+    if(is.function(FUN)) do.call(lines, args = c(list(x = q, y = FUN(q), type = "l"), FUN.args))
     invisible()
 }
