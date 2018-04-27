@@ -1,4 +1,4 @@
-### Mean excess tools ##########################################################
+### Mean excess function and plot ##############################################
 
 ##' @title (Sample) Mean Excess Function
 ##' @param x numeric vector of data.
@@ -59,5 +59,49 @@ mean_excess_plot <- function(x, omit = 3, xlab = "Threshold",
                              ylab = "Mean excess over threshold", ...)
 {
     plot(mean_excess(x, omit = omit), xlab = xlab, ylab = ylab, ...)
+    invisible()
+}
+
+
+### Plot of fitted GPD shape as a function of the threshold ####################
+
+##' @title Fitted GPD Shape as a Function of the Threshold
+##' @param x numeric vector of data
+##' @param thresholds numeric vector of thresholds for which to fit a GPD to
+##'        the excesses
+##' @param conf.level confidence level of the confidence intervals
+##' @param lines.args list of arguments passed to underlying lines() for
+##'        drawing the confidence intervals
+##' @param xlab2 label of the secondary x-axis
+##' @param xlab x-axis label
+##' @param ylab y-axis label
+##' @param ... additional arguments passed to the underlying plot()
+##' @return invisible()
+##' @author Marius Hofert
+GPD_shape_plot <- function(x, thresholds = seq(quantile(x, 0.5), quantile(x, 0.99), length.out = 33),
+                           conf.level = 0.95, lines.args = list(lty = 2),
+                           xlab2 = "Excesses", xlab = "Threshold",
+                           ylab = "Estimated GPD shape parameter with confidence intervals", ...)
+{
+    ## Checks
+    stopifnot(length(thresholds) >= 2, 0 <= conf.level, conf.level <= 1)
+    ## Fit GPD models to the given thresholds
+    x <- as.numeric(x)
+    fits <- lapply(thresholds, function(u) fit_GPD_MLE(x[x > u] - u))
+    ## Extract the fitted shape parameters and compute CIs
+    xi <- sapply(fits, function(f) f$par[["shape"]])
+    xi.SE <- sapply(fits, function(f) f$SE[["shape"]])
+    q <- qnorm(1 - (1 - conf.level)/2)
+    xi.CI.low <- xi - xi.SE * q
+    xi.CI.up  <- xi + xi.SE * q
+    ## Plot
+    ylim <- range(xi, xi.CI.low, xi.CI.up)
+    plot(thresholds, xi, type = "l", ylim = ylim,
+         xlab = xlab, ylab = ylab, ...)
+    do.call(lines, args = c(list(x = thresholds, y = xi.CI.low), lines.args))
+    do.call(lines, args = c(list(x = thresholds, y = xi.CI.up),  lines.args))
+    pu <- pretty(thresholds)
+    axis(3, at = pu, labels = sapply(pu, function(u) sum(x > u)))
+    mtext(xlab2, side = 3, line = 3)
     invisible()
 }

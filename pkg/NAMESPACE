@@ -13,7 +13,8 @@ importFrom("methods", "hasArg")
 importFrom("stats", "dnorm", "dt", "integrate", "pnorm", "qnorm", "qt",
            "runif", "uniroot", "qqline", "var", "filter", "ecdf")
 importFrom("grDevices", "colorRampPalette", "dev.off", "extendrange")
-importFrom("graphics", "image", "mtext", "plot", "rug", "abline", "lines")
+importFrom("graphics", "image", "mtext", "plot", "rug", "abline", "lines",
+           "axis")
 importFrom("lattice", "levelplot")
 importFrom("rugarch", "ugarchspec", "ugarchfit")
 importFrom("stats", "quantile", "HoltWinters", "density", "ppoints", "optim")
@@ -31,7 +32,7 @@ export(
     ## EVT
     "fit_GEV_quantile", "fit_GEV_PWM", "logLik_GEV", "fit_GEV_MLE",
     "fit_GPD_MOM", "fit_GPD_PWM", "logLik_GPD", "fit_GPD_MLE",
-    "mean_excess", "mean_excess_plot",
+    "mean_excess", "mean_excess_plot", "GPD_shape_plot",
     ## Risk measures
     "VaR_np", "VaR_t", "VaR_GPD", "VaR_Par", "VaR_POT",
     "ES_np", "ES_t", "ES_GPD", "ES_Par", "ES_POT",
