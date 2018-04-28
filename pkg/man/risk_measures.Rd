@@ -16,21 +16,21 @@
   Computing risk measures.
 }
 \usage{
-## value-at-risk
+## Value-at-risk
 VaR_np(x, level, names = FALSE, type = 1, ...)
 VaR_t(level, loc = 0, scale = 1, df = Inf)
 VaR_GPD(level, shape, scale)
 VaR_Par(level, shape, scale = 1)
-VaR_POT(level, x, threshold, shape, scale)
+VaR_POT(level, threshold, p.exceed, shape, scale)
 
-## expected shortfall
+## Expected shortfall
 ES_np(x, level, method = c(">", ">="), verbose = FALSE, ...)
 ES_t(level, loc = 0, scale = 1, df = Inf)
 ES_GPD(level, shape, scale)
 ES_Par(level, shape, scale = 1)
-ES_POT(level, x, threshold, shape, scale)
+ES_POT(level, threshold, p.exceed, shape, scale)
 
-## multivariate geometric value-at-risk and expectiles
+## Multivariate geometric value-at-risk and expectiles
 gVaR(x, level, start = colMeans(x),
      method = if(length(level) == 1) "Brent" else "Nelder-Mead", ...)
 gEX(x, level, start = colMeans(x),
@@ -78,6 +78,9 @@ gEX(x, level, start = colMeans(x),
     for the normal distribution.}
   \item{threshold}{threhold \eqn{u}{u} (used to estimate the exceedance
     probability based on the data \code{x}).}
+  \item{p.exceed}{exceedance probability; typically \code{mean(x > threshold)}
+    for \code{x} being the data modeled with the peaks-over-threshold
+    (POT) method.}
   \item{start}{\code{\link{vector}} of initial values for the underlying
     \code{\link{optim}()}.}
   \item{method}{

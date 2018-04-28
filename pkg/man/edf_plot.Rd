@@ -1,8 +1,8 @@
 \name{edf_plot}
 \alias{edf_plot}
-\title{Plot an Empirical Distribution Function}
+\title{Plot of an Empirical Distribution Function}
 \description{
-  Plot an empirical distribution function.
+  Plotting an empirical distribution function.
 }
 \usage{
 edf_plot(x, do.points = length(x) <= 100, log = "",
@@ -10,8 +10,8 @@ edf_plot(x, do.points = length(x) <= 100, log = "",
          main = "", xlab = "Value", ylab = "Probability", ...)
 }
 \arguments{
-  \item{x}{data \code{\link{vector}} of which the empirical distribution
-    function is to be plotted.}
+  \item{x}{\code{\link{numeric}} vector of data (of which the empirical
+    distribution function is to be plotted).}
   \item{do.points}{\code{\link{logical}} indicating whether points are
     to be plotted; see \code{?plot.stepfun}.}
   \item{log}{\code{\link{character}} indicating whether

@@ -105,3 +105,100 @@ GPD_shape_plot <- function(x, thresholds = seq(quantile(x, 0.5), quantile(x, 0.9
     mtext(xlab2, side = 3, line = 3)
     invisible()
 }
+
+
+### Plot tail estimator: empirical vs Smith ####################################
+
+##' @title GPD-Based Tail Estimator in the POT Method
+##' @param q numeric vector of evaluation points (quantiles)
+##' @param threshold threshold u
+##' @param p.exceed probability of exceeding the threshold u;
+##'        for Smith estimator, this would be mean(x > threshold) for
+##'        'x' being the data.
+##' @param shape GPD shape parameter xi
+##' @param scale GPD scale parameter beta
+##' @return Estimator evaluated at q
+##' @author Marius Hofert
+tail_estimator_GPD <- function(q, threshold, p.exceed, shape, scale)
+{
+    stopifnot(q >= threshold, 0 <= p.exceed, p.exceed <= 1, scale > 0)
+    ## Idea:
+    ## 1) bar{F}(x) = bar{F}(u) bar{F}_u(x-u) for x >= u (exceedance).
+    ##    Or: bar{F}(u + y) = bar{F}(u) bar{F}_u(y) for y (= x-u) >= 0 (excess)
+    ## 2) bar{F}(u) ~= bar{F}_n(u) = Nu/n (number of exceedances / number of all samples)
+    ## 3) bar{F}_u(y) ~= bar{F}_GPD(y) for evaluation points y = q - u
+    ## => bar{F}(x) = bar{F}(u + y = q) = bar{F}_n(u) bar{F}_{u}(y = q - u) (by 1))
+    ##              = Nu/n * pGPD(q - u), shape, scale, lower.tail = FALSE) (by 2), 3))
+    p.exceed * pGPD(q - threshold, shape = shape, scale = scale, lower.tail = FALSE)
+}
+
+##' @title Plot of the Empirical Tail Estimator (Possibly with Smith Tail Estimator)
+##' @param x numeric vector of data points
+##' @param threshold threshold u
+##' @param shape NULL or GPD shape parameter xi (typically obtained from fit_GPD_MLE())
+##' @param scale NULL or GPD scale parameter beta (typically obtained from fit_GPD_MLE())
+##' @param q NULL or a sequence of quantiles >= threshold where to evaluate
+##'        the Smith estimator
+##' @param length.out length of q
+##' @param lines.args list providing additional arguments for the underlying
+##'        lines()
+##' @param log logical indicating whether logarithm scale is used
+##' @param xlab x-axis label
+##' @param ylab y-axis label
+##' @param ... additional arguments passed to the underlying plot()
+##' @return invisible()
+##' @author Marius Hofert
+##' @note - Using points is good (no lines) as this is more a Q-Q plot or
+##'         mean excess plot (not comparable with edf_plot())
+##'       - QRM::plotTail() evaluated inverse of Smith estimator at separate
+##'         ppoints() (ppoints.gpd()), but that doesn't always match well with
+##'         the data: QRM::plotTail(QRM::fit.GPD(fire, threshold = 50), ppoints.gpd = ppoints(4))
+tail_plot <- function(x, threshold, shape = NULL, scale = NULL,
+                      q = NULL, length.out = 129, lines.args = list(),
+                      log = "xy", xlab = "Value", ylab = "Tail probability", ...)
+{
+    ## Compute empirical tail estimator
+    ## Note: Unless evaluated at the excesses themselves, there is no point in using
+    ##       the EVT-based 'decomposition'.
+    ## Idea:
+    ## 1) bar{F}(x) = bar{F}(u) bar{F}_u(x-u) for x >= u (exceedance).
+    ##    Or: bar{F}(u + y) = bar{F}(u) bar{F}_u(y) for y (= x-u) >= 0 (excess)
+    ## 2) bar{F}(u) ~= bar{F}_n(u) = Nu/n (number of exceedances / number of all samples)
+    ## 3) bar{F}_u(y) ~= bar{F}_{u,n}(y) => bar{F}_u(y_{(i)}) ~= 1-F_{u,n}(y_{(i)})
+    ##    = 1-(1:Nu)/Nu ~= rev(ppoints(Nu)), where y_{(1)} <= ... <= y_{(Nu)} are
+    ##    the sorted excesses.
+    ## => bar{F}_n(x_{(i)}) = bar{F}_n(u + y_{(i)}) = bar{F}_n(u) bar{F}_{u,n}(y_{(i)}) (by 1))
+    ##                      = Nu/n * rev(ppoints(Nu)) (by 2), 3))
+    x <- as.numeric(x)
+    exceed <- sort(x[x > threshold]) # sorted exceedances (x-values later)
+    Nu <- length(exceed) # number of exceedances
+    Fn.bar.u <- Nu/length(x) # tail estimate at threshold u (= bar{F}_n(u))
+    Fn.bar.exceed <- Fn.bar.u * rev(ppoints(Nu)) # bar{F}_n(x_{(i)}) (y-values later)
+
+    ## Compute GPD tail estimator
+    doGPD <- !is.null(shape) && !is.null(scale)
+    if(doGPD) {
+        stopifnot(scale > 0)
+        ## Determine q (of exceedances where to evaluate Smith estimator; range should match 'exceed')
+        q <- if(is.null(q)) {
+                 if(grepl("x", log)) {
+                     10^seq(log10(exceed[1]), log10(exceed[Nu]), length.out = length.out)
+                 } else seq(exceed[1], exceed[Nu], length.out = length.out)
+        }
+        ## Compute Smith estimator (classical GPD-based tail estimator in the POT method)
+        y.Smith <- tail_estimator_GPD(q, threshold = threshold, p.exceed = Fn.bar.u,
+                                      shape = shape, scale = scale)
+        xlim <- range(exceed, q) # only equal to range(exceed) if q is not user-provided
+        ylim <- range(Fn.bar.exceed, y.Smith)
+    } else {
+        xlim <- range(exceed)
+        ylim <- range(Fn.bar.exceed)
+    }
+    ## Plot
+    plot(exceed, Fn.bar.exceed, xlim = xlim, ylim = ylim, log = log, xlab = xlab, ylab = ylab, ...)
+    if(doGPD) {
+        do.call(lines, args = c(list(x = q, y = y.Smith), lines.args))
+        invisible(list(np = cbind(x = exceed, y = Fn.bar.exceed),
+                       Smith = cbind(x = q, y = y.Smith)))
+    } else invisible(cbind(x = exceed, y = Fn.bar.exceed))
+}

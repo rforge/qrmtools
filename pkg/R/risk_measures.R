@@ -50,18 +50,16 @@ VaR_Par <- function(level, shape, scale = 1)
 
 ##' @title Semi-parametric VaR Estimator in the POT Method
 ##' @param level confidence level alpha
-##' @param x data (original, not exceedances or excesses)
 ##' @param threshold threshold u
+##' @param p.exceed exceedance probability; typically mean(x > threshold)
+##'        for x being the original data
 ##' @param shape parameter xi
 ##' @param scale parameter beta
 ##' @return Value-at-Risk
 ##' @author Marius Hofert
-VaR_POT <- function(level, x, threshold, shape, scale)
+VaR_POT <- function(level, threshold, p.exceed, shape, scale)
 {
-    p.exceed <- mean(x > threshold) # estimated exceedance probability bar{F}(u)
-    if(p.exceed == 0)
-        stop("No threshold exceedances to non-parametrically estimate the exceedance probability.")
-    stopifnot(p.exceed <= level, level <= 1, scale > 0)
+    stopifnot(0 <= p.exceed, p.exceed <= level, level <= 1, scale > 0)
     threshold + (scale/shape) * (((1-level)/p.exceed)^(-shape) - 1)
 }
 
@@ -145,16 +143,18 @@ ES_Par <- function(level, shape, scale = 1)
 
 ##' @title Semi-parametric ES Estimator in the POT Method
 ##' @param level confidence level alpha
-##' @param x data (original, not exceedances or excesses)
 ##' @param threshold threshold u
+##' @param p.exceed exceedance probability; typically mean(x > threshold)
+##'        for x being the original data
 ##' @param shape parameter xi
 ##' @param scale parameter beta
 ##' @return Expected shortfall
 ##' @author Marius Hofert
-ES_POT <- function(level, x, threshold, shape, scale)
+ES_POT <- function(level, threshold, p.exceed, shape, scale)
 {
     stopifnot(shape < 1, scale > 0) # rest checked in VaR_POT()
-    VaR <- VaR_POT(level, x = x, threshold = threshold, shape = shape, scale = scale)
+    VaR <- VaR_POT(level, threshold = threshold, p.exceed = p.exceed,
+                   shape = shape, scale = scale)
     (VaR + scale - shape * threshold) / (1 - shape)
 }
 

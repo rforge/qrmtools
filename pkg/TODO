@@ -1,4 +1,4 @@
-1) export tail_plot() and use in qrmtutorial.org scripts
+1) use it in all qrmtutorial.org scripts
 2) implement mean_excess_GPD() and use it in mean_excess_plot() in a similar way as tail_plot()
 
 1) improve run time of mean_excess() (see slow script ./R/05_Extreme_Value_Theory/05_Mean_excess_plots.R => sample size 50000)
