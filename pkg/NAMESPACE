@@ -11,7 +11,7 @@ importFrom("zoo", "index")
 importFrom("xts", "as.xts")
 importFrom("methods", "hasArg")
 importFrom("stats", "dnorm", "dt", "integrate", "pnorm", "qnorm", "qt",
-           "runif", "uniroot", "qqline", "var", "filter", "ecdf")
+           "runif", "uniroot", "qqline", "var", "filter", "ecdf", "stepfun")
 importFrom("grDevices", "colorRampPalette", "dev.off", "extendrange")
 importFrom("graphics", "image", "mtext", "plot", "rug", "abline", "lines",
            "axis")

@@ -78,7 +78,7 @@ VaR_POT <- function(level, x, threshold, shape, scale)
 ##' @return nonparametric ES_alpha estimate (derived under the assumption of continuity)
 ##' @author Marius Hofert
 ##' @note - Vectorized in x and level
-##'       - ">" : Mathematically correct for discrete dfs, but
+##'       - ">" : Mathematically correct for continuous and discrete dfs, but
 ##'               produces NaN for level > (n-1)/n (=> F^-(level) = x_{(n)} but
 ##'               there is no loss strictly beyond x_{(n)})
 ##'         ">=": mean() will always include the largest loss (so no NaN appears),
