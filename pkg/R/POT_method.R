@@ -15,7 +15,7 @@
 ##'            ... but (*) holds only if there are *no* ties.
 ##'         2) Make the data unique, then apply (*), then assign each duplicated value
 ##'            the corresponding value of the mean excess function computed via (*).
-mean_excess <- function(x, omit = 3)
+mean_excess_np <- function(x, omit = 3)
 {
     stopifnot(omit >= 1) # last one has to be omitted (otherwise e_n(X_{(i)}) not defined)
     ## Sort data and make it unique
@@ -34,7 +34,25 @@ mean_excess <- function(x, omit = 3)
     xu.times <- runs$lengths[1:nuo] # numbers of how often the first nuo-many unique values appear
     en <- rep(enu, times = xu.times) # expand (corresponding mean excesses e_n(X_{(i)}))
     ## Return
-    cbind("data" = x[1:sum(xu.times)], mean.excess = en) # X_{(i)}'s up to the last unique 'omit'-many data points
+    cbind(x = x[1:sum(xu.times)], mean.excess = en) # X_{(i)}'s up to the last unique 'omit'-many data points
+}
+
+##' @title Mean Excess Function of a GPD
+##' @param x evaluation points (thresholds)
+##' @param shape GPD shape parameter xi
+##' @param scale GPD scale parameter beta
+##' @return vector of length as x, giving the mean excess function of the
+##'         specified GPD (or NA if scale + shape * x <= 0).
+##' @author Marius Hofert
+##' @note Call with 'x - <chosen threshold>' to compare against mean excess plot
+##'       as a function of the (general) thresholds.
+mean_excess_GPD <- function(x, shape, scale)
+{
+    stopifnot(shape < 1)
+    num <- scale + shape * x
+    res <- rep(NA, length(x))
+    res[num > 0] <- num / (1 - shape)
+    res
 }
 
 ##' @title (Sample) Mean Excess Plot
@@ -55,10 +73,17 @@ mean_excess <- function(x, omit = 3)
 ##'       - evd::mrlplot(QRM::danish) essentially uses type = "l" with pointwise
 ##'         asymptotic CIs, but does not seem too useful. qqtest's idea for CIs
 ##'         would be good but then probably too slow.
-mean_excess_plot <- function(x, omit = 3, xlab = "Threshold",
-                             ylab = "Mean excess over threshold", ...)
+##'       - We could (and did once) pass 'shape', 'scale', 'q', 'length.out',
+##'         'lines.args', 'log' (see tail_plot()) and add a fitted GPD mean
+##'         excess function this way.
+##'         => not worth it, also doesn't look too good (Danish fire) and at
+##'            that point one typically doesn't have a fitted GPD yet anyways.
+##'         Note that the mean excess function of the fitted GPD would be:
+##'         mean_excess_GPD(q-<chosen threshold>, shape = shape, scale = scale)
+mean_excess_plot <- function(x, omit = 3,
+                             xlab = "Threshold", ylab = "Mean excess over threshold", ...)
 {
-    plot(mean_excess(x, omit = omit), xlab = xlab, ylab = ylab, ...)
+    plot(mean_excess_np(x, omit = omit), xlab = xlab, ylab = ylab, ...)
     invisible()
 }
 
@@ -134,7 +159,7 @@ tail_estimator_GPD <- function(q, threshold, p.exceed, shape, scale)
 
 ##' @title Plot of the Empirical Tail Estimator (Possibly with Smith Tail Estimator)
 ##' @param x numeric vector of data points
-##' @param threshold threshold u
+##' @param threshold threshold u (above which tail exceedance df is computed)
 ##' @param shape NULL or GPD shape parameter xi (typically obtained from fit_GPD_MLE())
 ##' @param scale NULL or GPD scale parameter beta (typically obtained from fit_GPD_MLE())
 ##' @param q NULL or a sequence of quantiles >= threshold where to evaluate
@@ -180,11 +205,7 @@ tail_plot <- function(x, threshold, shape = NULL, scale = NULL,
     if(doGPD) {
         stopifnot(scale > 0)
         ## Determine q (of exceedances where to evaluate Smith estimator; range should match 'exceed')
-        q <- if(is.null(q)) {
-                 if(grepl("x", log)) {
-                     10^seq(log10(exceed[1]), log10(exceed[Nu]), length.out = length.out)
-                 } else seq(exceed[1], exceed[Nu], length.out = length.out)
-        }
+        if(is.null(q)) q <- seq2(exceed[1], exceed[Nu], length.out = length.out, log = grepl("x", log))
         ## Compute Smith estimator (classical GPD-based tail estimator in the POT method)
         y.Smith <- tail_estimator_GPD(q, threshold = threshold, p.exceed = Fn.bar.u,
                                       shape = shape, scale = scale)
