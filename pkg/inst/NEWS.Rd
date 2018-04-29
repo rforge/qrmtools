@@ -7,10 +7,13 @@
 \section{Changes in version 0.0-9 (2018-05-.., svn r1..)}{
   \subsection{New Features}{
     \itemize{
-      \item \code{edf_plot()}.
+      \item \code{VaR_POT()}, \code{ES_POT()}
+      \item \code{GPD_shape_plot()}, \code{tail_plot()}
+      \item \code{mean_excess_np()}, \code{mean_excess_GPD()} and
+            \code{mean_excess_plot()}
+      \item \code{edf_plot()}
       \item Fitting of GEV distribution and GPD.
       \item More intuitive (re)naming of all arguments of EVT related functions.
-      \item \code{mean_excess()} and \code{mean_excess_plot()}.
     }
   }
   \subsection{Bug Fixes}{

@@ -55,5 +55,5 @@ export(
     "returns", "returns_qrmtools",
     ## Data related functions
     "get_data",
-    "nested_matrix"
+    "hierarchical_matrix"
 )
