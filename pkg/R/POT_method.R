@@ -10,14 +10,17 @@
 ##'         sample mean excess function (second column).
 ##' @author Marius Hofert
 ##' @note - Main idea:
-##'         1)              e_n(u) = (sum_{i=1}^n (X_{(i)}-u) I(X_{(i)} > u)) / sum_{i=1}^n I(X_{(i)} > u)
-##'            (*) => e_n(X_{(k)}) = sum_{i=k+1}^n (X_{(i)}-X_{(k)}) / (n-k)
-##'            ... but (*) holds only if there are *no* ties.
-##'         2) Make the data unique, then apply (*), then assign each duplicated value
-##'            the corresponding value of the mean excess function computed via (*).
+##'         1) e_n(u) = (sum_{i=1}^n (X_{(i)}-u) I(X_{(i)} > u)) / sum_{i=1}^n I(X_{(i)} > u), u < X_{(n)}
+##'         2) e_n(X_{(k)}) = sum_{i=k+1}^n (X_{(i)}-X_{(k)}) / (n-k), k in {1,..,n-1}
+##'                         = ( (1/(n-k)) sum_{i=k+1}^n X_{(i)} ) - X_{(k)}
+##'            ... but this holds only if there are *no* ties.
+##'         2) Make the data unique, compute 2), then assign each duplicated value
+##'            the corresponding value of the mean excess function.
 mean_excess_np <- function(x, omit = 3)
 {
+    ## Check
     stopifnot(omit >= 1) # last one has to be omitted (otherwise e_n(X_{(i)}) not defined)
+
     ## Sort data and make it unique
     x <- sort(as.numeric(x)) # sorted data
     runs <- rle(x) # runs (make sense here because of x is sorted)
@@ -27,12 +30,21 @@ mean_excess_np <- function(x, omit = 3)
     nuo <- nu - omit # how many we consider
     if(nuo < 1)
         stop("Not enough unique x values for computing the sample mean excess function.")
+    ## => nuo >= 1 => nu >= 2.
+
     ## Compute e_n(X_{k}) for k = 1,..,n based on unique X values and
     ## n = nu as described above
-    enu <- vapply(1:nuo, function(k) mean(xu[(k+1):nu]-xu[k]), NA_real_) # note: nuo = nu - omit <= nu - 1 => nuo + 1 <= nu
+    ## Note: This works (and thus shows the method) but is slow:
+    ##       enu <- vapply(1:nuo, function(k) mean(xu[(k+1):nu]-xu[k]), NA_real_)
+    ## => Idea: compute partial sums first and then do 'look-up'
+    csx <- rev(cumsum(xu[nu:2])) # sum(xu[2:nu]), ..., xu[nu-1] + xu[nu], xu[nu]
+    enu <- vapply(1:nuo, function(k) (csx[k]/(nu-k)) - xu[k], NA_real_) # note: nuo = nu - omit <= nu - 1 => nuo + 1 <= nu
+    ## => Checked (coincides with the above computation of 'enu')
+
     ## Expand the 'enu' values (to plot all points according to their correct number of appearances)
     xu.times <- runs$lengths[1:nuo] # numbers of how often the first nuo-many unique values appear
     en <- rep(enu, times = xu.times) # expand (corresponding mean excesses e_n(X_{(i)}))
+
     ## Return
     cbind(x = x[1:sum(xu.times)], mean.excess = en) # X_{(i)}'s up to the last unique 'omit'-many data points
 }
