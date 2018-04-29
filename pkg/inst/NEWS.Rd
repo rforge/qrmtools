@@ -4,7 +4,20 @@
 \title{News for \R Package \pkg{qrmtools}}
 \newcommand{\CRANpkg}{\href{https://CRAN.R-project.org/package=#1}{\pkg{#1}}}
 
-\section{Changes in version 0.0-9 (2018-05-.., svn r1..)}{
+\section{Changes in version 0.0-9 (after 2018-04-29)}{
+  \subsection{New Features}{
+    \itemize{
+      \item
+    }
+  }
+  \subsection{Bug Fixes}{
+    \itemize{
+      \item \code{plot_matrix(): used to plot transposed matrix.}
+    }
+  }
+}
+
+\section{Changes in version 0.0-9 (before 2018-04-28)}{
   \subsection{New Features}{
     \itemize{
       \item \code{VaR_POT()}, \code{ES_POT()}
