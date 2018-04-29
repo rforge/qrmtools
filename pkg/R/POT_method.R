@@ -14,7 +14,7 @@
 ##'         2) e_n(X_{(k)}) = sum_{i=k+1}^n (X_{(i)}-X_{(k)}) / (n-k), k in {1,..,n-1}
 ##'                         = ( (1/(n-k)) sum_{i=k+1}^n X_{(i)} ) - X_{(k)}
 ##'            ... but this holds only if there are *no* ties.
-##'         2) Make the data unique, compute 2), then assign each duplicated value
+##'         3) Make the data unique, compute 2), then assign each duplicated value
 ##'            the corresponding value of the mean excess function.
 mean_excess_np <- function(x, omit = 3)
 {
