@@ -28,6 +28,7 @@ export(
     ## Distributions
     "dGEV", "pGEV", "qGEV", "rGEV",
     "dGPD", "pGPD", "qGPD", "rGPD",
+    "dGPDtail", "pGPDtail", "qGPDtail", "rGPDtail",
     "dPar", "pPar", "qPar", "rPar",
     ## EVT
     "fit_GEV_quantile", "fit_GEV_PWM", "logLik_GEV", "fit_GEV_MLE",
@@ -35,8 +36,8 @@ export(
     "mean_excess_np", "mean_excess_GPD", "mean_excess_plot",
     "GPD_shape_plot", "tail_plot",
     ## Risk measures
-    "VaR_np", "VaR_t", "VaR_GPD", "VaR_Par", "VaR_POT",
-    "ES_np", "ES_t", "ES_GPD", "ES_Par", "ES_POT",
+    "VaR_np", "VaR_t", "VaR_GPD", "VaR_Par", "VaR_GPDtail",
+    "ES_np", "ES_t", "ES_GPD", "ES_Par", "ES_GPDtail",
     "gVaR", "gEX",
     ## Worst/best VaR
     "crude_VaR_bounds", "dual_bound", "VaR_bounds_hom",
