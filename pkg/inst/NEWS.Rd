@@ -7,7 +7,10 @@
 \section{Changes in version 0.0-9 (after 2018-04-29)}{
   \subsection{New Features}{
     \itemize{
-      \item
+      \item \code{dGPDtail()}, \code{pGPDtail()}, \code{qGPDtail()},
+      \code{rGPDtail()} (and renamed \code{VaR_POT()} to
+      \code{VaR_GPDtail()} and \code{ES_POT()} to \code{ES_GPDtail()}
+      correspondingly)
     }
   }
   \subsection{Bug Fixes}{
