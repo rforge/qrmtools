@@ -803,12 +803,12 @@ for(k in seq_len(d)) { # iterate over constituents
 ```
 
 We should also quickly assess the goodness-of-fit of the fitted GPDs
-```{r, fig.align = "center", fig.width = 6, fig.height = 6, fig.show = "hold"}
+```{r, fig.align = "center", fig.width = 6, fig.height = 7, fig.show = "hold"}
 if(doPDF)
     pdf(file = (file <- paste0("fig_worst_VaR_bounds_application_GPD_fit_check.pdf")),
-        width = 6, height = 6)
+        width = 6, height = 7)
 ## Graphical goodness-of-fit assessment
-opar <- par(mar = rep(1, 4))
+opar <- par(omd = c(0.02, 1, 0.02, 1), mar = rep(1, 4))
 layout(matrix(1:d, ncol = 4, byrow = TRUE)) # (5, 4)-layout
 for(k in 1:d) {
     x <- sort(res[[k]]$excess)
@@ -818,10 +818,10 @@ for(k in 1:d) {
     mtext("Fitted quantiles", side = 1, line = 0.5, cex = 0.6)
     mtext("Empirical quantiles", side = 2, line = 0.5, cex = 0.6)
     op <- par(usr = c(0, 1, 0, 1))
-    text(1/10, 9/10, names(res)[k], cex = 0.6, adj = 0)
+    text(1/10, 9/10, names(res)[k], cex = 0.7, adj = 0)
     y <- qGPD(ppoints(length(x)), shape = res[[k]]$shape, scale = res[[k]]$scale)
     R2 <- sprintf("%.4f", cor(x, y)^2) # coefficient of determination R^2
-    text(9/10, 1/10, substitute(R^2 == r2, list(r2 = R2)), cex = 0.6, adj = 1)
+    text(9/10, 1/10, substitute(R^2 == r2, list(r2 = R2)), cex = 0.7, adj = 1)
     par(op)
 }
 layout(1) # restore layout
