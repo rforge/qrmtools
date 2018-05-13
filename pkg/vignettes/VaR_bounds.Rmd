@@ -763,11 +763,15 @@ also 7).
 ### 2.4 A real data application
 
 We now consider the task of computing best and worst value-at-risk (VaR) at
-confidence level 99.9% for a real data set. To illustrate the ideas, we consider
-as risk-factor changes the negative log-returns of the constituents of the SMI
-from 2011-09-12 to 2012-03-28.
+confidence level 99% for a portfolio consisting of shares of each of the
+20 constituents of the SMI from 2011-09-12 to 2012-03-28. For simplicity, the number of
+shares of each stock is assumed to be one over the numeric value of the stock
+price, so that the linearized loss is simply the sum of negative log-returns.
+The negative log-return of each stock is thus viewed as one loss and
+value-of-risk of the sum of these 20 losses is of interest. This fits
+precisely in the framework of the (Adaptive) Rearrangement Algorithm.
 
-First, let's compute the risk-factor changes.
+First, let's compute the negative log-returns.
 ```{r}
 data(SMI.12)
 L <- -returns(SMI.12)
