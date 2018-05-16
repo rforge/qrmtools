@@ -582,7 +582,67 @@ as large as $10^5$.
 
 ## 2 Inhomogeneous case
 
-### 2.1 Run-time comparison (straightforward vs efficient implementation)
+### 2.1 A motivation for (column) rearrangements
+
+The basic idea goes back to Iman and Conover (1982, "A distribution-free
+approach to inducing rank correlation among input variables"). Suppose we have
+500 observations of two Pareto distributions. This is the joint sample under
+independence (as we independently draw the uniforms when constructing `X`):
+```{r, fig.align = "center", fig.width = 6, fig.height = 6, fig.show = "hold"}
+## Generate samples
+n <- 1000 # sample size
+set.seed(271) # set a seed (for reproducibility)
+X <- cbind(qPar(runif(n), shape = 2), # Par(2) sample
+           qPar(runif(n), shape = 2.5)) # Par(2.5) sample
+## Plot
+if(doPDF)
+    pdf(file = (file <- paste0("fig_RA_motivation_indep.pdf")),
+        width = 6, height = 6)
+plot(X, xlab = expression(X[1]), ylab = expression(X[2]))
+if(doPDF) dev.off()
+```
+If we order the realizations in each column to be in increasing order (so the
+smallest (largest) entry of the first column lies next to the smallest (largest)
+entry of the second column of `X`), we obtain the following (comonotone) sample.
+```{r, fig.align = "center", fig.width = 6, fig.height = 6, fig.show = "hold"}
+## Generate samples
+X. <- apply(X, 2, sort)
+## Plot
+if(doPDF)
+    pdf(file = (file <- paste0("fig_RA_motivation_comonotone.pdf")),
+        width = 6, height = 6)
+plot(X., xlab = expression(X[1]), ylab = expression(X[2]))
+if(doPDF) dev.off()
+```
+We take away that column rearrangements don't change the
+marginal distributions but the dependence between the two columns and thus
+the distributions of their sums. To see the latter (in terms of boxplots and
+kernel density estimates), consider:
+```{r, fig.align = "center", fig.width = 6, fig.height = 6, fig.show = "hold"}
+## Samples of the sum of the components
+## Note: Their mean is the same (unaffected by the dependence)
+Xsum  <- rowSums(X)
+Xsum. <- rowSums(X.)
+## Quick plot
+boxplot(Xsum, Xsum., log = "y", names = c("Independence", "Comonotonicity"))
+## Kernel density estimates
+ran <- range(X, X.)
+dXsum  <- density(Xsum,  from = ran[1], to = ran[2])
+dXsum. <- density(Xsum., from = ran[1], to = ran[2])
+## Plot
+if(doPDF)
+    pdf(file = (file <- paste0("fig_RA_motivation_kernel_density_estimates.pdf")),
+        width = 6, height = 6)
+plot(dXsum, xlim = c(0, 5), ylim = c(0, max(dXsum$y, dXsum.$y)),
+     xlab = "x", ylab = "Kernel density estimate at x", main = "", type = "l")
+lines(dXsum., col = "royalblue3")
+legend("topright", bty = "n", lty = 1,
+       col = c("black", "royalblue3"), legend = c("Independence", "Comonotonicity"))
+if(doPDF) dev.off()
+```
+
+
+### 2.2 Run-time comparison (straightforward vs efficient implementation)
 
 A straightforward (but inefficient) implementation of a basic
 `rearrange(, sample = FALSE, is.sorted = TRUE)` is the following. Note that our
@@ -650,7 +710,7 @@ if(doPDF) dev.off()
 ```
 
 
-### 2.2 How `rearrange()` acts on specific matrices
+### 2.3 How `rearrange()` acts on specific matrices
 
 To see how `rearrange()` actually proceeds, consider the following example. Due
 to `trace = TRUE`, the matrix is printed after each column rearrangement. A "|" and
@@ -678,7 +738,7 @@ ncol = 3)`). It remains an open problem how an *efficient* algorithm can avoid
 such a case.
 
 
-### 2.3 Convergence
+### 2.4 Convergence
 
 Whether `rearrange()` converges or not depends to a large degree on the
 underlying sorting algorithm. We found that *unstable* sorting algorithms such
@@ -760,7 +820,7 @@ quite a different number of rearranged matrices, the implied minimal row sums
 also 7).
 
 
-### 2.4 A real data application
+### 2.5 A real data application
 
 We now consider the task of computing best and worst value-at-risk (VaR) at
 confidence level 99% for a portfolio consisting of shares of each of the
@@ -896,7 +956,7 @@ respect to the sum of all others; indicated by a '+') are identical to the
 results for `tol = 0` here; the latter are typically much faster to compute.
 
 
-### 2.5 Worst VaR copula samples
+### 2.6 Worst VaR copula samples
 
 In this section we have a quick look at a sample from the copula (of the conditional
 distribution of being componentwise above the confidence level) that leads
