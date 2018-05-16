@@ -894,3 +894,39 @@ if(doPDF) dev.off()
 As we see, the results for `tol = NULL` (that is, all columns oppositely ordered with
 respect to the sum of all others; indicated by a '+') are identical to the
 results for `tol = 0` here; the latter are typically much faster to compute.
+
+
+### 2.5 Worst VaR copula samples
+
+In this section we have a quick look at a sample from the copula (of the conditional
+distribution of being componentwise above the confidence level) that leads
+to the worst value-at-risk for three given margins (Pareto, log-normal, log-gamma).
+```{r, fig.align = "center", fig.width = 6, fig.height = 6, fig.show = "hold"}
+## Define parameters of the three margins
+th <- 2.5 # Pareto parameter
+m <- 10 # mean of the lognormal
+v <- 20 # variance of the lognormal
+s <- 4 # shape of the gamma underlying the loggamma
+r <- 5 # rate of the gamma underlying the loggamma
+## Define list of marginal dfs
+qF <- list(qPar = function(p) (1 - p)^(-1/th) - 1,
+           qLN  = function(p) qlnorm(p, meanlog = log(m)-log(1+v/m^2)/2,
+                                          sdlog = sqrt(log(1+v/m^2))),
+           qLG  = function(p) exp(qgamma(p, shape = s, rate = r)))
+## Apply ARA()
+set.seed(271) # for reproducibility
+alpha <- 0.99 # confidence level
+wVaR <- ARA(alpha, qF = qF) # compute worst VaR (bounds)
+X <- wVaR[["X.rearranged"]]$up # extract rearranged matrix (upper bound)
+U <- pobs(X) # compute pseudo-observations
+colnames(U) <- c("U[1]", "U[2]", "U[3]")
+## Plot
+if(doPDF)
+    pdf(file = (file <- paste0("fig_worst_VaR_worst_copula_sample.pdf")),
+        width = 6, height = 6)
+cloud2(U, screen = list(z = 15, x = -60)) # default 'screen': z = 40, x = -60
+if(doPDF) dev.off()
+```
+We see that if one of the three components is large, the other two have to compensate
+for that (to keep the variance of the sum small, which is what the (A)RA tries to optimize)
+and so the locally singular components (strings to (1, 0, 0), (0, 1, 0), (0, 0, 1)) appear.
