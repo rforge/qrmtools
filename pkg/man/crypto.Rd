@@ -35,6 +35,6 @@ data("crypto")
 data("crypto")
 str(crypto)
 library(xts)
-plot.zoo(crypto, ylab = "Cryptocurrency prices in USD")
+plot.zoo(crypto, main = "Cryptocurrencies in USD", xlab = "Time")
 }
 \keyword{datasets}
