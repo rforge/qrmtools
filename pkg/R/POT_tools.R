@@ -106,6 +106,8 @@ mean_excess_plot <- function(x, omit = 3,
 ##' @param x numeric vector of data
 ##' @param thresholds numeric vector of thresholds for which to fit a GPD to
 ##'        the excesses
+##' @param estimate.cov logical indicating whether confidence intervals are
+##'        computed
 ##' @param conf.level confidence level of the confidence intervals
 ##' @param lines.args list of arguments passed to underlying lines() for
 ##'        drawing the confidence intervals
@@ -115,28 +117,36 @@ mean_excess_plot <- function(x, omit = 3,
 ##' @param ... additional arguments passed to the underlying plot()
 ##' @return invisible()
 ##' @author Marius Hofert
-GPD_shape_plot <- function(x, thresholds = seq(quantile(x, 0.5), quantile(x, 0.99), length.out = 33),
+GPD_shape_plot <- function(x, thresholds = seq(quantile(x, 0.5), quantile(x, 0.99), length.out = 65),
+                           estimate.cov = TRUE,
                            conf.level = 0.95, lines.args = list(lty = 2),
-                           xlab2 = "Excesses", xlab = "Threshold",
-                           ylab = "Estimated GPD shape parameter with confidence intervals", ...)
+                           xlab2 = "Excesses", xlab = "Threshold", ylab = NULL, ...)
 {
     ## Checks
-    stopifnot(length(thresholds) >= 2, 0 <= conf.level, conf.level <= 1)
+    stopifnot(length(thresholds) >= 2, is.logical(estimate.cov), 0 <= conf.level, conf.level <= 1)
     ## Fit GPD models to the given thresholds
     x <- as.numeric(x)
-    fits <- lapply(thresholds, function(u) fit_GPD_MLE(x[x > u] - u))
+    fits <- lapply(thresholds, function(u)
+        fit_GPD_MLE(x[x > u] - u, estimate.cov = estimate.cov))
     ## Extract the fitted shape parameters and compute CIs
     xi <- sapply(fits, function(f) f$par[["shape"]])
-    xi.SE <- sapply(fits, function(f) f$SE[["shape"]])
-    q <- qnorm(1 - (1 - conf.level)/2)
-    xi.CI.low <- xi - xi.SE * q
-    xi.CI.up  <- xi + xi.SE * q
+    if(estimate.cov) {
+        xi.SE <- sapply(fits, function(f) f$SE[["shape"]])
+        q <- qnorm(1 - (1 - conf.level)/2)
+        xi.CI.low <- xi - xi.SE * q
+        xi.CI.up  <- xi + xi.SE * q
+        ylim <- range(xi, xi.CI.low, xi.CI.up)
+    } else ylim <- range(xi)
     ## Plot
-    ylim <- range(xi, xi.CI.low, xi.CI.up)
+    if(is.null(ylab)) ylab <- paste0("Estimated GPD shape parameter",
+                                     if(estimate.cov) paste0(" with ", 100*conf.level,
+                                     "% confidence intervals") else "")
     plot(thresholds, xi, type = "l", ylim = ylim,
          xlab = xlab, ylab = ylab, ...)
-    do.call(lines, args = c(list(x = thresholds, y = xi.CI.low), lines.args))
-    do.call(lines, args = c(list(x = thresholds, y = xi.CI.up),  lines.args))
+    if(estimate.cov) {
+        do.call(lines, args = c(list(x = thresholds, y = xi.CI.low), lines.args))
+        do.call(lines, args = c(list(x = thresholds, y = xi.CI.up),  lines.args))
+    }
     pu <- pretty(thresholds) # where actual x labels are (even if those thresholds are not considered)
     axis(3, at = pu, labels = sapply(pu, function(u) sum(x > u))) # *corresponding* excesses
     mtext(xlab2, side = 3, line = 3)
