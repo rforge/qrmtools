@@ -137,8 +137,8 @@ GPD_shape_plot <- function(x, thresholds = seq(quantile(x, 0.5), quantile(x, 0.9
          xlab = xlab, ylab = ylab, ...)
     do.call(lines, args = c(list(x = thresholds, y = xi.CI.low), lines.args))
     do.call(lines, args = c(list(x = thresholds, y = xi.CI.up),  lines.args))
-    pu <- pretty(thresholds)
-    axis(3, at = pu, labels = sapply(pu, function(u) sum(x > u)))
+    pu <- pretty(thresholds) # where actual x labels are (even if those thresholds are not considered)
+    axis(3, at = pu, labels = sapply(pu, function(u) sum(x > u))) # *corresponding* excesses
     mtext(xlab2, side = 3, line = 3)
     invisible()
 }

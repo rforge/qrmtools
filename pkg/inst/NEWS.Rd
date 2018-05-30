@@ -1,5 +1,5 @@
 % Check from R:
-% news(db = tools:::.build_news_db_from_package_NEWS_Rd("~/pro/copula/inst/NEWS.Rd"))
+% news(db = tools:::.build_news_db_from_package_NEWS_Rd("NEWS.Rd"))
 \name{NEWS}
 \title{News for \R Package \pkg{qrmtools}}
 \newcommand{\CRANpkg}{\href{https://CRAN.R-project.org/package=#1}{\pkg{#1}}}
