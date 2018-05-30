@@ -118,9 +118,9 @@ mean_excess_plot <- function(x, omit = 3,
 ##' @return invisible()
 ##' @author Marius Hofert
 GPD_shape_plot <- function(x, thresholds = seq(quantile(x, 0.5), quantile(x, 0.99), length.out = 65),
-                           estimate.cov = TRUE,
-                           conf.level = 0.95, lines.args = list(lty = 2),
-                           xlab2 = "Excesses", xlab = "Threshold", ylab = NULL, ...)
+                           estimate.cov = TRUE, conf.level = 0.95,
+                           lines.args = list(lty = 2), xlab = "Threshold", ylab = NULL,
+                           xlab2 = "Excesses", ...)
 {
     ## Checks
     stopifnot(length(thresholds) >= 2, is.logical(estimate.cov), 0 <= conf.level, conf.level <= 1)

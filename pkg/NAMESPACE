@@ -19,7 +19,7 @@ importFrom("lattice", "levelplot")
 importFrom("rugarch", "ugarchspec", "ugarchfit")
 importFrom("stats", "quantile", "HoltWinters", "density", "ppoints", "optim")
 importFrom("methods", "is", "existsFunction")
-importFrom("utils", "setTxtProgressBar", "txtProgressBar", "head")
+importFrom("utils", "setTxtProgressBar", "txtProgressBar", "head", "tail")
 
 
 ### Exports ####################################################################
@@ -34,7 +34,7 @@ export(
     "fit_GEV_quantile", "fit_GEV_PWM", "logLik_GEV", "fit_GEV_MLE",
     "fit_GPD_MOM", "fit_GPD_PWM", "logLik_GPD", "fit_GPD_MLE",
     "mean_excess_np", "mean_excess_GPD", "mean_excess_plot",
-    "GPD_shape_plot", "tail_plot",
+    "GEV_shape_plot", "GPD_shape_plot", "tail_plot",
     ## Worst/best VaR
     "crude_VaR_bounds", "dual_bound", "VaR_bounds_hom",
     "rearrange", "RA", "ARA",

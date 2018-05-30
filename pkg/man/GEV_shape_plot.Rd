@@ -1,21 +1,20 @@
-\name{GPD_shape_plot}
-\alias{GPD_shape_plot}
-\title{Fitted GPD Shape as a Function of the Threshold}
+\name{GEV_shape_plot}
+\alias{GEV_shape_plot}
+\title{Fitted GEV Shape as a Function of the Threshold}
 \description{
-  Fit GPDs to various thresholds and plot the fitted GPD shape as
-  a function of the threshold.
+  Fit GEVs to block maxima and plot the fitted GPD shape as
+  a function of the block size.
 }
 \usage{
-GPD_shape_plot(x, thresholds = seq(quantile(x, 0.5), quantile(x, 0.99),
-                                   length.out = 65),
+GEV_shape_plot(x, blocksize = tail(pretty(seq_len(length(x)/20), n = 64), -1),
                estimate.cov = TRUE, conf.level = 0.95,
-               lines.args = list(lty = 2), xlab = "Threshold", ylab = NULL,
-               xlab2 = "Excesses", ...)
+               lines.args = list(lty = 2), xlab = "Block size",  ylab = NULL,
+               xlab2 = "Number of blocks", ...)
 }
 \arguments{
   \item{x}{\code{\link{numeric}} vector of data.}
-  \item{thresholds}{\code{\link{numeric}} vector of thresholds for which
-    to fit a GPD to the excesses.}
+  \item{blocksize}{\code{\link{numeric}} vector of block sizes for which
+    to fit a GEV to the block maxima.}
   \item{estimate.cov}{\code{\link{logical}} indicating whether
     confidence intervals are to be computed.}
   \item{conf.level}{confidence level of the confidence intervals if
@@ -32,15 +31,16 @@ GPD_shape_plot(x, thresholds = seq(quantile(x, 0.5), quantile(x, 0.99),
   \code{\link{invisible}()}
 }
 \details{
-  Such plots can be used in the peaks-over-threshold method for
-  determining the optimal threshold (as the smallest after which the plot
+  Such plots can be used in the block maxima method for determining
+  the optimal block size (as the smallest after which the plot
   is (roughly) stable).
 }
 \author{Marius Hofert}
 \examples{
-data(fire)
-GPD_shape_plot(fire)
-abline(v = c(10, 20), lty = 3) # possible threshold choices from mean_excess_plot()
+set.seed(271)
+X <- rPar(1e5, shape = 4)
+GEV_shape_plot(X)
+abline(h = 1/4, lty = 3) # theoretical xi = 1/shape for Pareto
 }
 \keyword{parametric}
 \keyword{hplot}
