@@ -38,7 +38,7 @@ GEV_shape_plot(x, blocksize = tail(pretty(seq_len(length(x)/20), n = 64), -1),
 \author{Marius Hofert}
 \examples{
 set.seed(271)
-X <- rPar(1e5, shape = 4)
+X <- rPar(5e4, shape = 4)
 GEV_shape_plot(X)
 abline(h = 1/4, lty = 3) # theoretical xi = 1/shape for Pareto
 }
