@@ -211,7 +211,7 @@ tail_estimator_GPD <- function(q, threshold, p.exceed, shape, scale)
 ##'         the data: QRM::plotTail(QRM::fit.GPD(fire, threshold = 50), ppoints.gpd = ppoints(4))
 tail_plot <- function(x, threshold, shape = NULL, scale = NULL,
                       q = NULL, length.out = 129, lines.args = list(),
-                      log = "xy", xlab = "Value", ylab = "Tail probability", ...)
+                      log = "xy", xlab = "x", ylab = "Tail probability at x", ...)
 {
     ## Compute empirical tail estimator
     ## Note: Unless evaluated at the excesses themselves, there is no point in using

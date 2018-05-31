@@ -7,7 +7,7 @@
 \usage{
 edf_plot(x, do.points = length(x) <= 100, log = "",
          xlim = range(x, na.rm = TRUE),
-         main = "", xlab = "Value", ylab = "Probability", ...)
+         main = "", xlab = "x", ylab = "Distribution function at x", ...)
 }
 \arguments{
   \item{x}{\code{\link{numeric}} vector of data (of which the empirical

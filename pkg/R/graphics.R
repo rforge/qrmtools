@@ -230,7 +230,7 @@ qq_plot <-  function(x, FUN = qnorm, xlab = "Theoretical quantiles", ylab = "Sam
 ##'             => artificial extension to the left). Best to leave it like this.
 edf_plot <- function(x, do.points = length(x) <= 100, log = "",
                      xlim = range(x, na.rm = TRUE),
-                     main = "", xlab = "Value", ylab = "Probability", ...)
+                     main = "", xlab = "x", ylab = "Distribution function at x", ...)
 {
     x <- sort(as.numeric(x)) # required by ecdf()
     y <- c(0, ecdf(x)(x)) # plot.stepfun() requires 'y' to be one longer than 'x' (y = values *between* x's)

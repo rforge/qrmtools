@@ -8,7 +8,7 @@
 \usage{
 tail_plot(x, threshold, shape = NULL, scale = NULL, q = NULL,
           length.out = 129, lines.args = list(),
-          log = "xy", xlab = "Value", ylab = "Tail probability", ...)
+          log = "xy", xlab = "x", ylab = "Tail probability at x", ...)
 }
 \arguments{
   \item{x}{\code{\link{numeric}} vector of data.}
