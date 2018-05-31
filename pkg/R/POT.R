@@ -114,20 +114,26 @@ mean_excess_plot <- function(x, omit = 3,
 ##' @param xlab2 label of the secondary x-axis
 ##' @param xlab x-axis label
 ##' @param ylab y-axis label
+##' @param plot logical indicating whether a plot is done
 ##' @param ... additional arguments passed to the underlying plot()
-##' @return invisible()
+##' @return invisibly returns the thresholds, the list of corresponding threshold
+##'         excesses and the list of fitted GPDs.
 ##' @author Marius Hofert
 GPD_shape_plot <- function(x, thresholds = seq(quantile(x, 0.5), quantile(x, 0.99), length.out = 65),
                            estimate.cov = TRUE, conf.level = 0.95,
                            lines.args = list(lty = 2), xlab = "Threshold", ylab = NULL,
-                           xlab2 = "Excesses", ...)
+                           xlab2 = "Excesses", plot = TRUE, ...)
 {
     ## Checks
-    stopifnot(length(thresholds) >= 2, is.logical(estimate.cov), 0 <= conf.level, conf.level <= 1)
-    ## Fit GPD models to the given thresholds
+    stopifnot(length(thresholds) >= 2, is.logical(estimate.cov), 0 <= conf.level, conf.level <= 1,
+              is.logical(plot))
+    ## Compute threshold excesses
     x <- as.numeric(x)
-    fits <- lapply(thresholds, function(u)
-        fit_GPD_MLE(x[x > u] - u, estimate.cov = estimate.cov))
+    excesses <- function(u) x[x > u] - u
+    ## Peaks-over-threshold for each considered threshold
+    exc <- lapply(thresholds, function(u) excesses(u))
+    ## Fit GPD models to the given thresholds
+    fits <- lapply(exc, fit_GPD_MLE, estimate.cov = estimate.cov)
     ## Extract the fitted shape parameters and compute CIs
     xi <- sapply(fits, function(f) f$par[["shape"]])
     if(estimate.cov) {
@@ -138,19 +144,22 @@ GPD_shape_plot <- function(x, thresholds = seq(quantile(x, 0.5), quantile(x, 0.9
         ylim <- range(xi, xi.CI.low, xi.CI.up)
     } else ylim <- range(xi)
     ## Plot
-    if(is.null(ylab)) ylab <- paste0("Estimated GPD shape parameter",
-                                     if(estimate.cov) paste0(" with ", 100*conf.level,
-                                     "% confidence intervals") else "")
-    plot(thresholds, xi, type = "l", ylim = ylim,
-         xlab = xlab, ylab = ylab, ...)
-    if(estimate.cov) {
-        do.call(lines, args = c(list(x = thresholds, y = xi.CI.low), lines.args))
-        do.call(lines, args = c(list(x = thresholds, y = xi.CI.up),  lines.args))
+    if(plot) {
+        if(is.null(ylab)) ylab <- paste0("Estimated GPD shape parameter",
+                                         if(estimate.cov) paste0(" with ", 100*conf.level,
+                                                                 "% confidence intervals") else "")
+        plot(thresholds, xi, type = "l", ylim = ylim,
+             xlab = xlab, ylab = ylab, ...)
+        if(estimate.cov) {
+            do.call(lines, args = c(list(x = thresholds, y = xi.CI.low), lines.args))
+            do.call(lines, args = c(list(x = thresholds, y = xi.CI.up),  lines.args))
+        }
+        pu <- pretty(thresholds) # where actual x labels are (even if those thresholds are not considered)
+        axis(3, at = pu, labels = sapply(pu, function(u) sum(x > u))) # *corresponding* excesses
+        mtext(xlab2, side = 3, line = 3)
     }
-    pu <- pretty(thresholds) # where actual x labels are (even if those thresholds are not considered)
-    axis(3, at = pu, labels = sapply(pu, function(u) sum(x > u))) # *corresponding* excesses
-    mtext(xlab2, side = 3, line = 3)
-    invisible()
+    ## Return
+    invisible(list(thresholds = thresholds, excesses = exc, GPD.fits = fits))
 }
 
 

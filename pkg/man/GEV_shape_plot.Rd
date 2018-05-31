@@ -9,7 +9,7 @@
 GEV_shape_plot(x, blocksize = tail(pretty(seq_len(length(x)/20), n = 64), -1),
                estimate.cov = TRUE, conf.level = 0.95,
                lines.args = list(lty = 2), xlab = "Block size",  ylab = NULL,
-               xlab2 = "Number of blocks", ...)
+               xlab2 = "Number of blocks", plot = TRUE, ...)
 }
 \arguments{
   \item{x}{\code{\link{numeric}} vector of data.}
@@ -24,11 +24,15 @@ GEV_shape_plot(x, blocksize = tail(pretty(seq_len(length(x)/20), n = 64), -1),
   \item{xlab}{x-axis label.}
   \item{ylab}{y-axis label (if \code{NULL}, a default is used).}
   \item{xlab2}{label of the secondary x-axis.}
+  \item{plot}{\code{\link{logical}} indicating whether a plot is produced.}
   \item{\dots}{additional arguments passed to the underlying
     \code{\link{plot}()}.}
 }
 \value{
-  \code{\link{invisible}()}
+  Invisibly returns a \code{\link{list}} containing the block sizes
+  considered, the corresponding block maxima and the fitted GEV
+  distribution objects as returned by the underlying
+  \code{\link{fit_GEV_MLE}()}.
 }
 \details{
   Such plots can be used in the block maxima method for determining

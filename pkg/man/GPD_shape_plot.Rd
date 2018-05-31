@@ -10,7 +10,7 @@ GPD_shape_plot(x, thresholds = seq(quantile(x, 0.5), quantile(x, 0.99),
                                    length.out = 65),
                estimate.cov = TRUE, conf.level = 0.95,
                lines.args = list(lty = 2), xlab = "Threshold", ylab = NULL,
-               xlab2 = "Excesses", ...)
+               xlab2 = "Excesses", plot = TRUE, ...)
 }
 \arguments{
   \item{x}{\code{\link{numeric}} vector of data.}
@@ -25,11 +25,14 @@ GPD_shape_plot(x, thresholds = seq(quantile(x, 0.5), quantile(x, 0.99),
   \item{xlab}{x-axis label.}
   \item{ylab}{y-axis label (if \code{NULL}, a default is used).}
   \item{xlab2}{label of the secondary x-axis.}
+  \item{plot}{\code{\link{logical}} indicating whether a plot is produced.}
   \item{\dots}{additional arguments passed to the underlying
     \code{\link{plot}()}.}
 }
 \value{
-  \code{\link{invisible}()}
+  Invisibly returns a \code{\link{list}} containing the thresholds
+  considered, the corresponding excesses and the fitted GPD
+  objects as returned by the underlying \code{\link{fit_GPD_MLE}()}.
 }
 \details{
   Such plots can be used in the peaks-over-threshold method for
