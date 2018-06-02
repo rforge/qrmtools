@@ -37,7 +37,7 @@ mean_excess_np <- function(x, omit = 3)
     ## Note: This works (and thus shows the method) but is slow:
     ##       enu <- vapply(1:nuo, function(k) mean(xu[(k+1):nu]-xu[k]), NA_real_)
     ## => Idea: compute partial sums first and then do 'look-up'
-    csx <- rev(cumsum(xu[nu:2])) # sum(xu[2:nu]), ..., xu[nu-1] + xu[nu], xu[nu]
+    csx <- rev(cumsum(xu[nu:2])) # sum(xu[2:nu]), sum(xu[3:nu]), ..., xu[nu-1] + xu[nu], xu[nu]
     enu <- vapply(1:nuo, function(k) (csx[k]/(nu-k)) - xu[k], NA_real_) # note: nuo = nu - omit <= nu - 1 => nuo + 1 <= nu
     ## => Checked (coincides with the above computation of 'enu')
 
@@ -188,17 +188,21 @@ tail_estimator_GPD <- function(q, threshold, p.exceed, shape, scale)
     p.exceed * pGPD(q - threshold, shape = shape, scale = scale, lower.tail = FALSE)
 }
 
-##' @title Plot of the Empirical Tail Estimator (Possibly with Smith Tail Estimator)
+##' @title Plot of the Empirical Tail Estimator (Possibly Overlaid with Smith Tail Estimator)
 ##' @param x numeric vector of data points
 ##' @param threshold threshold u (above which tail exceedance df is computed)
 ##' @param shape NULL or GPD shape parameter xi (typically obtained from fit_GPD_MLE())
 ##' @param scale NULL or GPD scale parameter beta (typically obtained from fit_GPD_MLE())
 ##' @param q NULL or a sequence of quantiles >= threshold where to evaluate
-##'        the Smith estimator
+##'        the Smith estimator. Can also be of length 1 in which case the plot
+##'        is extended to the right of the largest exceedance until q if q is larger
+##'        than the largest exceedance.
 ##' @param length.out length of q
 ##' @param lines.args list providing additional arguments for the underlying
 ##'        lines()
 ##' @param log logical indicating whether logarithm scale is used
+##' @param xlim x-axis limits
+##' @param ylim y-axis limits
 ##' @param xlab x-axis label
 ##' @param ylab y-axis label
 ##' @param ... additional arguments passed to the underlying plot()
@@ -211,7 +215,8 @@ tail_estimator_GPD <- function(q, threshold, p.exceed, shape, scale)
 ##'         the data: QRM::plotTail(QRM::fit.GPD(fire, threshold = 50), ppoints.gpd = ppoints(4))
 tail_plot <- function(x, threshold, shape = NULL, scale = NULL,
                       q = NULL, length.out = 129, lines.args = list(),
-                      log = "xy", xlab = "x", ylab = "Tail probability at x", ...)
+                      log = "xy", xlim = NULL, ylim = NULL,
+                      xlab = "x", ylab = "Tail probability at x", ...)
 {
     ## Compute empirical tail estimator
     ## Note: Unless evaluated at the excesses themselves, there is no point in using
@@ -236,15 +241,21 @@ tail_plot <- function(x, threshold, shape = NULL, scale = NULL,
     if(doGPD) {
         stopifnot(scale > 0)
         ## Determine q (of exceedances where to evaluate Smith estimator; range should match 'exceed')
-        if(is.null(q)) q <- seq2(exceed[1], exceed[Nu], length.out = length.out, log = grepl("x", log))
+        qlen <- length(q)
+        if(is.null(q) || qlen == 1) {
+            ## Could extend q[1] 'to the left' if qlen == 2, but that doesn't make
+            ## much sense since GPD(x-u) is 0 below the threshold.
+            up <- if(qlen == 1) max(exceed[Nu], q) else exceed[Nu]
+            q <- seq2(exceed[1], up, length.out = length.out, log = grepl("x", log))
+        }
         ## Compute Smith estimator (classical GPD-based tail estimator in the POT method)
         y.Smith <- tail_estimator_GPD(q, threshold = threshold, p.exceed = Fn.bar.u,
                                       shape = shape, scale = scale)
-        xlim <- range(exceed, q) # only equal to range(exceed) if q is not user-provided
-        ylim <- range(Fn.bar.exceed, y.Smith)
+        if(is.null(xlim)) xlim <- range(exceed, q) # only equal to range(exceed) if q is not user-provided
+        if(is.null(ylim)) ylim <- range(Fn.bar.exceed, y.Smith)
     } else {
-        xlim <- range(exceed)
-        ylim <- range(Fn.bar.exceed)
+        if(is.null(xlim)) xlim <- range(exceed)
+        if(is.null(ylim)) ylim <- range(Fn.bar.exceed)
     }
     ## Plot
     plot(exceed, Fn.bar.exceed, xlim = xlim, ylim = ylim, log = log, xlab = xlab, ylab = ylab, ...)
