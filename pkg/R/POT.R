@@ -231,10 +231,10 @@ tail_plot <- function(x, threshold, shape = NULL, scale = NULL,
     ## => bar{F}_n(x_{(i)}) = bar{F}_n(u + y_{(i)}) = bar{F}_n(u) bar{F}_{u,n}(y_{(i)}) (by 1))
     ##                      = Nu/n * rev(ppoints(Nu)) (by 2), 3))
     x <- as.numeric(x)
-    exceed <- sort(x[x > threshold]) # sorted exceedances (x-values later)
+    exceed <- sort(x[x > threshold]) # sorted exceedances; x-values later
     Nu <- length(exceed) # number of exceedances
     Fn.bar.u <- Nu/length(x) # tail estimate at threshold u (= bar{F}_n(u))
-    Fn.bar.exceed <- Fn.bar.u * rev(ppoints(Nu)) # bar{F}_n(x_{(i)}) (y-values later)
+    Fn.bar.exceed <- Fn.bar.u * rev(ppoints(Nu)) # bar{F}_n(x_{(i)}); see above; y-values later
 
     ## Compute GPD tail estimator
     doGPD <- !is.null(shape) && !is.null(scale)
@@ -261,7 +261,7 @@ tail_plot <- function(x, threshold, shape = NULL, scale = NULL,
     plot(exceed, Fn.bar.exceed, xlim = xlim, ylim = ylim, log = log, xlab = xlab, ylab = ylab, ...)
     if(doGPD) {
         do.call(lines, args = c(list(x = q, y = y.Smith), lines.args))
-        invisible(list(np = cbind(x = exceed, y = Fn.bar.exceed),
-                       Smith = cbind(x = q, y = y.Smith)))
-    } else invisible(cbind(x = exceed, y = Fn.bar.exceed))
+        invisible(list(np    = cbind(exceed = exceed, Fn.bar.exceed = Fn.bar.exceed),
+                       Smith = cbind(q = q, estimator = y.Smith)))
+    } else invisible(cbind(exceed = exceed, Fn.bar.exceed = Fn.bar.exceed))
 }
