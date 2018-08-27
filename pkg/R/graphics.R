@@ -238,5 +238,5 @@ edf_plot <- function(x, do.points = length(x) <= 100, log = "",
     if(grepl("y", log)) stop('log = "y" not available.')
     sf <- stepfun(x = x, y = y) # ok, does not extend x-range
     plot(sf, do.points = do.points, log = log, xlim = xlim,
-         main = main, xlab = xlab, ylab = ylab, ...) # see plot.stepfun()
+         main = main, xlab = xlab, ylab = ylab, ...) # see plot.stepfun(), also for the return value!
 }

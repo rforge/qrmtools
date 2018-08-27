@@ -1,4 +1,4 @@
-useDynLib(qrmtools, .registration = TRUE, .fixes = "C_")
+useDynLib(qrmtools, .registration = TRUE)
 
 
 ### Imports ####################################################################
