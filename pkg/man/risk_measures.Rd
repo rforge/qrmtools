@@ -123,7 +123,7 @@ gEX(x, level, start = colMeans(x),
 
   \code{gVaR()}, \code{gEX()} compute the multivariate geometric
   value-at-risk and expectiles suggested by Chaudhuri (1996) and
-  Herrmann et al. (2017), respectively.
+  Herrmann et al. (2018), respectively.
 }
 \details{
   The distribution function of the Pareto distribution is given by
@@ -141,8 +141,9 @@ gEX(x, level, start = colMeans(x),
    \emph{Journal of the American Statistical Assosiation} 91(434),
    862--872.
 
-   Herrmann, K., Hofert, M. and Mailhot, M. (2017).
+   Herrmann, K., Hofert, M. and Mailhot, M. (2018).
    Multivariate geometric expectiles.
+   \emph{Scandinavian Actuarial Journal}, 2018(7), 629--659.
 }
 \examples{
 ### 1 Univariate measures ######################################################

@@ -1,5 +1,3 @@
-/* C functions for computing VaR bounds ***************************************/
-
 #include "VaR_bounds.h"
 
 
