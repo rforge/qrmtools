@@ -4,7 +4,7 @@
 \title{News for \R Package \pkg{qrmtools}}
 \newcommand{\CRANpkg}{\href{https://CRAN.R-project.org/package=#1}{\pkg{#1}}}
 
-\section{Changes in version 0.0-9 (after 2018-04-29)}{
+\section{Changes in version 0.0-10}{
   \subsection{New Features}{
     \itemize{
       \item \code{dGPDtail()}, \code{pGPDtail()}, \code{qGPDtail()},
@@ -20,7 +20,7 @@
   }
 }
 
-\section{Changes in version 0.0-9 (before 2018-04-28)}{
+\section{Changes in version 0.0-9}{
   \subsection{New Features}{
     \itemize{
       \item \code{VaR_POT()}, \code{ES_POT()}
