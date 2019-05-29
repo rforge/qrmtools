@@ -142,7 +142,7 @@ pp_plot <-  function(x, FUN = pnorm,
 
 ##' @title Q-Q Plot
 ##' @param x data (a vector or convertible to such)
-##' @param FUN hypothesized *quantile* function
+##' @param FUN hypothesized *quantile* function (vectorized)
 ##' @param xlab x-axis label
 ##' @param ylab y-axis label
 ##' @param do.qqline logical indicating whether a Q-Q line is plotted

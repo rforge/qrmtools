@@ -19,6 +19,7 @@ library(rugarch)
 library(qrmtools)
 ```
 
+
 ## 1 Simulate (-log-return) data $(X_t)$ from an ARMA-GARCH process
 
 We consider an ARMA(1,1)-GARCH(1,1) process with $t$ distributed innovations.
