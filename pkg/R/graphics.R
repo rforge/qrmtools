@@ -225,16 +225,17 @@ qq_plot <-  function(x, FUN = qnorm, xlab = "Theoretical quantiles", ylab = "Sam
 ##'       plot(stepfun(x = x, y = c(0, ecdf(x)(x))), log = "x")
 ##'       plot(stepfun(x = x, y = c(0, ecdf(x)(x))), log = "x", xlim = range(x))
 ##'       plot.stepfun # => extends the range (below 0)
-##'       Note: Manually extending the range a little bit to the left
-##'             does not make sense (because of log-scale
-##'             => artificial extension to the left). Best to leave it like this.
+##'       Note: - Manually extending the range a little bit to the left
+##'               does not make sense (because of log-scale
+##'               => artificial extension to the left). Best to leave it like this.
+##'             - see ?plot.stepfun
 edf_plot <- function(x, do.points = length(x) <= 100, log = "",
                      xlim = range(x, na.rm = TRUE),
                      main = "", xlab = "x", ylab = "Distribution function at x", ...)
 {
     x <- sort(as.numeric(x)) # required by ecdf()
     y <- c(0, ecdf(x)(x)) # plot.stepfun() requires 'y' to be one longer than 'x' (y = values *between* x's)
-    ## => log = "y" does not make sense anymore at this point
+    ## => log = "y" does not make sense anymore at this point as y[1] = 0
     if(grepl("y", log)) stop('log = "y" not available.')
     sf <- stepfun(x = x, y = y) # ok, does not extend x-range
     plot(sf, do.points = do.points, log = log, xlim = xlim,
