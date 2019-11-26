@@ -32,6 +32,8 @@ NA_plot <- function(x, col = c("black", "white"), xlab = "Time", ylab = "Compone
 
 ##' @title Plot of a Matrix
 ##' @param x matrix
+##' @param ran range over which to plot the colors (can be used to force (-1, 1),
+##'        for example)
 ##' @param ylim y-axis limits in reverse order (for the rows to appear 'top down')
 ##' @param xlab x-axis label
 ##' @param ylab y-axis label
@@ -47,7 +49,7 @@ NA_plot <- function(x, col = c("black", "white"), xlab = "Time", ylab = "Compone
 ##'         corrplot::corrplot(err, method = "color", col = grey(seq(0.4, 1, length.out = 200)),
 ##'                            tl.col = "black", is.corr = FALSE)
 ##'       - Check via examples on ?matrix_plot
-matrix_plot <- function(x, ylim = rev(c(0.5, nrow(x) + 0.5)),
+matrix_plot <- function(x, ran = range(x, na.rm = TRUE), ylim = rev(c(0.5, nrow(x) + 0.5)),
                         xlab = "Column", ylab = "Row",
                         scales = list(alternating = c(1,1), tck = c(1,0),
                                       x = list(at = pretty(1:ncol(x)), rot = 90),
@@ -59,7 +61,6 @@ matrix_plot <- function(x, ylim = rev(c(0.5, nrow(x) + 0.5)),
               is.null(scales) || is.list(scales), is.numeric(at) || is.null(at),
               is.list(colorkey) || is.null(colorkey))
     ## Determine colors for the color key
-    ran <- range(x, na.rm = TRUE)
     if(all(ran >= 0)) { # all non-NA entries >= 0
         if(is.null(at)) at <- seq(0, ran[2], length.out = 200)
         if(is.null(col.regions))
