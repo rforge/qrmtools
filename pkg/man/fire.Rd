@@ -12,7 +12,7 @@ data("fire")
   \code{\link{xts}} object containing 2167 observations.
 }
 \source{
-  originally Mette Rytgaard (Copenhagen Re); see \pkg{evir} and
+  Originally Mette Rytgaard (Copenhagen Re); see \pkg{evir} and
   \pkg{QRM}.
 %% Created via (after comparing with evir):
 %% library(QRM)
