@@ -7,7 +7,7 @@
 }
 \usage{
 Black_Scholes(t, S, r, sigma, K, T, type = c("call", "put"))
-Black_Scholes_Greeks(t, S, r, sigma, K, T)
+Black_Scholes_Greeks(t, S, r, sigma, K, T, type = c("call", "put"))
 }
 \arguments{
   \item{t}{initial or current time \eqn{t} (in years).}
@@ -16,8 +16,8 @@ Black_Scholes_Greeks(t, S, r, sigma, K, T)
   \item{sigma}{annual volatility (standard deviation).}
   \item{K}{strike.}
   \item{T}{maturity (in years).}
-  \item{type}{\code{\link{character}} string indicating whether the price
-    of a call (the default) or of put option is to be computed.}
+  \item{type}{\code{\link{character}} string indicating whether
+    a call (the default) or a put option is considered.}
 }
 \value{
   \code{Black_Scholes()} returns the value of a European-style call or put
@@ -25,7 +25,7 @@ Black_Scholes_Greeks(t, S, r, sigma, K, T)
 
   \code{Black_Scholes_Greeks()} returns the first-order derivatives
   delta, theta, rho, vega and the second-order derivatives gamma, vanna
-  and vomma (in this order).
+  and vomma (depending on the chosen \code{type}) in this order.
 }
 %% \details{
 %% }
