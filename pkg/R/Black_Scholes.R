@@ -1,4 +1,4 @@
-### Compute the Black--Scholes formula and the Greeks
+### Compute the Black--Scholes formula and the Greeks ##########################
 
 ##' @title Compute the Black--Scholes Formula
 ##' @param t initial/current time (in years)
@@ -13,15 +13,15 @@
 ##' @author Marius Hofert
 Black_Scholes <- function(t, S, r, sigma, K, T, type = c("call", "put"))
 {
-    d1 <- (log(S/K) + (r+sigma^2/2)*(T-t))/(sigma*sqrt(T-t))
-    d2 <- d1-sigma*sqrt(T-t)
+    d1 <- (log(S/K) + (r + sigma^2/2) * (T-t)) / (sigma * sqrt(T-t))
+    d2 <- d1 - sigma * sqrt(T-t)
     type <- match.arg(type)
     switch(type,
            "call" = {
-               S*pnorm(d1)-K*exp(-r*(T-t))*pnorm(d2)
+               S * pnorm(d1) - K * exp(-r*(T-t)) * pnorm(d2)
            },
            "put" =  {
-               S*(pnorm(d1)-1)+K*exp(-r*(T-t))*(1-pnorm(d2))
+               -S * pnorm(-d1) + K * exp(-r*(T-t)) * pnorm(-d2)
            },
            stop("Wrong type"))
 }
@@ -72,7 +72,7 @@ Black_Scholes_Greeks <- function(t, S, r, sigma, K, T, type = c("call", "put"))
            stop("Wrong type"))
 
     ## Return
-    cbind(
+    res <- cbind(
         ## First-order
         delta = delta,
         theta = theta,
@@ -83,4 +83,5 @@ Black_Scholes_Greeks <- function(t, S, r, sigma, K, T, type = c("call", "put"))
         vanna = vanna,
         vomma = vomma
     )
+    if(nrow(res) == 1) drop(res) else res
 }
