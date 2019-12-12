@@ -77,3 +77,33 @@ conditioning <- function(x, level, risk.measure = "VaR_np", ...)
     ## Return sub-sample
     x[(rm.level.S[1] < S) & (S <= rm.level.S[2]),]
 }
+
+##' @title Nonparameteric Allocation
+##' @param x see ?conditioning
+##' @param level see ?conditioning
+##' @param risk.measure see ?conditioning
+##' @param include.conditional logical indicating whether the conditional data set
+##'        is returned, too
+##' @param ... see ?conditioning
+##' @return list with components:
+##'         "allocation": nonparametric allocation estimate
+##'         "SE": standard error of the allocation amounts
+##'         "n": sample size of the conditional sample based on which the allocation
+##'              is estimated
+##'         "conditional": the underlying conditional sample of X given that S lies in the
+##'                        region defined by the provided risk measure; omitted if
+##'                        include.conditional = FALSE
+##' @author Marius Hofert
+##' @note For an iid sample x from X (assumed here), note that the SE is the standard
+##'       deviation of the sample mean (since Var(<sample mean>) = Var(X_1)/n
+##'       => sd(<sample mean>) = sigma/sqrt{n} = SE), so a measure of how well the
+##'       estimated allocation approximates the true one.
+alloc_np <- function(x, level, risk.measure = "VaR_np", include.conditional = FALSE, ...)
+{
+    z <- conditioning(x, level = level, risk.measure = risk.measure, ...) # Z = X | varrho(S) in region
+    if(!is.matrix(z)) z <- as.matrix(z)
+    res <- list(allocation = colMeans(z), # estimated allocation
+                SE = apply(z, 2, sd) / sqrt(nrow(z)), # estimated standard errors per allocated amount
+                n = nrow(z))
+    if(include.conditional) c(res, conditional = z) else res
+}
