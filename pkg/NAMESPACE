@@ -67,5 +67,5 @@ export(
     ## Tests
     "maha2_test", "mardia_test",
     ## Allocation
-    "alloc_ellip"
+    "alloc_ellip", "conditioning"
 )

@@ -30,3 +30,50 @@ alloc_ellip <- function(total, loc, scale)
     rs <- rowSums(scale)
     loc + (rs / sum(rs)) * total # Euler allocation
 }
+
+##' @title Sub-sampling based on a Risk Measure of the Sum
+##' @param x (n, d)-data matrix
+##' @param level confidence level(s)
+##' @param risk.measure character string or function specifying the risk measure
+##'        computed from the row sums of x based on the given level(s) in order
+##'        to determine the conditioning region.
+##' @param ... additional arguments passed to 'risk.measure'
+##' @return sub-sample of x that satisfies that its row sums are in the
+##'         conditioning region specified by 'risk.measure' computed from the row
+##'         sums of x and the given 'level'
+##' @author Marius Hofert
+##' @note This function could at some point get an argument 'type' for using,
+##'       say, the row maximum instead of the row sum to determine the
+##'       conditioning region.
+conditioning <- function(x, level, risk.measure = "VaR_np", ...)
+{
+    ## Basics
+    if(!is.matrix(x))
+        x <- as.matrix(x)
+    if(length(level) == 1) level <- c(level, 1)
+    stopifnot(length(level) == 2, 0 <= level, level <= 1)
+    is.function.rm <- is.function(risk.measure)
+    if(!is.function.rm) {
+        stopifnot(is.character(risk.measure), existsFunction(risk.measure)) # check
+        ## Create an expression of the function call and evaluate that below
+        expr <- as.call(c(as.name(risk.measure), # 'unquote' string
+                          quote(x), # includes 'x' as first argument (which exists in here)
+                          quote(level.), # includes placeholder to be substituted below
+                          as.expression(list(...)))) # includes '...' (which exists in here)
+    }
+
+    ## Estimate risk.measure(S) for the two confidence levels
+    ## Note: We could also call risk.measure(S, level = level, ...) directly
+    ##       but that assumes the provided risk.measure() is vectorized in 'level'
+    S <- rowSums(x) # row sums
+    rm.level.S <- if(is.function.rm) {
+                      sapply(level, function(l) risk.measure(S, level = l, ...))
+                  } else {
+                      sapply(level, function(l) eval(expr, list(level. = l)))
+                  }
+    if(length(rm.level.S) != 2) # sanity check
+        stop("The output of the evaluated 'risk.measure' does not have length 2.")
+
+    ## Return sub-sample
+    x[(rm.level.S[1] < S) & (S <= rm.level.S[2]),]
+}
