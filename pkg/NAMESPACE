@@ -65,5 +65,7 @@ export(
     "RVaR_np",
     "gVaR", "gEX",
     ## Tests
-    "maha2_test", "mardia_test"
+    "maha2_test", "mardia_test",
+    ## Allocation
+    "alloc_ellip"
 )
