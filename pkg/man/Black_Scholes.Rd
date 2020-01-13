@@ -27,8 +27,10 @@ Black_Scholes_Greeks(t, S, r, sigma, K, T, type = c("call", "put"))
   delta, theta, rho, vega and the second-order derivatives gamma, vanna
   and vomma (depending on the chosen \code{type}) in this order.
 }
-%% \details{
-%% }
+\details{
+Note again that \code{t} is time in years. In the context of McNeil et
+  al. (2015, Chapter 9), this is \eqn{\tau_t = t/250}{tau_t = t/250}.
+}
 \author{Marius Hofert}
 \references{
    McNeil, A. J., Frey, R., and Embrechts, P. (2015).
