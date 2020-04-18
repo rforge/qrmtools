@@ -449,10 +449,12 @@ num_of_opp_ordered_cols <- function(x) {
 ##'         2) (Individual) tolerance reached (i.e., the absolute/relative change
 ##'            of the row sum when looking back n.lookback column rearrangements)
 ##'         3) Logical indicating whether the algorithm has converged
-##'         4) Vectors of optimized (minimal for worst VaR; maximal for best VaR;
+##'         4) Vectors of optimal (minimal for worst VaR; maximal for best VaR;
 ##'            ES_alpha for best ES) row sums after each considered column
 ##'            rearrangement
 ##'         5) The (optimally) rearranged (N, d)-matrix
+##'         6) The (averaged) rows of the (optimally) rearranged matrix leading
+##'            to the final optimal row sum
 ##' @author Marius Hofert and Kurt Hornik
 ##' @note - We use "<= tol" to determine convergence instead of "< tol" as
 ##'         this then also nicely works with "= 0" (if tol = 0) which stops in
@@ -514,7 +516,7 @@ rearrange <- function(X, tol = 0, tol.type = c("relative", "absolute"),
 
     ## Setup for iteration
     num.cols.no.change <- 0 # number of consecutively rearranged columns with no change
-    len.opt.row.sums <- 64 # length of vector of optimized (minimal/maximal/ES) row sums after each rearranged column
+    len.opt.row.sums <- 64 # length of vector of optimal (minimal/maximal/ES) row sums after each rearranged column
     opt.row.sums <- numeric(len.opt.row.sums) # vector (will be doubled in size if necessary; faster than c()ing to it all the time)
     is.null.tol <- is.null(tol)
 
@@ -561,7 +563,7 @@ rearrange <- function(X, tol = 0, tol.type = c("relative", "absolute"),
         }
 
         ## Update the vector of computed optimal row sums
-        opt.rs.cur.col <- optim.fun(Y.rs) # compute new optimized row sum
+        opt.rs.cur.col <- optim.fun(Y.rs) # compute new optimal row sum
         if(iter > len.opt.row.sums) { # if iter in {128 + 1, 256 + 1, ...} => double the size
             opt.row.sums <- c(opt.row.sums, numeric(len.opt.row.sums))
             len.opt.row.sums <- 2 * len.opt.row.sums
@@ -612,14 +614,21 @@ rearrange <- function(X, tol = 0, tol.type = c("relative", "absolute"),
         X.lst <- Y.lst # update the working 'matrix'
         X.rs <- Y.rs # update the row sums
 
-    }
+    } # while()
+
+    ## Determine (column means of) the row(s) of the final rearranged matrix
+    ## which correspond to the optimal row sum
+    X.rearranged <- do.call(cbind, Y.lst) # rearranged X
+    opt.rs.ind <- which(Y.rs == opt.rs.cur.col) # indices of rows which lead to optimal row sums
+    X.rearranged.opt.row <- colMeans(X.rearranged[opt.rs.ind,, drop = FALSE]) # average over multiple rows if optimum is not unique
 
     ## Return
     list(bound = opt.rs.cur.col, # computed bound (\underline{s}_N or \overline{s}_N)
          tol = tol., # tolerance for the computed bound
          converged = tol.reached, # indicating whether converged
-         opt.row.sums = opt.row.sums[1:iter], # the computed optimized row sums after each rearrangement
-         X.rearranged = do.call(cbind, Y.lst)) # the (single) rearranged matrix X
+         opt.row.sums = opt.row.sums[1:iter], # the computed optimal row sums after each rearrangement
+         X.rearranged = X.rearranged, # the (single) rearranged matrix X
+         X.rearranged.opt.row = X.rearranged.opt.row) # (averaged) rows of X.rearranged leading to the final optimal row sum
 }
 
 ##' @title Basic rearrangement function for (A)BRA
@@ -648,10 +657,12 @@ rearrange <- function(X, tol = 0, tol.type = c("relative", "absolute"),
 ##'            of the row sum variance when looking back n.lookback block
 ##'            rearrangements
 ##'         3) Logical indicating whether the algorithm has converged
-##'         4) Vectors of optimized (minimal for worst VaR; maximal for best VaR;
+##'         4) Vectors of optimal (minimal for worst VaR; maximal for best VaR;
 ##'            ES_alpha for best ES) row variances after each considered block
 ##'            rearrangement
 ##'         5) The (optimally) rearranged (N, d)-matrix
+##'         6) The (averaged) rows of the (optimally) rearranged matrix leading
+##'            to the final optimal row sum
 ##' @author Marius Hofert and Martin Stefanik
 ##' @note - This is a modified version of Bernard and McLeish (2014)
 ##'       - Idea: The variance of the row sums is minimized through block rearrangements,
@@ -750,7 +761,7 @@ block_rearrange <- function(X, tol = 0, tol.type = c("absolute", "relative"),
         }
 
         ## Update the vector of computed optimal row sums
-        opt.rs.cur.col <- optim.fun(X.rs) # compute new optimized row sum
+        opt.rs.cur.col <- optim.fun(X.rs) # compute new optimal row sum
         if(iter > len.opt.row.sums) { # if iter in {128 + 1, 256 + 1, ...} => double the size
             opt.row.sums <- c(opt.row.sums, numeric(len.opt.row.sums))
             len.opt.row.sums <- 2 * len.opt.row.sums
@@ -779,12 +790,19 @@ block_rearrange <- function(X, tol = 0, tol.type = c("absolute", "relative"),
         }
     }
 
+    ## Determine (column means of) the row(s) of the final rearranged matrix
+    ## which correspond to the optimal row sum
+    X.rearranged <- X # rearranged X
+    opt.rs.ind <- which(X.rs == opt.rs.cur.col) # indices of rows which lead to optimal row sums
+    X.rearranged.opt.row <- colMeans(X.rearranged[opt.rs.ind,, drop = FALSE]) # average over multiple rows if optimum is not unique
+
     ## Return
     list(bound = optim.fun(X.rs), # computed bound (\underline{s}_N or \overline{s}_N)
          tol = tol., # tolerance for the computed bound
          converged = tol.reached, # indicating whether converged
-         opt.row.sums = opt.row.sums[1:iter], # the computed optimized row sums after each block rearrangement
-         X.rearranged = X) # the block-rearranged matrix
+         opt.row.sums = opt.row.sums[1:iter], # the computed optimal row sums after each block rearrangement
+         X.rearranged = X.rearranged, # the block-rearranged matrix
+         X.rearranged.opt.row = X.rearranged.opt.row) # (averaged) rows of X.rearranged leading to the final optimal row sum
 }
 
 
@@ -810,10 +828,12 @@ block_rearrange <- function(X, tol = 0, tol.type = c("absolute", "relative"),
 ##'         4) 2-vector of logicals indicating whether the individual bounds reached
 ##'            the desired tolerances (=> convergence)
 ##'         5) Number of columns considered for rearrangement
-##'         6) Vectors of optimized (minimal for worst VaR; maximal for best VaR;
+##'         6) Vectors of optimal (minimal for worst VaR; maximal for best VaR;
 ##'            ES_alpha for best ES) row sums after each considered column rearrangement
 ##'         7) List of (N, d) input matrices X (for each bound)
 ##'         8) List of rearranged Xs (for each bound)
+##'         9) List of (averaged) rows of the rearranged X leading to the optimal
+##'            row sum (for each bound)
 ##' @author Marius Hofert
 ##' @note Notation is from p. 2757 in Embrechts, Puccetti, Rueschendorf (2013);
 ##'       variables are named according to the 'worst' VaR case.
@@ -900,9 +920,11 @@ RA <- function(level, qF, N, abstol = 0, n.lookback = length(qF),
          ind.abs.tol = c(low = res.low$tol, up = res.up$tol), # individual absolute tolerances
          converged = c(low = res.low$converged, up = res.up$converged), # converged?
          num.ra = c(low = length(res.low$opt.row.sums), up = length(res.up$opt.row.sums)), # number of considered column rearrangements (low, up)
-         opt.row.sums = list(low = res.low$opt.row.sum, up = res.up$opt.row.sums), # optimized row sums (low, up)
+         opt.row.sums = list(low = res.low$opt.row.sum, up = res.up$opt.row.sums), # optimal row sums (low, up)
          X = list(low = X.low, up = X.up), # input matrices X (low, up)
-         X.rearranged = list(low = res.low$X.rearranged, up = res.up$X.rearranged)) # rearranged Xs (low, up)
+         X.rearranged = list(low = res.low$X.rearranged, up = res.up$X.rearranged), # rearranged Xs (low, up)
+         X.rearranged.opt.row = # (averaged) rows of X.rearranged leading to the final optimal row sum
+             list(low = res.low$X.rearranged.opt.row, up = res.up$X.rearranged.opt.row))
 }
 
 
@@ -934,10 +956,12 @@ RA <- function(level, qF, N, abstol = 0, n.lookback = length(qF),
 ##'            the two bounds jointly reached the desired tolerances (=> convergence)
 ##'         5) The number of discretization points used
 ##'         6) Number of columns considered for rearrangement
-##'         7) Vectors of optimized (minimal for worst VaR; maximal for best VaR;
+##'         7) Vectors of optimal (minimal for worst VaR; maximal for best VaR;
 ##'            ES_alpha for best ES) row sums after each considered column rearrangement
 ##'         8) List of (N, d) input matrices X (for each bound)
 ##'         9) List of rearranged Xs (for each bound)
+##'        10) List of (averaged) rows of the rearranged X leading to the optimal
+##'            row sum (for each bound)
 ##' @author Marius Hofert
 ARA <- function(level, qF, N.exp = seq(8, 19, by = 1), reltol = c(0, 0.01),
                 n.lookback = length(qF), max.ra = 10*length(qF),
@@ -1040,9 +1064,11 @@ ARA <- function(level, qF, N.exp = seq(8, 19, by = 1), reltol = c(0, 0.01),
          N.used = N, # number of discretization points used
          num.ra = c(low = length(res.low$opt.row.sums), up = length(res.up$opt.row.sums)), # number of considered column rearrangements (low, up)
          opt.row.sums = list(low = res.low$opt.row.sums,
-                             up = res.up$opt.row.sums), # optimized row sums (low, up) for the N used
+                             up = res.up$opt.row.sums), # optimal row sums (low, up) for the N used
          X = list(low = X.low, up = X.up), # input matrices X (low, up)
-         X.rearranged = list(low = res.low$X.rearranged, up = res.up$X.rearranged)) # rearranged Xs (low, up)
+         X.rearranged = list(low = res.low$X.rearranged, up = res.up$X.rearranged), # rearranged Xs (low, up)
+         X.rearranged.opt.row = # (averaged) rows of X.rearranged leading to the final optimal row sum
+             list(low = res.low$X.rearranged.opt.row, up = res.up$X.rearranged.opt.row))
 }
 
 
@@ -1074,10 +1100,12 @@ ARA <- function(level, qF, N.exp = seq(8, 19, by = 1), reltol = c(0, 0.01),
 ##'            the two bounds jointly reached the desired tolerances (=> convergence)
 ##'         5) The number of discretization points used
 ##'         6) Number of blocks considered for rearrangement
-##'         7) Vectors of optimized (minimal for worst VaR; maximal for best VaR;
+##'         7) Vectors of optimal (minimal for worst VaR; maximal for best VaR;
 ##'            ES_alpha for best ES) row sums after each considered block rearrangement
 ##'         8) List of (N, d) input matrices X (for each bound)
 ##'         9) List of rearranged Xs (for each bound)
+##'        10) List of (averaged) rows of the rearranged X leading to the optimal
+##'            row sum (for each bound)
 ##' @author Marius Hofert and Martin Stefanik
 ABRA <- function(level, qF, N.exp = seq(8, 19, by = 1), absreltol = c(0, 0.01),
                  n.lookback = NULL, max.ra = Inf,
@@ -1191,7 +1219,9 @@ ABRA <- function(level, qF, N.exp = seq(8, 19, by = 1), absreltol = c(0, 0.01),
          N.used = N, # number of discretization points used
          num.ra = c(low = length(res.low$opt.row.sums), up = length(res.up$opt.row.sums)), # number of considered column rearrangements (low, up)
          opt.row.sums = list(low = res.low$opt.row.sums,
-                             up = res.up$opt.row.sums), # optimized row sums (low, up) for the N used
+                             up = res.up$opt.row.sums), # optimal row sums (low, up) for the N used
          X = list(low = X.low, up = X.up), # input matrices X (low, up)
-         X.rearranged = list(low = res.low$X.rearranged, up = res.up$X.rearranged)) # rearranged Xs (low, up)
+         X.rearranged = list(low = res.low$X.rearranged, up = res.up$X.rearranged), # rearranged Xs (low, up)
+         X.rearranged.opt.row = # (averaged) rows of X.rearranged leading to the final optimal row sum
+             list(low = res.low$X.rearranged.opt.row, up = res.up$X.rearranged.opt.row))
 }
