@@ -393,7 +393,8 @@ VaR_bounds_hom <- function(level, d, method = c("Wang", "Wang.Par", "dual"),
 ##'       be as well, but internally uses order() and thus is not faster.
 ##'       However, we can make order() faster by using R_orderVector1() instead
 ##'       of R_orderVector() (available from 3.2.3 onwards)
-##'       => For d = 1000 and N = 16384, this only brought an improvement of 1.3%, though
+##'       => For d = 1000 and N = 16384, this only brought an improvement of 1.3%,
+##'          though.
 ##'       If that turns out to be faster (in the future), use:
 ##'       indices_opp_ordered_to <- if(getRversion() >= "3.2.3")
 ##'       {
