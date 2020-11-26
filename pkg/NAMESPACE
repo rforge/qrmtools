@@ -48,6 +48,8 @@ export(
     "block_rearrange", "ABRA",
     ## Black--Scholes formula
     "Black_Scholes", "Black_Scholes_Greeks",
+    ## Brownian motion
+    "rBrownian",
     ## General graphics
     "NA_plot", "matrix_plot", "matrix_density_plot",
     "pp_plot", "qq_plot", "edf_plot",
