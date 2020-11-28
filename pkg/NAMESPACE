@@ -3,72 +3,72 @@ useDynLib(qrmtools, .registration = TRUE)
 
 ### Imports ####################################################################
 
-importFrom("quantmod", "getSymbols",
-           "Op", "Hi", "Lo", "Cl", "Vo", "Ad",
-           "OpCl", "ClCl", "HiCl", "LoCl", "LoHi", "OpHi", "OpLo", "OpOp")
-importFrom("Quandl", "Quandl")
-importFrom("zoo", "index")
-importFrom("xts", "as.xts")
-importFrom("methods", "hasArg")
-importFrom("stats",
-           "var", "cov", "sd",
-           "uniroot", "integrate", "filter", "ecdf", "stepfun",
-           "dnorm", "dt",
-           "pnorm", "pchisq", "pbeta",
-           "qnorm", "qt",
-           "runif",
-           "qqline", "mahalanobis", "ks.test")
-importFrom("grDevices", "colorRampPalette", "dev.off", "extendrange")
-importFrom("graphics", "image", "mtext", "plot", "rug", "abline", "lines",
-           "axis")
-importFrom("lattice", "levelplot")
-importFrom("rugarch", "ugarchspec", "ugarchfit")
-importFrom("stats", "quantile", "HoltWinters", "density", "ppoints", "optim")
-importFrom("methods", "is", "existsFunction")
-importFrom("utils", "setTxtProgressBar", "txtProgressBar", "head", "tail")
-importFrom("ADGofTest", "ad.test")
+importFrom(quantmod, getSymbols,
+           Op, Hi, Lo, Cl, Vo, Ad,
+           OpCl, ClCl, HiCl, LoCl, LoHi, OpHi, OpLo, OpOp)
+importFrom(Quandl, Quandl)
+importFrom(zoo, index)
+importFrom(xts, as.xts)
+importFrom(methods, hasArg)
+importFrom(stats,
+           var, cov, sd,
+           uniroot, integrate, filter, ecdf, stepfun,
+           dnorm, dt,
+           pnorm, pchisq, pbeta,
+           qnorm, qt,
+           runif,
+           qqline, mahalanobis, ks.test)
+importFrom(grDevices, colorRampPalette, dev.off, extendrange)
+importFrom(graphics, image, mtext, plot, rug, abline, lines,
+           axis)
+importFrom(lattice, levelplot)
+importFrom(rugarch, ugarchspec, ugarchfit)
+importFrom(stats, quantile, HoltWinters, density, ppoints, optim)
+importFrom(methods, is, existsFunction)
+importFrom(utils, setTxtProgressBar, txtProgressBar, head, tail)
+importFrom(ADGofTest, ad.test)
 
 
 ### Exports ####################################################################
 
 export(
     ## Distributions
-    "dGEV", "pGEV", "qGEV", "rGEV",
-    "dGPD", "pGPD", "qGPD", "rGPD",
-    "dGPDtail", "pGPDtail", "qGPDtail", "rGPDtail",
-    "dPar", "pPar", "qPar", "rPar",
+    dGEV, pGEV, qGEV, rGEV,
+    dGPD, pGPD, qGPD, rGPD,
+    dGPDtail, pGPDtail, qGPDtail, rGPDtail,
+    dPar, pPar, qPar, rPar,
     ## EVT
-    "fit_GEV_quantile", "fit_GEV_PWM", "logLik_GEV", "fit_GEV_MLE",
-    "fit_GPD_MOM", "fit_GPD_PWM", "logLik_GPD", "fit_GPD_MLE",
-    "mean_excess_np", "mean_excess_GPD", "mean_excess_plot",
-    "GEV_shape_plot", "GPD_shape_plot", "tail_plot",
+    fit_GEV_quantile, fit_GEV_PWM, logLik_GEV, fit_GEV_MLE,
+    fit_GPD_MOM, fit_GPD_PWM, logLik_GPD, fit_GPD_MLE,
+    mean_excess_np, mean_excess_GPD, mean_excess_plot,
+    GEV_shape_plot, GPD_shape_plot, tail_plot,
     ## Worst/best VaR
-    "crude_VaR_bounds", "dual_bound", "VaR_bounds_hom",
-    "rearrange", "RA", "ARA",
-    "block_rearrange", "ABRA",
+    crude_VaR_bounds, dual_bound, VaR_bounds_hom,
+    rearrange, RA, ARA,
+    block_rearrange, ABRA,
     ## Black--Scholes formula
-    "Black_Scholes", "Black_Scholes_Greeks",
+    Black_Scholes, Black_Scholes_Greeks,
     ## Brownian motion
-    "rBrownian",
+    rBrownian,
     ## General graphics
-    "NA_plot", "matrix_plot", "matrix_density_plot",
-    "pp_plot", "qq_plot", "edf_plot",
+    NA_plot, matrix_plot, matrix_density_plot,
+    pp_plot, qq_plot, edf_plot,
     ## Time Series
-    "fit_ARMA_GARCH", "fit_GARCH_11",
+    fit_ARMA_GARCH, fit_GARCH_11,
     ## Result/warning/error catching
-    "catch",
+    catch,
     ## Returns
-    "returns", "returns_qrmtools",
+    returns, returns_qrmtools,
     ## Data related functions
-    "get_data",
-    "hierarchical_matrix",
+    get_data,
+    hierarchical_matrix,
     ## Risk measures
-    "VaR_np", "VaR_t", "VaR_GPD", "VaR_Par", "VaR_GPDtail",
-    "ES_np", "ES_t", "ES_GPD", "ES_Par", "ES_GPDtail",
-    "RVaR_np",
-    "gVaR", "gEX",
+    VaR_np, VaR_t, VaR_GPD, VaR_Par, VaR_GPDtail,
+    ES_np, ES_t, ES_GPD, ES_Par, ES_GPDtail,
+    RVaR_np,
+    gVaR, gEX,
     ## Tests
-    "maha2_test", "mardia_test",
+    maha2_test, mardia_test,
     ## Allocation
-    "alloc_ellip", "conditioning", "alloc_np"
+    alloc_ellip, conditioning, alloc_np
 )

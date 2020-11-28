@@ -1,4 +1,4 @@
-### Simulate (dependent, multivariate) Brownian and related motions ############
+### Simulate dependent Brownian and related motions ############################
 
 ##' @title Simulating Paths from Brownian Motions, Geometric Brownian Motions
 ##'        and Brownian Bridges

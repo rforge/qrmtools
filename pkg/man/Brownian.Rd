@@ -2,7 +2,7 @@
 \alias{rBrownian}
 \title{Brownian and Related Motions}
 \description{
-  Simulate paths of dependent, multivariate Brownian motions, geometric
+  Simulate paths of dependent Brownian motions, geometric
   Brownian motions and Brownian bridges.
 }
 \usage{
